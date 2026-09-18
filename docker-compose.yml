@@ -42,8 +42,12 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
       - db-config:/etc/postgresql-custom
-      # Runs once, when the data volume is empty.
+      # Runs once, when the data volume is created. Mounted at both paths
+      # because the entrypoint's handling of the init-scripts subdirectory
+      # differs between images; db-prepare below is what actually
+      # guarantees the passwords are set.
       - ./docker/postgres/init/99-roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - ./docker/postgres/init/99-roles.sql:/docker-entrypoint-initdb.d/99-roles.sql:ro
     command:
       - postgres
       - -c
@@ -55,12 +59,30 @@ services:
       retries: 20
       start_period: 30s
 
+  # One-shot. Sets the service role passwords and hands GoTrue ownership
+  # of the auth helper functions, so the services below can actually log
+  # in and run their migrations. Idempotent, and it repairs an existing
+  # volume rather than requiring one to be thrown away.
+  db-prepare:
+    image: supabase/postgres:17.6.1.136
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./docker/db-prepare.sh:/db-prepare.sh:ro
+    entrypoint: ['/bin/bash', '/db-prepare.sh']
+
   auth:
     image: supabase/gotrue:v2.196.0
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      db-prepare:
+        condition: service_completed_successfully
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
@@ -120,6 +142,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-prepare:
+        condition: service_completed_successfully
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
       PGRST_DB_SCHEMAS: public
@@ -147,6 +171,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-prepare:
+        condition: service_completed_successfully
       rest:
         condition: service_started
     environment:

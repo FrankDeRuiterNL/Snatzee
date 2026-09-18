@@ -7,8 +7,16 @@
 -- user_statistics — one row per profile with all derived numbers.
 -- A FIRST_ROLL yahtzee event counts in BOTH yahtzee_count and
 -- first_roll_yahtzee_count (single source row, no double bookkeeping).
+--
+-- Dropped rather than replaced: later migrations add columns to this
+-- view, and CREATE OR REPLACE VIEW cannot remove them again. Without the
+-- drop, re-running the migrations — which happens on every
+-- `docker compose up` — would fail here. The cascade only reaches
+-- get_user_statistics(), which this same file recreates below.
 -- ---------------------------------------------------------------------
-create or replace view public.user_statistics as
+drop view if exists public.user_statistics cascade;
+
+create view public.user_statistics as
 select
   p.id                                         as user_id,
   p.username,
