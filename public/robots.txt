@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /register
+Allow: /u/
+Disallow: /app/
+Disallow: /auth/
+Disallow: /onboarding

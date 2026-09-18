@@ -1,0 +1,171 @@
+'use client'
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
+import { ScoreSheet, type ScoreSheetResult } from '@/components/score/score-sheet'
+import { CelebrationOverlay, type Celebration } from '@/components/score/celebration-overlay'
+import { AchievementUnlockSheet } from '@/components/achievements/achievement-unlock-sheet'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { haptic } from '@/lib/haptics'
+import { ordinalNl } from '@/lib/utils'
+import type { RecordYahtzeeResult, ScoreEntry, UnlockedAchievement, YahtzeeEventType } from '@/types/database'
+
+interface QuickActionsValue {
+  openScoreSheet: (entry?: ScoreEntry | null) => void
+  recordYahtzee: (type: YahtzeeEventType) => Promise<void>
+  yahtzeePending: boolean
+}
+
+const QuickActionsContext = createContext<QuickActionsValue | null>(null)
+
+export function useQuickActions() {
+  const ctx = useContext(QuickActionsContext)
+  if (!ctx) throw new Error('useQuickActions must be used inside <QuickActionsProvider>')
+  return ctx
+}
+
+/**
+ * Owns the two global "register something" flows so they can be triggered
+ * from the bottom nav, the home dashboard and the history page alike.
+ */
+export function QuickActionsProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // Home-screen shortcuts land on /app?action=… — the score sheet opens from
+  // the initial state so no effect has to write state synchronously.
+  const shortcut = searchParams.get('action')
+  const [sheetOpen, setSheetOpen] = useState(() => shortcut === 'score')
+  const [editing, setEditing] = useState<ScoreEntry | null>(null)
+  const [celebration, setCelebration] = useState<Celebration | null>(null)
+  const [unlockQueue, setUnlockQueue] = useState<UnlockedAchievement[]>([])
+  const [yahtzeePending, setYahtzeePending] = useState(false)
+  // Guards against a double-tap firing two inserts before state settles.
+  const inFlight = useRef(false)
+
+  const openScoreSheet = useCallback((entry?: ScoreEntry | null) => {
+    setEditing(entry ?? null)
+    setSheetOpen(true)
+  }, [])
+
+  const queueUnlocks = useCallback((unlocked: UnlockedAchievement[]) => {
+    if (unlocked.length === 0) return
+    setUnlockQueue((prev) => [...prev, ...unlocked])
+  }, [])
+
+  const handleSaved = useCallback(
+    (result: ScoreSheetResult) => {
+      toast.success(result.isEdit ? 'Potje bijgewerkt ✓' : 'Score opgeslagen ✓', {
+        description: `${result.entry.score} punten${result.entry.is_win ? ' · gewonnen' : ''}`,
+      })
+
+      if (!result.isEdit && result.isPersonalRecord) {
+        setCelebration({
+          id: Date.now(),
+          variant: 'record',
+          emoji: '🏆',
+          title: 'Nieuw record',
+          headline: `${result.entry.score} punten!`,
+          detail: 'Dit is je hoogste score ooit op Snatzee.',
+        })
+      }
+
+      queueUnlocks(result.unlocked)
+      router.refresh()
+    },
+    [queueUnlocks, router],
+  )
+
+  const recordYahtzee = useCallback(
+    async (type: YahtzeeEventType) => {
+      if (inFlight.current) return
+      inFlight.current = true
+      setYahtzeePending(true)
+
+      try {
+        const supabase = getSupabaseBrowserClient()
+        const { data, error } = await supabase.rpc('record_yahtzee', { p_event_type: type })
+
+        if (error) {
+          toast.error('Registreren is niet gelukt', { description: error.message })
+          return
+        }
+
+        const result = data as RecordYahtzeeResult
+        haptic(type === 'FIRST_ROLL' ? 'warning' : 'success')
+
+        setCelebration(
+          type === 'FIRST_ROLL'
+            ? {
+                id: Date.now(),
+                variant: 'firstRoll',
+                emoji: '⚡',
+                title: 'No way!',
+                headline: 'YAHTZEE IN 1 WORP',
+                detail: `Dit was je ${ordinalNl(result.first_roll_yahtzee_count)} ooit — en Yahtzee nummer ${result.yahtzee_count}.`,
+              }
+            : {
+                id: Date.now(),
+                variant: 'yahtzee',
+                emoji: '🎲',
+                title: 'Yahtzee!',
+                headline: 'YAHTZEE! 🎉',
+                detail: `${ordinalNl(result.yahtzee_count)} Yahtzee geregistreerd.`,
+              },
+        )
+
+        queueUnlocks(result.unlocked ?? [])
+        router.refresh()
+      } finally {
+        inFlight.current = false
+        setYahtzeePending(false)
+      }
+    },
+    [queueUnlocks, router],
+  )
+
+  // Clear the shortcut from the URL once handled, so a refresh does not
+  // re-trigger it, and fire the two Yahtzee shortcuts.
+  useEffect(() => {
+    if (!shortcut) return
+    router.replace(pathname)
+
+    if (shortcut === 'yahtzee') void recordYahtzee('NORMAL')
+    else if (shortcut === 'first-roll') void recordYahtzee('FIRST_ROLL')
+  }, [shortcut, pathname, router, recordYahtzee])
+
+  const value = useMemo(
+    () => ({ openScoreSheet, recordYahtzee, yahtzeePending }),
+    [openScoreSheet, recordYahtzee, yahtzeePending],
+  )
+
+  return (
+    <QuickActionsContext.Provider value={value}>
+      {children}
+
+      <ScoreSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        entry={editing}
+        onSaved={handleSaved}
+      />
+
+      <CelebrationOverlay celebration={celebration} onDismiss={() => setCelebration(null)} />
+
+      <AchievementUnlockSheet
+        queue={unlockQueue}
+        onAdvance={() => setUnlockQueue((prev) => prev.slice(1))}
+      />
+    </QuickActionsContext.Provider>
+  )
+}

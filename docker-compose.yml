@@ -1,0 +1,42 @@
+# =============================================================================
+# Snatzee — docker compose
+#
+#   cp .env.example .env    # fill in your Supabase values
+#   docker compose up -d --build
+#
+# The app is then available on http://<your-docker-host>:6666
+# =============================================================================
+
+services:
+  snatzee:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Next.js inlines NEXT_PUBLIC_* at build time, so these are passed as
+        # build args as well as runtime environment.
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:6666}
+    image: snatzee:latest
+    container_name: snatzee
+    restart: unless-stopped
+    ports:
+      - "6666:6666"
+    environment:
+      NODE_ENV: production
+      PORT: "6666"
+      HOSTNAME: "0.0.0.0"
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:6666}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:6666/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
