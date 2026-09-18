@@ -1,16 +1,20 @@
 # =====================================================================
 # Snatzee — full self-hosted stack
 #
-#   node scripts/generate-keys.mjs >> .env   # secrets
-#   cp .env.example .env                     # then fill in the rest
+#   cp .env.example .env
+#   node scripts/generate-keys.mjs      # paste the secrets into .env
 #   docker compose up -d --build
 #
 # Everything is reachable on http://<docker-host>:6666 — the app and the
 # Supabase APIs share one origin, so there is only one port to publish
 # and no CORS to configure.
 #
+# The database, auth, API and storage images and their environment follow
+# Supabase's own self-hosting compose file, so this tracks a setup that is
+# widely run and tested rather than a hand-rolled equivalent.
+#
 # Services:
-#   db        PostgreSQL 16 with the Supabase roles
+#   db        PostgreSQL with the Supabase roles, schemas and helpers
 #   auth      Supabase Auth (GoTrue)
 #   rest      PostgREST — the /rest/v1 API and RPCs
 #   storage   Supabase Storage — avatar uploads
@@ -21,59 +25,67 @@
 
 name: snatzee
 
-x-restart: &restart
-  restart: unless-stopped
-
 services:
   db:
-    image: postgres:16.15-alpine
-    <<: *restart
+    # Ships the Supabase roles, the auth/storage schemas, the extensions
+    # and auth.uid() — none of which plain postgres has.
+    image: supabase/postgres:17.6.1.136
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_HOST: /var/run/postgresql
       POSTGRES_DB: postgres
+      POSTGRES_PORT: 5432
+      PGPORT: 5432
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
     volumes:
       - db-data:/var/lib/postgresql/data
-      # Runs once, when the volume is empty.
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - db-config:/etc/postgresql-custom
+      # Runs once, when the data volume is empty.
+      - ./docker/postgres/init/99-roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d postgres']
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-h', 'localhost']
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 15s
+      start_period: 30s
 
   auth:
-    image: supabase/gotrue:v2.197.0
-    <<: *restart
+    image: supabase/gotrue:v2.196.0
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       GOTRUE_API_HOST: 0.0.0.0
-      PORT: 9999
+      GOTRUE_API_PORT: 9999
 
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres?sslmode=disable&search_path=auth
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
 
       # Public address of this deployment: OAuth callbacks and the links in
       # confirmation e-mails are built from it.
       API_EXTERNAL_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       GOTRUE_SITE_URL: ${PUBLIC_URL}
-      # Every origin a user may be redirected back to after sign-in.
+      GOTRUE_JWT_ISSUER: ${PUBLIC_URL}
+      # Every origin a user may be redirected back to after signing in.
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
 
       GOTRUE_JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
-      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_ADMIN_ROLES: service_role
 
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
       GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
-      # Without SMTP configured there is no way to deliver a confirmation
-      # link, so accounts are usable immediately. Set this to false once
-      # SMTP is filled in below.
+      # Without SMTP there is no way to deliver a confirmation link, so
+      # accounts are usable immediately. Set to false once SMTP is filled in.
       GOTRUE_MAILER_AUTOCONFIRM: ${MAILER_AUTOCONFIRM:-true}
       GOTRUE_SMTP_HOST: ${SMTP_HOST:-}
       GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
@@ -95,10 +107,16 @@ services:
       GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: ${PUBLIC_URL}/auth/v1/callback
 
       GOTRUE_LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9999/health']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   rest:
-    image: postgrest/postgrest:v12.2.12
-    <<: *restart
+    image: postgrest/postgrest:v14.17
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -106,16 +124,26 @@ services:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_MAX_ROWS: 1000
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
       PGRST_JWT_SECRET: ${JWT_SECRET}
       PGRST_JWT_AUD: authenticated
       # Publish claims as request.jwt.claims, which is what auth.uid() reads.
       PGRST_DB_USE_LEGACY_GUCS: 'false'
-      PGRST_DB_MAX_ROWS: 1000
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
       PGRST_LOG_LEVEL: ${LOG_LEVEL:-error}
+    command: ['postgrest']
+    healthcheck:
+      test: ['CMD', 'postgrest', '--ready']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
 
   storage:
-    image: supabase/storage-api:v1.79.2
-    <<: *restart
+    image: supabase/storage-api:v1.74.0
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -124,40 +152,49 @@ services:
     environment:
       ANON_KEY: ${ANON_KEY:?set ANON_KEY in .env}
       SERVICE_KEY: ${SERVICE_ROLE_KEY:?set SERVICE_ROLE_KEY in .env}
-      PGRST_JWT_SECRET: ${JWT_SECRET}
       AUTH_JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
-      DB_INSTALL_ROLES: 'true'
       POSTGREST_URL: http://rest:3000
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      STORAGE_PUBLIC_URL: ${PUBLIC_URL}
+      # Storage sits behind the gateway on /storage/v1.
+      REQUEST_ALLOW_X_FORWARDED_PATH: 'true'
       FILE_SIZE_LIMIT: 52428800
       STORAGE_BACKEND: file
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      GLOBAL_S3_BUCKET: snatzee
       TENANT_ID: snatzee
       REGION: local
-      GLOBAL_S3_BUCKET: snatzee
+      # Avatars are served as uploaded; no imgproxy sidecar needed.
       ENABLE_IMAGE_TRANSFORMATION: 'false'
     volumes:
       - storage-data:/var/lib/storage
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/status']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
-  # One-shot. Waits for GoTrue and storage-api to create their schemas,
-  # then applies the Snatzee migrations and exits.
+  # One-shot. The health checks above guarantee GoTrue and storage-api have
+  # finished their own migrations, so the app's foreign keys and storage
+  # policies always have something to attach to.
   migrate:
-    image: postgres:16.15-alpine
+    image: supabase/postgres:17.6.1.136
     restart: 'no'
     depends_on:
       db:
         condition: service_healthy
       auth:
-        condition: service_started
+        condition: service_healthy
       storage:
-        condition: service_started
+        condition: service_healthy
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./supabase/migrations:/migrations:ro
       - ./docker/postgres/supabase-compat.sql:/sql/supabase-compat.sql:ro
       - ./docker/migrate.sh:/migrate.sh:ro
-    entrypoint: ['/bin/sh', '/migrate.sh']
+    entrypoint: ['/bin/bash', '/migrate.sh']
 
   app:
     build:
@@ -170,7 +207,7 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
         NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL}
     image: snatzee:latest
-    <<: *restart
+    restart: unless-stopped
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -197,7 +234,7 @@ services:
 
   gateway:
     image: nginx:1.29-alpine
-    <<: *restart
+    restart: unless-stopped
     depends_on:
       app:
         condition: service_started
@@ -221,4 +258,5 @@ services:
 
 volumes:
   db-data:
+  db-config:
   storage-data:

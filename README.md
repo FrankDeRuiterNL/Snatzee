@@ -55,16 +55,22 @@ Zeven containers in één compose-stack:
 
 | Service | Image | Rol |
 | --- | --- | --- |
-| `db` | `postgres:16.15-alpine` | PostgreSQL met de Supabase-rollen |
-| `auth` | `supabase/gotrue:v2.197.0` | Inloggen, registreren, Apple/Google |
-| `rest` | `postgrest/postgrest:v12.2.12` | De `/rest/v1` API en alle RPC's |
-| `storage` | `supabase/storage-api:v1.79.2` | Avatar-uploads |
-| `migrate` | `postgres:16.15-alpine` | Eenmalig: zet het schema klaar en stopt |
+| `db` | `supabase/postgres:17.6.1.136` | PostgreSQL mét de Supabase-rollen, -schema's en `auth.uid()` |
+| `auth` | `supabase/gotrue:v2.196.0` | Inloggen, registreren, Apple/Google |
+| `rest` | `postgrest/postgrest:v14.17` | De `/rest/v1` API en alle RPC's |
+| `storage` | `supabase/storage-api:v1.74.0` | Avatar-uploads |
+| `migrate` | `supabase/postgres:17.6.1.136` | Eenmalig: zet het schema klaar en stopt |
 | `app` | wordt lokaal gebouwd | De Next.js applicatie |
 | `gateway` | `nginx:1.29-alpine` | De enige gepubliceerde poort |
 
 Alles komt binnen op **poort 6666**. De app en de Supabase-API's delen één
 origin, dus er is maar één poort open en er valt geen CORS te configureren.
+
+De images en hun instellingen volgen de officiële self-hosting-compose van
+Supabase, zodat dit een opstelling volgt die breed gedraaid en getest wordt in
+plaats van een zelfgebouwd equivalent. `supabase/postgres` levert de rollen, de
+`auth`- en `storage`-schema's, de extensies en `auth.uid()` — precies de dingen
+waar alle RLS-policies op leunen.
 
 > **Waarom niet alles in één container?** De database en de app hebben een
 > verschillende levensduur. In aparte containers kun je de app herbouwen of
@@ -230,6 +236,34 @@ docker compose down -v
 > idempotent, dus dat is veilig en zet nieuwe migraties na een `git pull`
 > vanzelf klaar.
 
+### Bijwerken vanaf een eerdere versie
+
+De eerste versie van deze stack draaide op een kale `postgres:16` met
+handgemaakte rollen. Die is vervangen door `supabase/postgres`, dat de rollen,
+schema's en `auth.uid()` zelf meebrengt. De datadirectory van beide is niet
+uitwisselbaar, dus een bestaand volume moet eenmalig weg:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+Had je al data? Maak eerst een dump (zie [Back-ups](#back-ups)) en zet die
+daarna terug.
+
+### Geheimen wijzigen
+
+`POSTGRES_PASSWORD` wordt alleen bij de **allereerste** start in de database
+gezet. Wijzig je het later, dan komen de services niet meer binnen. Wil je het
+toch veranderen, dan hoort daar een leeg volume bij:
+
+```bash
+docker compose down -v      # let op: wist alle data
+docker compose up -d --build
+```
+
+Maak dus liever meteen bij de eerste opzet een definitief wachtwoord.
+
 ### Back-ups
 
 Alle data staat in twee volumes: `snatzee_db-data` en `snatzee_storage-data`.
@@ -250,7 +284,8 @@ docker run --rm -v snatzee_storage-data:/data -v "$PWD":/backup alpine \
 
 | Symptoom | Oorzaak en oplossing |
 | --- | --- |
-| `migrate` stopt met een timeout | `auth` of `storage` kwam niet op. Check `docker compose logs auth storage`; meestal een verkeerd `POSTGRES_PASSWORD` in `.env`. |
+| `migrate` stopt met een timeout | `auth` of `storage` kwam niet op. `migrate` print welk onderdeel ontbreekt; check daarna `docker compose logs auth` of `docker compose logs storage`. |
+| `storage` blijft herstarten | Meestal een verkeerd `POSTGRES_PASSWORD` of `JWT_SECRET` in `.env`. Na het wijzigen van geheimen moet het databasevolume opnieuw: `docker compose down -v`. |
 | Inloggen lukt, maar je wordt teruggestuurd naar `/login` | `PUBLIC_URL` komt niet overeen met het adres in de browser. Corrigeer en draai `docker compose up -d --build` (de waarde zit in de build gebakken). |
 | OAuth eindigt op een foutpagina | Redirect-URI bij de provider moet exact `${PUBLIC_URL}/auth/v1/callback` zijn, en het domein moet in `ADDITIONAL_REDIRECT_URLS` staan. |
 | Avatars laden niet | Wijzig je `PUBLIC_URL`, herbouw dan de app: het beeld-domein wordt tijdens de build vastgelegd. |
