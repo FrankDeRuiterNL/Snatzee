@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { siteOrigin } from '@/lib/site-url'
 
 /** OAuth + magic-link landing point: exchanges the code for a session. */
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
+  const origin = siteOrigin(request)
   const code = searchParams.get('code')
   const next = searchParams.get('next')
   const authError = searchParams.get('error_description')

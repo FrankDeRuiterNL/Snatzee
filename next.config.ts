@@ -1,10 +1,22 @@
 import type { NextConfig } from 'next'
 
-const supabaseHost = (() => {
+/**
+ * Avatars are served from `${SUPABASE_URL}/storage/v1/object/public/...`.
+ * On a self-hosted stack that is the site's own origin — possibly plain
+ * http on a custom port — so the pattern is derived from the configured
+ * URL rather than assuming a *.supabase.co host.
+ */
+const supabaseImagePattern = (() => {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!raw) return null
   try {
-    return process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-      : null
+    const url = new URL(raw)
+    return {
+      protocol: url.protocol.replace(':', '') as 'http' | 'https',
+      hostname: url.hostname,
+      ...(url.port ? { port: url.port } : {}),
+      pathname: '/storage/v1/object/public/**',
+    }
   } catch {
     return null
   }
@@ -15,10 +27,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      ...(supabaseHost
-        ? ([{ protocol: 'https', hostname: supabaseHost, pathname: '/storage/v1/object/public/**' }] as const)
-        : []),
-      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+      ...(supabaseImagePattern ? [supabaseImagePattern] : []),
+      // Hosted Supabase projects.
+      { protocol: 'https' as const, hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
     ],
   },
   async headers() {

@@ -99,6 +99,15 @@ export async function getAchievementsForUser(userId: string): Promise<Achievemen
   }))
 }
 
+/** All configurable limits, keyed by setting name. */
+export async function getAppSettings(): Promise<Record<string, number>> {
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase.from('app_settings').select('key, value')
+  return Object.fromEntries(
+    ((data as { key: string; value: number }[] | null) ?? []).map((row) => [row.key, row.value]),
+  )
+}
+
 export async function getMyGroups(): Promise<(Group & { member_count: number })[]> {
   const supabase = await createSupabaseServerClient()
   const user = await getCurrentUser()

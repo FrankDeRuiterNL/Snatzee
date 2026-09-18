@@ -16,6 +16,7 @@ import { BottomSheet } from '@/components/ui/sheet'
 import { FieldError, Input, Label, Textarea } from '@/components/ui/input'
 import { ToggleRow } from '@/components/ui/toggle-row'
 import { AvatarUploader } from '@/components/profile/avatar-uploader'
+import { AdminPanel } from '@/components/profile/admin-panel'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { DISPLAY_NAME_MAX } from '@/lib/constants'
 import { haptic } from '@/lib/haptics'
@@ -43,7 +44,15 @@ function writeLocalPreference(key: string, value: boolean) {
   }
 }
 
-export function SettingsView({ profile, email }: { profile: Profile; email: string | null }) {
+export function SettingsView({
+  profile,
+  email,
+  appSettings,
+}: {
+  profile: Profile
+  email: string | null
+  appSettings: Record<string, number>
+}) {
   const router = useRouter()
   const displayNameId = useId()
   const bioId = useId()
@@ -142,9 +151,12 @@ export function SettingsView({ profile, email }: { profile: Profile; email: stri
 
   return (
     <div className="space-y-6 px-5">
+      {profile.role !== 'user' && <AdminPanel role={profile.role} settings={appSettings} />}
+
       <Section title="Account" icon={UserCog}>
         <Row label="E-mailadres" value={email ?? '—'} />
         <Row label="Username" value={`@${profile.username}`} />
+        {profile.role !== 'user' && <Row label="Rol" value={profile.role} />}
         <Button variant="soft" full className="mt-2" onClick={() => setEditOpen(true)}>
           Profiel wijzigen
         </Button>

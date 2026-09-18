@@ -8,6 +8,7 @@ export type YahtzeeEventType = 'NORMAL' | 'FIRST_ROLL'
 export type FriendshipStatus = 'pending' | 'accepted' | 'declined'
 export type GroupMemberRole = 'owner' | 'admin' | 'member'
 export type AchievementRarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
+export type AppRole = 'user' | 'admin' | 'superadmin'
 
 export interface Profile {
   id: string
@@ -17,7 +18,15 @@ export interface Profile {
   bio: string | null
   onboarding_completed: boolean
   is_private: boolean
+  role: AppRole
   created_at: string
+  updated_at: string
+}
+
+export interface AppSetting {
+  key: string
+  value: number
+  description: string | null
   updated_at: string
 }
 
