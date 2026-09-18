@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { PageTransition } from '@/components/layout/page-transition'
 import { StatCard } from '@/components/ui/stat-card'
 import { ScoreChart } from '@/components/stats/score-chart'
+import { LevelCard } from '@/components/profile/level-badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   getCurrentProfile,
@@ -94,6 +95,8 @@ export default async function StatisticsPage() {
             )}
           </div>
         </section>
+
+        <LevelCard stats={stats} />
 
         <section aria-labelledby="chart-heading" className="space-y-3 px-5">
           <h2 id="chart-heading" className="text-lg font-extrabold tracking-tight text-navy-900">

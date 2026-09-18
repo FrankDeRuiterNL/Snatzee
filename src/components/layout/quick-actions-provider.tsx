@@ -17,6 +17,7 @@ import { CelebrationOverlay, type Celebration } from '@/components/score/celebra
 import { AchievementUnlockSheet } from '@/components/achievements/achievement-unlock-sheet'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
+import { playSound } from '@/lib/audio'
 import { ordinalNl } from '@/lib/utils'
 import type { RecordYahtzeeResult, ScoreEntry, UnlockedAchievement, YahtzeeEventType } from '@/types/database'
 
@@ -60,11 +61,13 @@ export function QuickActionsProvider({ children }: { children: ReactNode }) {
 
   const queueUnlocks = useCallback((unlocked: UnlockedAchievement[]) => {
     if (unlocked.length === 0) return
+    playSound('achievement')
     setUnlockQueue((prev) => [...prev, ...unlocked])
   }, [])
 
   const handleSaved = useCallback(
     (result: ScoreSheetResult) => {
+      if (!result.isEdit) playSound('score')
       toast.success(result.isEdit ? 'Potje bijgewerkt ✓' : 'Score opgeslagen ✓', {
         description: `${result.entry.score} punten${result.entry.is_win ? ' · gewonnen' : ''}`,
       })

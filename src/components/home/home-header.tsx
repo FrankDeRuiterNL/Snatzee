@@ -1,16 +1,21 @@
 import Link from 'next/link'
 import { Settings } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
+import { LevelChip } from '@/components/profile/level-badge'
 import { firstName } from '@/lib/utils'
 
 export function HomeHeader({
   displayName,
   username,
   avatarUrl,
+  levelEmoji,
+  levelName,
 }: {
   displayName: string
   username: string
   avatarUrl: string | null
+  levelEmoji?: string | null
+  levelName?: string | null
 }) {
   return (
     <header
@@ -25,7 +30,11 @@ export function HomeHeader({
         <p className="truncate text-xl font-extrabold tracking-tight text-navy-900">
           Hey, {firstName(displayName)} 👋
         </p>
-        <p className="truncate text-sm text-navy-300">@{username}</p>
+        {levelName ? (
+          <LevelChip emoji={levelEmoji ?? null} name={levelName} className="mt-1" />
+        ) : (
+          <p className="truncate text-sm text-navy-300">@{username}</p>
+        )}
       </div>
 
       <Link

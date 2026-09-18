@@ -106,6 +106,14 @@ export interface UserAchievement {
   source_id: string | null
 }
 
+export interface PlayerLevel {
+  key: string
+  name: string
+  emoji: string
+  min_games: number
+  sort_order: number
+}
+
 export interface UserStatistics {
   user_id: string
   username: string
@@ -122,6 +130,14 @@ export interface UserStatistics {
   first_roll_yahtzee_count: number
   win_rate: number
   achievement_count: number
+  level_key: string | null
+  level_name: string | null
+  level_emoji: string | null
+  level_min_games: number | null
+  next_level_name: string | null
+  next_level_emoji: string | null
+  next_level_min_games: number | null
+  games_to_next_level: number | null
 }
 
 export interface HomeSummary {

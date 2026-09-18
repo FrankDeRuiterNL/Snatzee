@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/ui/avatar'
+import { LevelChip } from '@/components/profile/level-badge'
 import { formatNumber } from '@/lib/utils'
 import type { UserStatistics } from '@/types/database'
 
@@ -26,6 +27,14 @@ export function ProfileHeader({
         <Avatar src={avatarUrl} name={displayName} size="xl" className="ring-4 ring-white/10" />
         <h1 className="mt-4 text-2xl font-black tracking-tight">{displayName}</h1>
         <p className="mt-0.5 text-sm font-medium text-navy-300">@{username}</p>
+        {stats?.level_name && (
+          <LevelChip
+            emoji={stats.level_emoji}
+            name={stats.level_name}
+            tone="dark"
+            className="mt-3"
+          />
+        )}
         {bio && <p className="mt-3 max-w-[32ch] text-sm leading-relaxed text-navy-100">{bio}</p>}
         {action && <div className="mt-5 w-full max-w-64">{action}</div>}
       </div>

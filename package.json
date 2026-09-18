@@ -10,7 +10,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
-    "brand": "node scripts/generate-brand-assets.mjs"
+    "brand": "node scripts/generate-brand-assets.mjs",
+    "audio": "node scripts/encode-audio.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

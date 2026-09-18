@@ -13,6 +13,7 @@ import {
   getCurrentProfile,
   getHomeSummary,
   getRecentScores,
+  getUserStatistics,
 } from '@/lib/supabase/queries'
 import { formatNumber } from '@/lib/utils'
 
@@ -23,10 +24,11 @@ export default async function HomePage() {
   const profile = await getCurrentProfile()
   if (!profile) redirect('/login')
 
-  const [summary, recent, achievements] = await Promise.all([
+  const [summary, recent, achievements, stats] = await Promise.all([
     getHomeSummary(),
     getRecentScores(profile.id, 4),
     getAchievementsForUser(profile.id),
+    getUserStatistics(profile.id),
   ])
 
   if (!summary) redirect('/login')
@@ -39,6 +41,8 @@ export default async function HomePage() {
         displayName={profile.display_name}
         username={profile.username}
         avatarUrl={profile.avatar_url}
+        levelEmoji={stats?.level_emoji ?? null}
+        levelName={stats?.level_name ?? null}
       />
 
       <div className="space-y-6">

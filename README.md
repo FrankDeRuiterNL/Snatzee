@@ -16,6 +16,7 @@ Mobile-first PWA, te installeren op het homescreen van iPhone en Android.
 - [Techniek](#techniek)
 - [Deployen met Docker](#deployen-met-docker) — de complete handleiding
 - [Beheerders](#beheerders)
+- [Levels, achievements en geluid](#levels-achievements-en-geluid)
 - [Lokaal ontwikkelen](#lokaal-ontwikkelen)
 - [Alternatief: gehost Supabase](#alternatief-gehost-supabase)
 - [Demo data](#demo-data)
@@ -56,6 +57,7 @@ Zeven containers in één compose-stack:
 | Service | Image | Rol |
 | --- | --- | --- |
 | `db` | `supabase/postgres:17.6.1.136` | PostgreSQL mét de Supabase-rollen, -schema's en `auth.uid()` |
+| `db-prepare` | `supabase/postgres:17.6.1.136` | Eenmalig: zet de wachtwoorden van de servicerollen goed |
 | `auth` | `supabase/gotrue:v2.196.0` | Inloggen, registreren, Apple/Google |
 | `rest` | `postgrest/postgrest:v14.17` | De `/rest/v1` API en alle RPC's |
 | `storage` | `supabase/storage-api:v1.74.0` | Avatar-uploads |
@@ -285,7 +287,9 @@ docker run --rm -v snatzee_storage-data:/data -v "$PWD":/backup alpine \
 | Symptoom | Oorzaak en oplossing |
 | --- | --- |
 | `migrate` stopt met een timeout | `auth` of `storage` kwam niet op. `migrate` print welk onderdeel ontbreekt; check daarna `docker compose logs auth` of `docker compose logs storage`. |
-| `storage` blijft herstarten | Meestal een verkeerd `POSTGRES_PASSWORD` of `JWT_SECRET` in `.env`. Na het wijzigen van geheimen moet het databasevolume opnieuw: `docker compose down -v`. |
+| `password authentication failed for user "supabase_storage_admin"` | De wachtwoorden van de servicerollen stonden niet goed. `db-prepare` zet ze bij elke start; komt de fout terug, dan klopt `POSTGRES_PASSWORD` niet met het bestaande volume — zie *Geheimen wijzigen*. |
+| `auth` stopt met `must be owner of function uid` | GoTrue mag zijn eigen `auth.uid()` niet vervangen. `db-prepare` draagt die functies aan GoTrue over; draai `docker compose up -d` opnieuw. |
+| `storage` blijft herstarten | Meestal een verkeerd `JWT_SECRET` in `.env`, of een volume dat bij een ander wachtwoord hoort. |
 | Inloggen lukt, maar je wordt teruggestuurd naar `/login` | `PUBLIC_URL` komt niet overeen met het adres in de browser. Corrigeer en draai `docker compose up -d --build` (de waarde zit in de build gebakken). |
 | OAuth eindigt op een foutpagina | Redirect-URI bij de provider moet exact `${PUBLIC_URL}/auth/v1/callback` zijn, en het domein moet in `ADDITIONAL_REDIRECT_URLS` staan. |
 | Avatars laden niet | Wijzig je `PUBLIC_URL`, herbouw dan de app: het beeld-domein wordt tijdens de build vastgelegd. |
@@ -326,6 +330,69 @@ Een superadmin kan rollen ook in de app toekennen, via **Instellingen → Beheer
 De rol staat in `profiles.role` en is **niet** rechtstreeks te wijzigen: een
 databasetrigger weigert elke update die de kolom aanraakt buiten
 `set_user_role()` om, dus een client kan zichzelf niet promoveren.
+
+---
+
+## Levels, achievements en geluid
+
+### Spelerniveaus
+
+Je niveau volgt uit het aantal geregistreerde potjes en staat op je profiel, je
+statistieken en naast je naam op Home.
+
+| | Niveau | Potjes |
+| --- | --- | --- |
+| 🙋🏼‍♂️ | Beginner | 0 |
+| 👨🏼‍🏭 | Recreatief Speler | 10 |
+| 🧑🏼‍🎨 | Hobby Speler | 20 |
+| 👨🏼‍💼 | Professioneel Speler | 35 |
+| 👨🏼‍✈️ | Zakelijk Speler | 50 |
+
+De drempels staan in `public.player_levels` en zijn aan te passen zonder
+deploy. `user_statistics` berekent het huidige niveau, het volgende niveau en
+hoeveel potjes daar nog voor nodig zijn.
+
+```sql
+update public.player_levels set min_games = 15 where key = 'hobby';
+```
+
+### De benoemde achievements
+
+| | Achievement | Voorwaarde |
+| --- | --- | --- |
+| 😎 | Stabiel | Scoor 200 punten of meer |
+| 👑 | High Roller | Scoor 300 punten of hoger |
+| 🧙 | The Impossible | Scoor 400 punten of hoger |
+| 🎯 | Snatzee! | Gooi een Yahtzee |
+| 💯 | Snatzee Pro! | Gooi 10 keer een Yahtzee |
+| 🤴 | Snatzee Koning! | Gooi 20 keer een Yahtzee |
+| 🔥 | Legend | Gooi een Yahtzee in één worp |
+| 💀 | Hoe dan? | Scoor minder dan 100 punten |
+
+Deze staan naast de overige achievements; in totaal zijn het er 36.
+
+### Geluid
+
+Drie momenten hebben een eigen geluid:
+
+| Bestand | Wanneer |
+| --- | --- |
+| `Snatzee Audio Logo.wav` | Bij het openen van de app |
+| `Snatzee New Score.wav` | Bij het opslaan van een nieuwe score |
+| `Snatzee Achievement.wav` | Bij het vrijspelen van een achievement |
+
+De originelen staan in `brand/audio/`. Samen zijn die ruim 1 MB aan onbewerkte
+WAV, wat veel is voor drie korte tunes op een telefoon, dus ze worden
+omgezet naar mono mp3 en ogg (samen ongeveer 90 kB):
+
+```bash
+npm run audio     # vereist ffmpeg
+```
+
+Geluid is uit te zetten via **Instellingen → Meldingen → Geluid**. Browsers
+staan geen audio toe voordat er iets is aangeraakt, dus het openingsgeluid
+probeert het direct en wacht anders kort op de eerste tik. Lukt het niet, dan
+gebeurt er simpelweg niets — geen enkele functie hangt van geluid af.
 
 ---
 
@@ -420,6 +487,7 @@ achievements       key, name, description, icon, rarity, category, is_secret, cr
 user_achievements  user_id, achievement_id, unlocked_at, source_id
 app_settings       key, value (jsonb)
 admin_allowlist    email, role  — rollen die vooraf worden toegekend
+player_levels      key, name, emoji, min_games
 ```
 
 ### Yahtzee's worden één keer opgeslagen
@@ -551,12 +619,13 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0007)
+supabase/migrations/        SQL migraties (0001 t/m 0008)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
   nginx/                    gateway die alles op poort 6666 samenbrengt
-  migrate.sh               wacht op de services en zet het schema klaar
+  db-prepare.sh            zet servicewachtwoorden en -rechten goed
+  migrate.sh               zet het schema klaar zodra de services er zijn
 scripts/                    seed, brand assets en sleutelgeneratie
 ```
 
@@ -584,4 +653,5 @@ scripts/                    seed, brand assets en sleutelgeneratie
 | `npm run typecheck` | TypeScript zonder emit |
 | `npm run seed` | Demo data (alleen development) |
 | `npm run brand` | Genereer alle iconen en splashscreens opnieuw |
+| `npm run audio` | Encodeer de geluiden opnieuw vanuit `brand/audio` |
 | `node scripts/generate-keys.mjs` | Genereer de geheimen voor de Docker-stack |

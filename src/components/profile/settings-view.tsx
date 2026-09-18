@@ -20,6 +20,7 @@ import { AdminPanel } from '@/components/profile/admin-panel'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { DISPLAY_NAME_MAX } from '@/lib/constants'
 import { haptic } from '@/lib/haptics'
+import { isSoundEnabled, playSound, setSoundEnabled } from '@/lib/audio'
 import type { Profile } from '@/types/database'
 
 /**
@@ -70,6 +71,7 @@ export function SettingsView({
     readLocalPreference('snatzee:celebrations', true),
   )
   const [hapticsOn, setHapticsOn] = useState(() => readLocalPreference('snatzee:haptics', true))
+  const [soundOn, setSoundOn] = useState(() => isSoundEnabled())
   const [reducedMotion, setReducedMotion] = useState(() =>
     readLocalPreference('snatzee:reduced-motion', false),
   )
@@ -188,6 +190,17 @@ export function SettingsView({
           onCheckedChange={(next) => {
             setHapticsOn(next)
             writeLocalPreference('snatzee:haptics', next)
+          }}
+        />
+        <ToggleRow
+          label="Geluid"
+          description="Speel de Snatzee-geluiden bij het opstarten, een nieuwe score en een achievement."
+          checked={soundOn}
+          onCheckedChange={(next) => {
+            setSoundOn(next)
+            setSoundEnabled(next)
+            // Let them hear what they just switched on.
+            if (next) playSound('score')
           }}
         />
       </Section>

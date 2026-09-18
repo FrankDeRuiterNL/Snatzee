@@ -5,7 +5,7 @@
  * launches instantly, but every navigation and API call goes to the network
  * first so scores, rankings and achievements are never served stale.
  */
-const VERSION = 'snatzee-v1'
+const VERSION = 'snatzee-v2'
 const STATIC_CACHE = `${VERSION}-static`
 const OFFLINE_URL = '/offline'
 
@@ -66,6 +66,8 @@ self.addEventListener('fetch', (event) => {
   const isStatic =
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/audio/') ||
+    url.pathname.startsWith('/brand/') ||
     url.pathname === '/manifest.webmanifest'
 
   if (!isStatic) return

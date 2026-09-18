@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import { PageTransition } from '@/components/layout/page-transition'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { AchievementPreview } from '@/components/profile/achievement-preview'
+import { LevelCard } from '@/components/profile/level-badge'
 import { Button } from '@/components/ui/button'
 import {
   getAchievementsForUser,
@@ -57,6 +58,8 @@ export default async function ProfilePage() {
             </Button>
           }
         />
+
+        {stats && <LevelCard stats={stats} />}
 
         <AchievementPreview achievements={achievements} />
 

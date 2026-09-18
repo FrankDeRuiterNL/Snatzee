@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { QuickActionsProvider } from '@/components/layout/quick-actions-provider'
 import { BottomNavigation } from '@/components/layout/bottom-navigation'
+import { LaunchSound } from '@/components/layout/launch-sound'
 import { getCurrentProfile, getCurrentUser } from '@/lib/supabase/queries'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </main>
         </div>
         <BottomNavigation />
+        <LaunchSound />
       </QuickActionsProvider>
     </Suspense>
   )
