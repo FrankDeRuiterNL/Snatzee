@@ -46,8 +46,8 @@ services:
       # because the entrypoint's handling of the init-scripts subdirectory
       # differs between images; db-prepare below is what actually
       # guarantees the passwords are set.
+      #- ./docker/postgres/init/01-roles.sql:/docker-entrypoint-initdb.d/init-scripts/01-roles.sql:ro
       - ./docker/postgres/init/99-roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
-      - ./docker/postgres/init/99-roles.sql:/docker-entrypoint-initdb.d/99-roles.sql:ro
     command:
       - postgres
       - -c
@@ -94,6 +94,7 @@ services:
       # confirmation e-mails are built from it.
       API_EXTERNAL_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       GOTRUE_SITE_URL: ${PUBLIC_URL}
+      GOTRUE_MAILER_EXTERNAL_HOSTS: snatzee.frankvandetechniek.nl
       GOTRUE_JWT_ISSUER: ${PUBLIC_URL}
       # Every origin a user may be redirected back to after signing in.
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
@@ -195,7 +196,7 @@ services:
     volumes:
       - storage-data:/var/lib/storage
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/status']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:5000/status']
       interval: 5s
       timeout: 5s
       retries: 20
