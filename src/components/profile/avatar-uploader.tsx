@@ -7,9 +7,26 @@ import { Avatar } from '@/components/ui/avatar'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { publicStorageUrl } from '@/lib/supabase/env'
 import { AVATAR_MAX_BYTES } from '@/lib/constants'
+import { prepareAvatar } from '@/lib/image'
 import { haptic } from '@/lib/haptics'
 
-const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+/**
+ * What the picker offers.
+ *
+ * HEIC and HEIF are listed because that is what an iPhone actually stores.
+ * Safari usually hands over a converted JPEG, but not always, and a file
+ * the picker refuses to show is worse than one we can explain.
+ * `image/*` is the catch-all for pickers that ignore the specific types.
+ */
+const ACCEPTED = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+  'image/*',
+]
 
 export function AvatarUploader({
   userId,
@@ -28,23 +45,42 @@ export function AvatarUploader({
   const [uploading, setUploading] = useState(false)
 
   async function handleFile(file: File) {
-    if (!ACCEPTED.includes(file.type)) {
-      toast.error('Kies een PNG, JPG, WEBP of GIF')
-      return
-    }
-    if (file.size > AVATAR_MAX_BYTES) {
-      toast.error('Afbeelding is te groot', { description: 'Maximaal 2 MB.' })
+    if (!file.type.startsWith('image/')) {
+      toast.error('Kies een afbeelding')
       return
     }
 
     setUploading(true)
-    const supabase = getSupabaseBrowserClient()
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-    const path = `${userId}/avatar-${Date.now()}.${extension}`
 
-    const { error } = await supabase.storage
-      .from('avatars')
-      .upload(path, file, { cacheControl: '3600', upsert: true })
+    // Downscaled before anything is measured. A phone photo is several
+    // megabytes and the avatar is drawn at 96px, so checking the original
+    // size would reject photos for no reason — see src/lib/image.ts.
+    const prepared = await prepareAvatar(file)
+
+    if (!prepared) {
+      setUploading(false)
+      toast.error('Deze afbeelding kan niet worden gelezen', {
+        description: 'Probeer een JPG, PNG of WEBP.',
+      })
+      return
+    }
+
+    // Only reachable if the re-encode somehow grew the file, which a
+    // huge animated GIF could manage.
+    if (prepared.blob.size > AVATAR_MAX_BYTES) {
+      setUploading(false)
+      toast.error('Afbeelding is te groot', { description: 'Maximaal 2 MB.' })
+      return
+    }
+
+    const supabase = getSupabaseBrowserClient()
+    const path = `${userId}/avatar-${Date.now()}.${prepared.extension}`
+
+    const { error } = await supabase.storage.from('avatars').upload(path, prepared.blob, {
+      cacheControl: '3600',
+      upsert: true,
+      contentType: prepared.contentType,
+    })
 
     if (error) {
       setUploading(false)
