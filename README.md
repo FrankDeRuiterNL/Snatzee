@@ -283,11 +283,64 @@ docker compose down
 docker compose down -v
 ```
 
-> `docker compose up` draait `migrate` elke keer opnieuw. Alle migraties zijn
-> idempotent, dus dat is veilig en zet nieuwe migraties na een `git pull`
-> vanzelf klaar.
+> Alle migraties zijn idempotent, dus `migrate` opnieuw draaien is altijd
+> veilig. Wil je na een `git pull` zeker weten dat nieuwe migraties zijn
+> toegepast, gebruik dan de stappen onder
+> [Bijwerken naar een nieuwe versie](#bijwerken-naar-een-nieuwe-versie).
 
-### Bijwerken vanaf een eerdere versie
+### Bijwerken naar een nieuwe versie
+
+De standaardmanier om wijzigingen uit Git op de server te zetten:
+
+```bash
+cd /pad/naar/Snatzee
+git pull
+
+# 1. App-image opnieuw bouwen: nieuwe dependencies en de NEXT_PUBLIC_*
+#    waarden worden in de build gebakken.
+docker compose build app
+
+# 2. Nieuwe migraties toepassen.
+#    De migraties zijn een bind-mount: een bestand erbij verandert de
+#    container-configuratie van de migrate-service niet, dus of compose
+#    de stap uit zichzelf opnieuw draait hangt af van je compose-versie.
+#    --force-recreate haalt die twijfel weg. Migraties zijn idempotent,
+#    dus een keer te vaak draaien kan geen kwaad -- een keer te weinig
+#    wel: de app start dan tegen een schema zonder de nieuwe tabellen.
+docker compose up -d --force-recreate migrate
+
+# 3. De rest doorrollen.
+docker compose up -d
+```
+
+Controleren of het gelukt is:
+
+```bash
+# Elke migratie moet langskomen, eindigend op "Schema is up to date."
+docker compose logs --tail=40 migrate
+
+# Alles behalve db-prepare en migrate hoort "running" te zijn; die twee
+# zijn eenmalige taken en staan op "exited (0)".
+docker compose ps
+
+# Statische bestanden gaan buiten de middleware om: dit hoort 200 te geven.
+curl -I http://localhost:6666/audio/logo.mp3
+```
+
+Geeft de app na een update een foutmelding over een functie die niet in de
+schema cache staat, dan heeft PostgREST de nieuwe RPC's nog niet gezien:
+
+```bash
+docker compose restart rest
+```
+
+Alleen bij een wijziging in `.env`: waarden die met `NEXT_PUBLIC_` in de app
+terechtkomen (zoals `VAPID_PUBLIC_KEY`) zitten in de build, dus die vragen om
+`docker compose build app` voordat je herstart. De rest — SMTP, OAuth-secrets,
+`VAPID_PRIVATE_KEY` — wordt bij het starten gelezen, dus daar volstaat
+`docker compose up -d`.
+
+### Bijwerken vanaf de allereerste versie
 
 De eerste versie van deze stack draaide op een kale `postgres:16` met
 handgemaakte rollen. Die is vervangen door `supabase/postgres`, dat de rollen,
