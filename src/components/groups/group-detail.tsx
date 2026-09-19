@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Copy, LogOut, UserMinus, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/ui/avatar'
+import { Marquee } from '@/components/ui/marquee'
 import { Button } from '@/components/ui/button'
 import { BottomSheet } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -123,7 +124,9 @@ export function GroupDetail({
             {group.emoji ?? '🎲'}
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-black tracking-tight">{group.name}</h1>
+            <h1 className="text-2xl font-black tracking-tight">
+              <Marquee text={group.name} />
+            </h1>
             <p className="mt-0.5 text-sm text-ink-muted">
               {members.length} {pluralize(members.length, 'lid', 'leden')}
             </p>

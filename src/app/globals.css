@@ -272,6 +272,23 @@
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
   }
+  /* Slides overflowing text far enough to reveal its end, then back.
+     `alternate` with an ease gives a natural pause at both ends without a
+     second keyframe set, and the distance and duration are measured per
+     element by <Marquee>. */
+  .marquee-track {
+    display: inline-block;
+    animation: marquee-swing var(--marquee-duration, 8s) ease-in-out 1s infinite alternate;
+  }
+  @keyframes marquee-swing {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
+    }
+  }
+
   .tabular {
     font-variant-numeric: tabular-nums;
   }

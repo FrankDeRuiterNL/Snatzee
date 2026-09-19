@@ -91,11 +91,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           position="top-center"
           /* The installed app paints under the status bar (the viewport is
              viewport-fit=cover and the status bar is black-translucent), so
-             a flat 16px put toasts behind the notch and the clock. Adding
-             the inset keeps them clear of it; in a browser tab the inset is
-             0 and this is the same 16px as before. */
-          offset="calc(env(safe-area-inset-top, 0px) + 16px)"
-          mobileOffset="calc(env(safe-area-inset-top, 0px) + 16px)"
+             a flat 16px put toasts behind the notch and the clock. The
+             inset clears the status bar and the 26px sits them a little
+             below it; in a browser tab the inset is 0, so this is a plain
+             26px from the top. */
+          offset="calc(env(safe-area-inset-top, 0px) + 26px)"
+          mobileOffset="calc(env(safe-area-inset-top, 0px) + 26px)"
           theme="dark"
           richColors={false}
           toastOptions={{
