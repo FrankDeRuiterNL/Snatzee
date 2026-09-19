@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { QuickActionsProvider } from '@/components/layout/quick-actions-provider'
 import { BottomNavigation } from '@/components/layout/bottom-navigation'
-import { LaunchSound } from '@/components/layout/launch-sound'
+import { PwaPrompts } from '@/components/pwa/pwa-prompts'
 import { getCurrentProfile, getCurrentUser } from '@/lib/supabase/queries'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </main>
         </div>
         <BottomNavigation />
-        <LaunchSound />
+        {/* Install / notification nudges — signed-in only, so the first thing a
+            new visitor sees is the app itself. */}
+        <PwaPrompts />
       </QuickActionsProvider>
     </Suspense>
   )

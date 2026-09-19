@@ -5,7 +5,7 @@
  * launches instantly, but every navigation and API call goes to the network
  * first so scores, rankings and achievements are never served stale.
  */
-const VERSION = 'snatzee-v2'
+const VERSION = 'snatzee-v3'
 const STATIC_CACHE = `${VERSION}-static`
 const OFFLINE_URL = '/offline'
 
@@ -40,6 +40,90 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()
+})
+
+/*
+ * Web Push.
+ *
+ * iOS only delivers these to an app that was added to the homescreen, and
+ * only ever through the service worker — there is no foreground path. A
+ * push that arrives without a readable payload still has to show something:
+ * every platform terminates the subscription of a worker that receives a
+ * push and shows no notification.
+ */
+function parsePushPayload(event) {
+  const fallback = {
+    title: 'Snatzee',
+    body: 'Er is iets nieuws in Snatzee.',
+    url: '/app',
+    tag: 'snatzee',
+  }
+
+  if (!event.data) return fallback
+
+  try {
+    const data = event.data.json()
+    return {
+      title: data.title || fallback.title,
+      body: data.body || fallback.body,
+      url: data.url || fallback.url,
+      tag: data.tag || fallback.tag,
+      icon: data.icon,
+      badge: data.badge,
+      data: data.data,
+    }
+  } catch {
+    // A plain-text push is valid too.
+    const text = event.data.text()
+    return { ...fallback, body: text || fallback.body }
+  }
+}
+
+self.addEventListener('push', (event) => {
+  const payload = parsePushPayload(event)
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: payload.icon || '/icons/icon-192.png',
+      badge: payload.badge || '/icons/icon-192.png',
+      // Collapses repeats of the same kind instead of stacking them up.
+      tag: payload.tag,
+      renotify: true,
+      data: { url: payload.url, ...(payload.data || {}) },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+
+  const target = new URL(event.notification.data?.url || '/app', self.location.origin)
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Reuse an open window when there is one: on iOS a second window is a
+      // second cold start of the whole app.
+      for (const client of clients) {
+        if (new URL(client.url).origin !== target.origin) continue
+        return client.focus().then((focused) => focused.navigate?.(target.href) ?? focused)
+      }
+      return self.clients.openWindow(target.href)
+    }),
+  )
+})
+
+/*
+ * Push services rotate endpoints. The browser tells the worker when that
+ * happens, but the worker has no session, so the page re-registers on its
+ * next launch — this only makes sure the stale endpoint is not used again.
+ */
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) client.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED' })
+    }),
+  )
 })
 
 self.addEventListener('fetch', (event) => {

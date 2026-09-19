@@ -246,6 +246,9 @@ services:
         # the provider is actually configured.
         NEXT_PUBLIC_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
         NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
+        # Identifies this server to the push services. Public by design —
+        # the matching private key stays in the runtime environment below.
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
     image: snatzee:latest
     restart: unless-stopped
     depends_on:
@@ -267,6 +270,13 @@ services:
       NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
       NEXT_PUBLIC_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
       NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      # Sending push: the private key signs the requests and the service
+      # role reads the subscriptions, which RLS hides from everyone else.
+      # Neither is NEXT_PUBLIC_, so neither reaches the browser.
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@snatzee.nl}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       # Server-side rendering reaches Supabase over the Docker network
       # rather than going back out through the public hostname.
       SUPABASE_INTERNAL_URL: http://gateway

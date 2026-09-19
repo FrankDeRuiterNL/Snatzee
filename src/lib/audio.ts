@@ -68,7 +68,7 @@ export function playSound(name: SoundName): boolean {
 }
 
 /** Warms the cache so the first real cue is not delayed by a fetch. */
-export function preloadSounds(names: SoundName[] = ['score', 'achievement']) {
+export function preloadSounds(names: SoundName[] = ['logo', 'score', 'achievement']) {
   if (typeof window === 'undefined' || !isSoundEnabled()) return
   for (const name of names) {
     try {
@@ -91,9 +91,16 @@ export function playLaunchSound() {
 
   try {
     if (window.sessionStorage.getItem(LOGO_PLAYED_KEY) === 'true') return
-    window.sessionStorage.setItem(LOGO_PLAYED_KEY, 'true')
   } catch {
     // Without sessionStorage it may replay on navigation; acceptable.
+  }
+
+  const markPlayed = () => {
+    try {
+      window.sessionStorage.setItem(LOGO_PLAYED_KEY, 'true')
+    } catch {
+      // Ignore: the flag is a nicety, not a requirement.
+    }
   }
 
   const audio = getAudio('logo')
@@ -101,16 +108,18 @@ export function playLaunchSound() {
   const attempt = audio.play()
   if (!attempt) return
 
-  attempt.catch(() => {
+  attempt.then(markPlayed).catch(() => {
     // One shared abort signal detaches both listeners, whether the sound
     // played or the window for it simply expired.
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 10_000)
+    // Long enough to catch the first real tap, short enough that the logo
+    // never arrives out of nowhere minutes into a session.
+    const timer = setTimeout(() => controller.abort(), 20_000)
 
     const onGesture = () => {
       clearTimeout(timer)
       controller.abort()
-      void audio.play().catch(() => {})
+      void audio.play().then(markPlayed).catch(() => {})
     }
 
     const options = { once: true, signal: controller.signal } as const

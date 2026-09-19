@@ -118,6 +118,10 @@ ANON_KEY=...
 SERVICE_ROLE_KEY=...
 ```
 
+Wil je pushmeldingen? Genereer dan ook een VAPID-sleutelpaar (zie
+[Pushmeldingen](#pushmeldingen)); zonder die sleutels draait de app prima, maar
+blijft de meldingen-toggle uit.
+
 ### Stap 4 — Je adres invullen
 
 Zet in `.env` de `PUBLIC_URL` op het adres waarop mensen de app openen. Dit is
@@ -516,6 +520,81 @@ gebeurt er simpelweg niets — geen enkele functie hangt van geluid af.
 
 ---
 
+## Pushmeldingen
+
+Snatzee kan Web Push versturen naar de geïnstalleerde app. Dat is optioneel:
+laat je de sleutels leeg, dan werkt de rest gewoon en meldt de instelling dat
+het toestel geen meldingen ondersteunt.
+
+### Sleutels genereren
+
+```bash
+node scripts/generate-vapid-keys.mjs
+```
+
+Of zonder Node op de server:
+
+```bash
+docker run --rm -v "$PWD":/app -w /app node:22-alpine node scripts/generate-vapid-keys.mjs
+```
+
+Plak de drie regels in `.env`:
+
+```
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:jij@voorbeeld.nl
+```
+
+De publieke sleutel wordt in de build gebakken, dus na het wijzigen ervan is
+een `docker compose up -d --build` nodig. **Genereer het paar één keer.** Een
+nieuw paar maakt elke bestaande subscription ongeldig, en iedereen moet
+meldingen opnieuw aanzetten.
+
+### Wat er in de app gebeurt
+
+| Situatie | Wat de gebruiker ziet |
+| --- | --- |
+| Ingelogd in een browsertab | Na anderhalve seconde een kaart die vraagt de app op het beginscherm te zetten. Die verdwijnt vanzelf na één minuut en blijft daarna een week weg. |
+| Op Chromium/Android | De knop **Toevoegen** installeert de app echt, via het `beforeinstallprompt`-event van de browser. |
+| Op iOS/iPadOS | De knop toont waar de deel-knop zit en welke optie je kiest. |
+| Eerste start vanaf het beginscherm | Een kaart met de knop **Zet aan**, die de systeempopup voor meldingen opent en het toestel registreert. |
+| Instellingen → Meldingen | De toggle **Pushmeldingen** en een knop om een testmelding naar je eigen toestellen te sturen. |
+
+### Wat de platforms niet toestaan
+
+Twee dingen uit de wenslijst kunnen technisch niet, op geen enkele iOS-versie:
+
+- **Automatisch toevoegen aan het beginscherm.** Apple houdt dat bewust in het
+  deelmenu; er is geen API voor. Alleen Chromium-browsers geven een installatie-
+  event dat een knop kan afspelen, en dat gebruikt de app ook. Op iOS blijft er
+  een instructie over.
+- **De meldingenpopup automatisch laten verschijnen.** Elke browser eist dat
+  `Notification.requestPermission()` uit een tik komt. Een aanvraag zonder tik
+  wordt genegeerd, of — erger — meteen geweigerd, en een geweigerde melding is
+  daarna alleen nog via de systeeminstellingen terug te draaien. Daarom staat er
+  één knop klaar op het moment dat het relevant is, in plaats van een popup die
+  zichzelf opwerpt.
+
+Verder levert iOS push **alleen** aan een app die op het beginscherm staat. In
+een Safari-tab bestaat `PushManager` niet, dus daar meldt de instelling dat de
+app eerst geïnstalleerd moet worden.
+
+### Zelf meldingen versturen
+
+`src/lib/push-server.ts` is het verzendkanaal: `sendPushToUser(userId, payload)`
+en `sendPushToUsers(userIds, payload)`. Beide lezen de subscriptions met de
+service role — RLS verbergt ze voor iedereen behalve de eigenaar — en ruimen
+endpoints op die de pushdienst afkeurt met 404 of 410. De service worker toont
+wat binnenkomt en opent bij een tik de meegestuurde `url` in een bestaand
+venster als dat er is.
+
+Er hangt nog geen gebeurtenis aan: het transport ligt klaar, welke meldingen de
+app verstuurt (vriendschapsverzoek, verbroken record, nieuwe nummer één) is de
+volgende stap.
+
+---
+
 ## Lokaal ontwikkelen
 
 Tegen de Docker-stack, met hot reload:
@@ -742,7 +821,7 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0010)
+supabase/migrations/        SQL migraties (0001 t/m 0011)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
@@ -762,6 +841,8 @@ scripts/                    seed, brand assets en sleutelgeneratie
 - Inputs zijn minimaal 16px zodat Safari niet inzoomt; geen dubbeltap-zoom, geen
   horizontaal scrollen, geen blauwe selectie-highlight
 - Floating bottom navigation die rekening houdt met de home indicator
+- Web Push via de service worker (`push`, `notificationclick`, `pushsubscriptionchange`),
+  met de installatie- en meldingenkaarten uit [Pushmeldingen](#pushmeldingen)
 
 ---
 
@@ -778,3 +859,4 @@ scripts/                    seed, brand assets en sleutelgeneratie
 | `npm run brand` | Genereer alle iconen en splashscreens opnieuw |
 | `npm run audio` | Encodeer de geluiden opnieuw vanuit `brand/audio` |
 | `node scripts/generate-keys.mjs` | Genereer de geheimen voor de Docker-stack |
+| `node scripts/generate-vapid-keys.mjs` | Genereer het VAPID-sleutelpaar voor pushmeldingen |

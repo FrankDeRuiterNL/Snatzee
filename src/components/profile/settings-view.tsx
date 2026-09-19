@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -24,6 +24,8 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { DISPLAY_NAME_MAX } from '@/lib/constants'
 import { haptic } from '@/lib/haptics'
 import { isSoundEnabled, playSound, setSoundEnabled } from '@/lib/audio'
+import { disablePush, enablePush, hasLocalSubscription, isPushSupported } from '@/lib/push'
+import { isStandalone } from '@/lib/pwa'
 import type { Profile } from '@/types/database'
 
 /**
@@ -79,9 +81,96 @@ export function SettingsView({
     readLocalPreference('snatzee:reduced-motion', false),
   )
 
+  // Push state is read from the browser rather than stored: the permission
+  // and the subscription both live outside the app and can be revoked from
+  // the device settings without the app ever hearing about it.
+  const [pushOn, setPushOn] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  // Resolved after mount: both answers depend on browser APIs the server
+  // cannot see, and rendering a guess would not match the hydrated markup.
+  const [pushSupport, setPushSupport] = useState<'unknown' | 'ready' | 'needs-install' | 'none'>(
+    'unknown',
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    const support = isPushSupported() ? 'ready' : isStandalone() ? 'none' : 'needs-install'
+
+    hasLocalSubscription().then((active) => {
+      if (cancelled) return
+      setPushSupport(support)
+      setPushOn(active)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  // On iOS push only exists once the app is on the homescreen, so saying so
+  // is more use than a toggle that silently fails.
+  const pushAvailable = pushSupport === 'ready'
+  const pushDescription =
+    pushSupport === 'needs-install'
+      ? 'Zet Snatzee eerst op je beginscherm; meldingen werken alleen in de geïnstalleerde app.'
+      : pushSupport === 'none'
+        ? 'Dit toestel of deze browser ondersteunt geen meldingen.'
+        : 'Een seintje bij vriendschapsverzoeken, verbroken records en nieuwe achievements.'
+
+  async function togglePush(next: boolean) {
+    if (pushBusy) return
+    setPushBusy(true)
+
+    if (next) {
+      const result = await enablePush()
+      setPushBusy(false)
+      if (result.ok) {
+        setPushOn(true)
+        haptic('success')
+        toast.success('Meldingen staan aan 🔔')
+        return
+      }
+      toast.error(
+        result.reason === 'denied'
+          ? 'Meldingen zijn geblokkeerd. Zet ze aan in je apparaatinstellingen.'
+          : 'Meldingen aanzetten is niet gelukt.',
+      )
+      return
+    }
+
+    const done = await disablePush()
+    setPushBusy(false)
+    if (done) {
+      setPushOn(false)
+      toast.success('Meldingen staan uit')
+      return
+    }
+    toast.error('Meldingen uitzetten is niet gelukt.')
+  }
+
+  async function sendTestNotification() {
+    if (pushBusy) return
+    setPushBusy(true)
+    try {
+      const response = await fetch('/api/push/test', { method: 'POST' })
+      if (!response.ok) throw new Error('mislukt')
+      const result = (await response.json()) as { sent: number }
+      toast.success(
+        result.sent > 0
+          ? 'Testmelding verstuurd — hij komt zo binnen.'
+          : 'Geen apparaten geregistreerd voor meldingen.',
+      )
+    } catch {
+      toast.error('Testmelding sturen is niet gelukt.')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault()
@@ -224,6 +313,19 @@ export function SettingsView({
             if (next) playSound('score')
           }}
         />
+        <ToggleRow
+          label="Pushmeldingen"
+          description={pushDescription}
+          checked={pushOn}
+          disabled={pushBusy || !pushAvailable}
+          onCheckedChange={togglePush}
+        />
+        {pushOn && (
+          <Button variant="soft" size="sm" onClick={sendTestNotification} loading={pushBusy}>
+            <Bell className="size-4" aria-hidden />
+            Stuur een testmelding
+          </Button>
+        )}
       </Section>
 
       <Section title="Weergave" icon={Palette}>

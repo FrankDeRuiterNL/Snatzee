@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { ServiceWorkerRegistrar } from '@/components/layout/service-worker-registrar'
 import { AppleSplashLinks } from '@/components/layout/apple-splash-links'
+import { LaunchSound } from '@/components/layout/launch-sound'
 import './globals.css'
 
 const jakarta = Plus_Jakarta_Sans({
@@ -72,6 +73,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="nl" className={jakarta.variable} suppressHydrationWarning>
       <head>
+        {/* Starts the audio logo downloading with the document instead of
+            after hydration, so it can play the instant it is allowed to. */}
+        <link rel="preload" as="audio" href="/audio/logo.mp3" type="audio/mpeg" />
         {/* iOS launch images — one per device size and orientation. */}
         <AppleSplashLinks />
       </head>
@@ -94,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <ServiceWorkerRegistrar />
+        <LaunchSound />
       </body>
     </html>
   )

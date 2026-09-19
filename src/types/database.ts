@@ -234,3 +234,14 @@ export interface RecordYahtzeeResult {
 export interface AchievementWithUnlock extends Achievement {
   unlocked_at: string | null
 }
+
+export interface PushSubscriptionRow {
+  id: string
+  user_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  user_agent: string | null
+  created_at: string
+  last_seen_at: string
+}
