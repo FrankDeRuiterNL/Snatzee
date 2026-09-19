@@ -117,6 +117,14 @@ async function main() {
     await supabase.from('score_entries').delete().eq('user_id', id)
     await supabase.from('yahtzee_events').delete().eq('user_id', id)
 
+    // Spread the player's Yahtzees across their games, since a Yahtzee is
+    // now reported as part of a game rather than as a standalone event.
+    const yahtzeeSpread = Array.from({ length: player.games }, () => 0)
+    for (let thrown = 0; thrown < player.yahtzees; thrown++) {
+      const slot = Math.floor(Math.random() * player.games)
+      yahtzeeSpread[slot] = (yahtzeeSpread[slot] ?? 0) + 1
+    }
+
     const scores = Array.from({ length: player.games }, (_, index) => {
       const daysAgo = Math.floor((player.games - index) * (240 / player.games)) + Math.floor(Math.random() * 3)
       const playedAt = new Date()
@@ -130,6 +138,7 @@ async function main() {
         score,
         // Higher scores win more often, which keeps the win rates believable.
         is_win: Math.random() < clamp((score - 180) / 220, 0.05, 0.85),
+        yahtzee_count: yahtzeeSpread[index] ?? 0,
         played_at: playedAt.toISOString(),
         note: NOTES[Math.floor(Math.random() * NOTES.length)] ?? null,
       }
@@ -138,14 +147,14 @@ async function main() {
     const { error: scoreError } = await supabase.from('score_entries').insert(scores)
     if (scoreError) throw scoreError
 
-    const events = [
-      ...Array.from({ length: player.yahtzees - player.firstRolls }, () => 'NORMAL' as const),
-      ...Array.from({ length: player.firstRolls }, () => 'FIRST_ROLL' as const),
-    ].map((event_type) => {
-      const created = new Date()
-      created.setDate(created.getDate() - Math.floor(Math.random() * 240))
-      return { user_id: id, event_type, created_at: created.toISOString() }
-    })
+    // Only first-roll Yahtzees remain standalone events.
+    const events = Array.from({ length: player.firstRolls }, () => 'FIRST_ROLL' as const).map(
+      (event_type) => {
+        const created = new Date()
+        created.setDate(created.getDate() - Math.floor(Math.random() * 240))
+        return { user_id: id, event_type, created_at: created.toISOString() }
+      },
+    )
 
     if (events.length > 0) {
       const { error: eventError } = await supabase.from('yahtzee_events').insert(events)
@@ -157,7 +166,7 @@ async function main() {
     await supabase.rpc('evaluate_achievements', { p_user: id })
 
     console.log(
-      `  ✓ ${player.display_name.padEnd(8)} ${player.games} potjes · ${player.yahtzees} Yahtzee's (${player.firstRolls} in één worp)`,
+      `  ✓ ${player.display_name.padEnd(8)} ${player.games} potjes · ${player.yahtzees} Yahtzee's in de potjes · ${player.firstRolls} in één worp`,
     )
   }
 

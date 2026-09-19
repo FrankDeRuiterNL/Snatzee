@@ -9,8 +9,8 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
           minHeight: '100dvh',
           display: 'grid',
           placeItems: 'center',
-          background: '#F7F7F5',
-          color: '#071E33',
+          background: '#07131F',
+          color: '#F4F7F9',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           padding: '1.5rem',
         }}
@@ -20,7 +20,7 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
           <h1 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: '1rem' }}>
             Er ging iets mis
           </h1>
-          <p style={{ color: '#7D93A8', marginTop: '0.5rem', lineHeight: 1.6 }}>
+          <p style={{ color: '#91A4B5', marginTop: '0.5rem', lineHeight: 1.6 }}>
             Snatzee kon niet geladen worden. Probeer het opnieuw.
           </p>
           <button

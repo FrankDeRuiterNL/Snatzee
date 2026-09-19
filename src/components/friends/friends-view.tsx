@@ -187,7 +187,7 @@ export function FriendsView({
                           setRemoving(friend)
                         }}
                       >
-                        <UserX className="size-5 text-navy-300" aria-hidden />
+                        <UserX className="size-5 text-ink-muted" aria-hidden />
                       </Button>
                     }
                   />
@@ -234,7 +234,7 @@ export function FriendsView({
                             void respond(request.friendship_id, false)
                           }}
                         >
-                          <X className="size-5 text-navy-300" aria-hidden />
+                          <X className="size-5 text-ink-muted" aria-hidden />
                         </Button>
                       </span>
                     }
@@ -250,7 +250,7 @@ export function FriendsView({
         <div className="space-y-4 px-5">
           <div className="relative">
             <Search
-              className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-navy-300"
+              className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted"
               aria-hidden
             />
             <Input
@@ -295,7 +295,7 @@ export function FriendsView({
                     }}
                     action={
                       result.friendship_status === 'accepted' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-mint-100 px-3 py-1.5 text-xs font-bold text-mint-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-mint-500/15 px-3 py-1.5 text-xs font-bold text-mint-300">
                           <Check className="size-3.5" aria-hidden strokeWidth={3} />
                           Vrienden
                         </span>
@@ -311,7 +311,7 @@ export function FriendsView({
                           Accepteren
                         </Button>
                       ) : result.friendship_status === 'pending' ? (
-                        <span className="rounded-full bg-cream-100 px-3 py-1.5 text-xs font-bold text-navy-300">
+                        <span className="rounded-full bg-canvas px-3 py-1.5 text-xs font-bold text-ink-muted">
                           Verzonden
                         </span>
                       ) : (
@@ -361,14 +361,14 @@ function PersonRow({
   action?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-[1.5rem] bg-white p-3 pr-3 ring-1 ring-navy-100/70 shadow-soft">
+    <div className="flex items-center gap-3 rounded-[1.5rem] bg-surface p-3 pr-3 ring-1 ring-hairline shadow-soft">
       <Link href={`/u/${person.username}`} className="press flex min-w-0 flex-1 items-center gap-3">
         <Avatar src={person.avatar_url} name={person.display_name} size="md" />
         <span className="min-w-0">
-          <span className="block truncate font-bold tracking-tight text-navy-900">
+          <span className="block truncate font-bold tracking-tight text-ink">
             {person.display_name}
           </span>
-          <span className="block truncate text-xs text-navy-300">
+          <span className="block truncate text-xs text-ink-muted">
             @{person.username} · {person.games_played}{' '}
             {pluralize(person.games_played, 'potje', 'potjes')}
           </span>

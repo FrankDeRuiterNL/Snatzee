@@ -47,7 +47,7 @@ export function ConfirmDialog({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 bg-navy-950/45 backdrop-blur-[2px]"
+                className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
               />
             </Dialog.Overlay>
             <Dialog.Content asChild forceMount>
@@ -56,13 +56,13 @@ export function ConfirmDialog({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-                className="fixed left-1/2 top-1/2 z-50 w-[min(24rem,calc(100vw-2.5rem))] -translate-x-1/2 -translate-y-1/2 rounded-[1.75rem] bg-white p-6 shadow-float focus:outline-none"
+                className="fixed left-1/2 top-1/2 z-50 w-[min(24rem,calc(100vw-2.5rem))] -translate-x-1/2 -translate-y-1/2 rounded-[1.75rem] bg-surface-elevated p-6 shadow-float ring-1 ring-hairline-strong focus:outline-none"
               >
-                <Dialog.Title className="text-lg font-extrabold tracking-tight text-navy-900">
+                <Dialog.Title className="text-lg font-extrabold tracking-tight text-ink">
                   {title}
                 </Dialog.Title>
                 {description ? (
-                  <Dialog.Description className="mt-2 text-sm leading-relaxed text-navy-300">
+                  <Dialog.Description className="mt-2 text-sm leading-relaxed text-ink-muted">
                     {description}
                   </Dialog.Description>
                 ) : (

@@ -32,18 +32,18 @@ export function AchievementCard({
       className={cn(
         'press flex flex-col items-center rounded-[1.5rem] p-4 text-center ring-1 transition-colors',
         unlocked
-          ? 'bg-white ring-navy-100/70 shadow-soft'
-          : 'bg-cream-50/60 ring-navy-100/50',
+          ? 'bg-surface ring-hairline shadow-soft'
+          : 'bg-canvas-soft/60 ring-hairline',
       )}
     >
       <span
         className={cn(
           'grid size-14 place-items-center rounded-2xl text-3xl',
-          unlocked ? cn('bg-gradient-to-br', rarity.glow) : 'bg-navy-100/40',
+          unlocked ? cn('bg-gradient-to-br', rarity.glow) : 'bg-white/10',
         )}
       >
         {hidden ? (
-          <Lock className="size-6 text-navy-300" aria-hidden strokeWidth={2.4} />
+          <Lock className="size-6 text-ink-muted" aria-hidden strokeWidth={2.4} />
         ) : (
           <span aria-hidden className={unlocked ? '' : 'opacity-40 grayscale'}>
             {achievement.icon}
@@ -54,7 +54,7 @@ export function AchievementCard({
       <span
         className={cn(
           'mt-3 line-clamp-2 text-sm font-bold leading-tight tracking-tight',
-          unlocked ? 'text-navy-900' : 'text-navy-300',
+          unlocked ? 'text-ink' : 'text-ink-muted',
         )}
       >
         {hidden ? 'Verborgen' : achievement.name}
@@ -63,7 +63,7 @@ export function AchievementCard({
       <span
         className={cn(
           'mt-1.5 rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-widest',
-          unlocked ? rarity.chip : 'bg-navy-100/40 text-navy-300',
+          unlocked ? rarity.chip : 'bg-white/10 text-ink-muted',
         )}
       >
         {rarity.label}

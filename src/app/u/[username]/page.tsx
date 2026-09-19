@@ -84,7 +84,7 @@ export default async function PublicProfilePage({
             <Link
               href={viewer ? '/app/rankings' : '/'}
               aria-label="Terug"
-              className="press grid size-11 place-items-center rounded-full bg-white text-navy-900 ring-1 ring-navy-100 shadow-soft"
+              className="press grid size-11 place-items-center rounded-full bg-surface text-ink ring-1 ring-hairline shadow-soft"
             >
               <ChevronLeft className="size-5" aria-hidden />
             </Link>
@@ -141,14 +141,14 @@ export default async function PublicProfilePage({
                 <section aria-labelledby="public-recent" className="px-5">
                   <h2
                     id="public-recent"
-                    className="mb-3 text-lg font-extrabold tracking-tight text-navy-900"
+                    className="mb-3 text-lg font-extrabold tracking-tight text-ink"
                   >
                     Laatste potjes
                   </h2>
 
                   {scores.length === 0 ? (
-                    <div className="rounded-[1.5rem] bg-white p-6 text-center ring-1 ring-navy-100/70 shadow-soft">
-                      <p className="text-sm text-navy-300">
+                    <div className="rounded-[1.5rem] bg-surface p-6 text-center ring-1 ring-hairline shadow-soft">
+                      <p className="text-sm text-ink-muted">
                         {profile.display_name} heeft nog geen potjes geregistreerd.
                       </p>
                     </div>
@@ -159,7 +159,7 @@ export default async function PublicProfilePage({
                           {(index === 0 ||
                             formatPlayedAt(score.played_at) !==
                               formatPlayedAt(scores[index - 1]!.played_at)) && (
-                            <p className="mb-2 mt-3 px-1 text-xs font-bold uppercase tracking-wider text-navy-300">
+                            <p className="mb-2 mt-3 px-1 text-xs font-bold uppercase tracking-wider text-ink-muted">
                               {formatPlayedAt(score.played_at)}
                             </p>
                           )}
@@ -167,6 +167,9 @@ export default async function PublicProfilePage({
                             entry={{
                               ...score,
                               note: null,
+                              // Public profiles show the result, not the
+                              // per-game detail or the private note.
+                              yahtzee_count: 0,
                               updated_at: score.created_at,
                             }}
                             index={index}
@@ -181,10 +184,10 @@ export default async function PublicProfilePage({
 
             {!viewer && (
               <section className="px-5 pt-4">
-                <div className="rounded-[1.75rem] bg-navy-900 p-6 text-center text-white shadow-lift">
+                <div className="rounded-[1.75rem] bg-surface-elevated p-6 text-center text-white shadow-lift">
                   <Lock className="mx-auto size-6 text-mint-400" aria-hidden />
                   <h2 className="mt-3 text-xl font-black tracking-tight">Ook je scores bijhouden?</h2>
-                  <p className="mx-auto mt-2 max-w-[30ch] text-sm leading-relaxed text-navy-300">
+                  <p className="mx-auto mt-2 max-w-[30ch] text-sm leading-relaxed text-ink-muted">
                     Snatzee houdt je records, statistieken en achievements bij. Gratis.
                   </p>
                   <Button asChild full className="mt-5">

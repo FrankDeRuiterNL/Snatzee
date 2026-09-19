@@ -81,11 +81,11 @@ export function InsightCard({
   if (!insight) return null
 
   const content = (
-    <div className="mx-5 flex items-center gap-3 rounded-[1.5rem] bg-gradient-to-br from-mint-100 to-cream-50 p-4 ring-1 ring-mint-300/40">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-mint-600 shadow-soft">
+    <div className="mx-5 flex items-center gap-3 rounded-[1.5rem] bg-gradient-to-br from-mint-500/20 to-surface p-4 ring-1 ring-mint-500/30">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface text-mint-400 shadow-soft">
         <Sparkles className="size-5" strokeWidth={2.4} aria-hidden />
       </span>
-      <p className="text-[0.9rem] font-semibold leading-snug text-navy-700">{insight.text}</p>
+      <p className="text-[0.9rem] font-semibold leading-snug text-ink-soft">{insight.text}</p>
     </div>
   )
 

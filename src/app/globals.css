@@ -1,56 +1,84 @@
 @import 'tailwindcss';
 
 /* =====================================================================
-   Snatzee design tokens
-   Light off-white canvas, deep navy surfaces, mint primary accent and a
-   small set of colourful accents reserved for records & achievements.
+   Snatzee design tokens — dark by default.
+
+   Depth comes from stacked navy layers rather than from black: the
+   canvas is the darkest, cards sit above it, and elevated cards above
+   those. Mint is the primary accent; tangerine, grape and aqua stay
+   reserved for achievements, records and special moments.
    ===================================================================== */
 @theme {
+  /* Surfaces, darkest to lightest */
+  --color-canvas: #07131f;
+  --color-canvas-soft: #0b1d2d;
+  --color-surface: #102638;
+  --color-surface-elevated: #153044;
+  --color-surface-high: #1b3b53;
+
+  /* Tinted fills for chips and icon containers */
+  --color-chip: #17314633;
+  --color-hairline: rgb(255 255 255 / 0.07);
+  --color-hairline-strong: rgb(255 255 255 / 0.12);
+
+  /* Text */
+  --color-ink: #f4f7f9;
+  --color-ink-soft: #91a4b5;
+  --color-ink-muted: #667a8a;
+
+  /* Kept so dark text on bright mint stays legible */
+  --color-navy-950: #04131f;
+  --color-navy-900: #071e33;
+  --color-navy-800: #0a2740;
+  --color-navy-700: #103352;
+  --color-navy-500: #34546f;
+  --color-navy-300: #7d93a8;
+  --color-navy-100: #d4dde6;
+  --color-navy-50: #eef2f6;
+
   --color-cream-50: #fdfdfc;
   --color-cream-100: #f7f7f5;
-  --color-cream-200: #efefeb;
-  --color-cream-300: #e4e4de;
-
-  --color-navy-50: #eef2f6;
-  --color-navy-100: #d4dde6;
-  --color-navy-300: #7d93a8;
-  --color-navy-500: #34546f;
-  --color-navy-700: #103352;
-  --color-navy-800: #0a2740;
-  --color-navy-900: #071e33;
-  --color-navy-950: #04131f;
 
   --color-mint-50: #e8fbf4;
   --color-mint-100: #c6f5e5;
+  --color-mint-200: #9eecd2;
   --color-mint-300: #6fdfbd;
-  --color-mint-400: #3fd2a8;
+  --color-mint-400: #2ee6b0;
   --color-mint-500: #24c79a;
   --color-mint-600: #12a67d;
   --color-mint-700: #0d8163;
 
   --color-tangerine-100: #ffe8db;
+  --color-tangerine-300: #ffb689;
   --color-tangerine-400: #ff9660;
   --color-tangerine-500: #ff7a3d;
   --color-tangerine-600: #e85f22;
 
   --color-grape-100: #f3e6ff;
+  --color-grape-300: #d0a6fb;
   --color-grape-400: #b877f5;
   --color-grape-500: #a855f7;
   --color-grape-600: #8b32e0;
 
   --color-aqua-100: #d9f3fb;
+  --color-aqua-300: #8adef2;
   --color-aqua-400: #4fd0ed;
   --color-aqua-500: #23bbe0;
 
   --color-rose-ember-100: #ffe3ee;
+  --color-rose-ember-300: #f98fb6;
+  --color-rose-ember-400: #f2639a;
   --color-rose-ember-500: #e93b7d;
 
   --radius-card: 1.5rem;
   --radius-xl2: 1.75rem;
 
-  --shadow-soft: 0 2px 8px -2px rgb(7 30 51 / 0.06), 0 8px 24px -8px rgb(7 30 51 / 0.08);
-  --shadow-lift: 0 4px 12px -4px rgb(7 30 51 / 0.08), 0 16px 40px -12px rgb(7 30 51 / 0.14);
-  --shadow-float: 0 8px 24px -8px rgb(7 30 51 / 0.16), 0 24px 56px -20px rgb(7 30 51 / 0.24);
+  /* Shadows read as depth against a dark canvas, so they are deeper and
+     paired with a hairline border rather than relying on blur alone. */
+  --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.30), 0 8px 24px -12px rgb(0 0 0 / 0.55);
+  --shadow-lift: 0 2px 6px -1px rgb(0 0 0 / 0.40), 0 16px 40px -16px rgb(0 0 0 / 0.65);
+  --shadow-float: 0 8px 24px -8px rgb(0 0 0 / 0.55), 0 32px 64px -24px rgb(0 0 0 / 0.75);
+  --shadow-mint: 0 10px 30px -12px rgb(36 199 154 / 0.55);
 
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
@@ -79,12 +107,12 @@
    ===================================================================== */
 @layer base {
   :root {
+    color-scheme: dark;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     --bottom-nav-height: 4.5rem;
-    color-scheme: light;
   }
 
   * {
@@ -100,7 +128,7 @@
   }
 
   body {
-    @apply bg-cream-100 text-navy-900 font-sans antialiased;
+    @apply bg-canvas text-ink font-sans antialiased;
     overflow-x: hidden;
     min-height: 100dvh;
     /* Stop iOS rubber-banding the whole document behind the app shell. */
@@ -147,7 +175,24 @@
   }
 
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-mint-600;
+    @apply outline-2 outline-offset-2 outline-mint-400;
+  }
+
+  /* Dark form controls, including the native date picker. */
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='time'] {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: var(--color-surface-elevated);
+    color: var(--color-ink);
+  }
+
+  ::selection {
+    background-color: rgb(36 199 154 / 0.3);
+    color: var(--color-ink);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -163,6 +208,29 @@
 }
 
 @layer utilities {
+  /* A card that lifts off the canvas: fill, hairline border and shadow in
+     one place so every surface in the app reads the same. */
+  .card-surface {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    box-shadow: var(--shadow-soft);
+  }
+  .card-elevated {
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-hairline-strong);
+    box-shadow: var(--shadow-lift);
+  }
+  /* Subtle top-down sheen that keeps large panels from looking flat. */
+  .sheen {
+    background-image: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.05) 0%,
+      rgb(255 255 255 / 0) 45%
+    );
+  }
+  .glow-mint {
+    box-shadow: var(--shadow-mint);
+  }
   .safe-top {
     padding-top: var(--safe-top);
   }

@@ -28,7 +28,7 @@ export function FriendActionButton({
 
   if (localStatus === 'accepted') {
     return (
-      <span className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white/10 text-sm font-semibold text-mint-400 ring-1 ring-white/20">
+      <span className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-surface/10 text-sm font-semibold text-mint-400 ring-1 ring-white/20">
         <Check className="size-4" aria-hidden strokeWidth={3} />
         Vrienden
       </span>
@@ -37,7 +37,7 @@ export function FriendActionButton({
 
   if (localStatus === 'pending' && !isIncoming) {
     return (
-      <span className="flex min-h-12 w-full items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-navy-300 ring-1 ring-white/20">
+      <span className="flex min-h-12 w-full items-center justify-center rounded-full bg-surface/10 text-sm font-semibold text-ink-muted ring-1 ring-white/20">
         Verzoek verzonden
       </span>
     )

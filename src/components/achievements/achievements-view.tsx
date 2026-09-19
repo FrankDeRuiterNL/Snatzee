@@ -28,22 +28,22 @@ export function AchievementsView({ achievements }: { achievements: AchievementWi
 
   return (
     <div className="space-y-5">
-      <section className="mx-5 rounded-[1.75rem] bg-navy-900 p-6 text-white shadow-lift">
+      <section className="mx-5 rounded-[1.75rem] bg-surface-elevated p-6 text-white shadow-lift">
         <div className="flex items-baseline justify-between">
-          <p className="text-sm font-semibold text-navy-300">Vrijgespeeld</p>
+          <p className="text-sm font-semibold text-ink-muted">Vrijgespeeld</p>
           <p className="tabular text-sm font-bold text-mint-400">
             {Math.round((unlockedCount / Math.max(achievements.length, 1)) * 100)}%
           </p>
         </div>
         <p className="tabular mt-1 text-4xl font-black tracking-tight">
           {unlockedCount}
-          <span className="text-2xl font-extrabold text-navy-300"> / {achievements.length}</span>
+          <span className="text-2xl font-extrabold text-ink-muted"> / {achievements.length}</span>
         </p>
         <Progress
           value={unlockedCount}
           max={achievements.length}
           label="Achievement voortgang"
-          className="mt-4 bg-white/10"
+          className="mt-4 bg-surface/10"
           barClassName="bg-mint-500"
         />
       </section>
@@ -80,7 +80,7 @@ export function AchievementsView({ achievements }: { achievements: AchievementWi
                 'mx-auto grid size-24 place-items-center rounded-[1.75rem] text-5xl ring-4',
                 detail.unlocked_at
                   ? cn('bg-gradient-to-br', rarity?.glow, rarity?.ring)
-                  : 'bg-navy-100/40 ring-navy-100',
+                  : 'bg-white/10 ring-hairline',
               )}
             >
               <span aria-hidden className={detail.unlocked_at ? '' : 'opacity-40 grayscale'}>
@@ -91,19 +91,19 @@ export function AchievementsView({ achievements }: { achievements: AchievementWi
             <span
               className={cn(
                 'mt-4 inline-block rounded-full px-3 py-1 text-[0.7rem] font-bold uppercase tracking-widest',
-                detail.unlocked_at ? rarity?.chip : 'bg-navy-100/40 text-navy-300',
+                detail.unlocked_at ? rarity?.chip : 'bg-white/10 text-ink-muted',
               )}
             >
               {rarity?.label}
             </span>
 
-            <p className="mx-auto mt-4 max-w-[32ch] text-[0.95rem] leading-relaxed text-navy-500">
+            <p className="mx-auto mt-4 max-w-[32ch] text-[0.95rem] leading-relaxed text-ink-soft">
               {detailHidden
                 ? 'Deze achievement blijft geheim tot je hem vrijspeelt. Blijf spelen!'
                 : detail.description}
             </p>
 
-            <p className="mt-5 text-sm font-semibold text-navy-300">
+            <p className="mt-5 text-sm font-semibold text-ink-muted">
               {detail.unlocked_at
                 ? `Vrijgespeeld op ${formatPlayedAt(detail.unlocked_at)}`
                 : 'Nog niet vrijgespeeld'}

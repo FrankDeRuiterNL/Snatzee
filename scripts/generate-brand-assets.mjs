@@ -22,17 +22,20 @@ const SPLASH_DIR = join(ROOT, 'public', 'splash')
 const BRAND_DIR = join(ROOT, 'public', 'brand')
 
 const ICON_SOURCE = join(ROOT, 'brand', 'icon-source.png')
-const SPLASH_SOURCE = join(ROOT, 'brand', 'splash-source.png')
 
 /** Canvas colour behind the icon artwork — matches the logo tile. */
 const ICON_BACKGROUND = '#F7F6F3'
-/** The launch artwork ships on an opaque white field; match it exactly. */
-const SPLASH_BACKGROUND = '#FFFFFF'
+/**
+ * The app is dark, so the launch screen is too — a white splash would flash
+ * bright for a second before the dark UI paints. The logo artwork is used
+ * rather than the white-backed splash export, because that one is an opaque
+ * white sheet that cannot sit on a dark canvas.
+ */
+const SPLASH_BACKGROUND = '#07131F'
 
-for (const [label, path] of [
-  ['brand/icon-source.png', ICON_SOURCE],
-  ['brand/splash-source.png', SPLASH_SOURCE],
-]) {
+// Only the icon artwork is needed now: the launch screen is the logo
+// centred on the dark canvas rather than the white splash export.
+for (const [label, path] of [['brand/icon-source.png', ICON_SOURCE]]) {
   if (!existsSync(path)) {
     console.error(`Missing source artwork: ${label}`)
     process.exit(1)
@@ -40,10 +43,8 @@ for (const [label, path] of [
 }
 
 const iconBuffer = readFileSync(ICON_SOURCE)
-const splashBuffer = readFileSync(SPLASH_SOURCE)
 
 const iconUri = `data:image/png;base64,${iconBuffer.toString('base64')}`
-const splashUri = `data:image/png;base64,${splashBuffer.toString('base64')}`
 
 /**
  * Trim the transparent margin around the logo so icons are filled edge to
@@ -85,9 +86,15 @@ function iconSvg(size, scale = 1) {
 }
 
 function splashSvg(width, height) {
+  // The logo tile is centred at a size that works in both orientations.
+  const min = Math.min(width, height)
+  const mark = min * (width > height ? 0.34 : 0.52)
+  const x = (width - mark) / 2
+  const y = (height - mark) / 2
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="${width}" height="${height}" fill="${SPLASH_BACKGROUND}"/>
-  <image href="${splashUri}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet"/>
+  <image href="${iconUri}" x="${x}" y="${y}" width="${mark}" height="${mark}" preserveAspectRatio="xMidYMid meet"/>
 </svg>`
 }
 

@@ -6,14 +6,17 @@ import { useQuickActions } from '@/components/layout/quick-actions-provider'
 import { haptic } from '@/lib/haptics'
 
 /**
- * The three registration shortcuts. "Potje toevoegen" is deliberately the
- * widest and heaviest of the three — it is the app's primary action.
+ * Two registration shortcuts.
+ *
+ * A normal Yahtzee is reported as part of a finished game, so it has no
+ * button of its own; only the first-roll Yahtzee is worth interrupting for,
+ * because it is celebrated the moment it happens.
  */
 export function QuickActions() {
-  const { openScoreSheet, recordYahtzee, yahtzeePending } = useQuickActions()
+  const { openScoreSheet, askFirstRollYahtzee, yahtzeePending } = useQuickActions()
 
   return (
-    <section aria-label="Snel registreren" className="grid grid-cols-2 gap-3 px-5">
+    <section aria-label="Snel registreren" className="space-y-3 px-5">
       <motion.button
         type="button"
         whileTap={{ scale: 0.97 }}
@@ -21,7 +24,7 @@ export function QuickActions() {
           haptic('medium')
           openScoreSheet()
         }}
-        className="col-span-2 flex min-h-16 items-center justify-center gap-2.5 rounded-[1.5rem] bg-mint-500 text-lg font-extrabold tracking-tight text-navy-950 shadow-[0_10px_30px_-10px_rgba(36,199,154,0.8)]"
+        className="glow-mint flex min-h-16 w-full items-center justify-center gap-2.5 rounded-[1.5rem] bg-mint-500 text-lg font-extrabold tracking-tight text-navy-950"
       >
         <Plus className="size-6" strokeWidth={2.8} aria-hidden />
         Potje toevoegen
@@ -29,26 +32,16 @@ export function QuickActions() {
 
       <motion.button
         type="button"
-        whileTap={{ scale: 0.96 }}
+        whileTap={{ scale: 0.97 }}
         disabled={yahtzeePending}
-        onClick={() => void recordYahtzee('NORMAL')}
-        className="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-[1.5rem] bg-white ring-1 ring-navy-100/70 shadow-soft disabled:opacity-60"
+        onClick={() => {
+          haptic('medium')
+          askFirstRollYahtzee()
+        }}
+        className="card-elevated sheen flex min-h-14 w-full items-center justify-center gap-2.5 rounded-[1.5rem] text-[0.95rem] font-bold text-ink disabled:opacity-60"
       >
-        <span className="text-2xl" aria-hidden>
-          🎲
-        </span>
-        <span className="text-sm font-bold text-navy-900">Yahtzee</span>
-      </motion.button>
-
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.96 }}
-        disabled={yahtzeePending}
-        onClick={() => void recordYahtzee('FIRST_ROLL')}
-        className="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-[1.5rem] bg-navy-900 text-white shadow-soft disabled:opacity-60"
-      >
-        <Zap className="size-6 text-tangerine-400" strokeWidth={2.6} aria-hidden />
-        <span className="text-sm font-bold">1 worp</span>
+        <Zap className="size-5 text-tangerine-400" strokeWidth={2.6} aria-hidden />
+        Yahtzee in 1 worp
       </motion.button>
     </section>
   )

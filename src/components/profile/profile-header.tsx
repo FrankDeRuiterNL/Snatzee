@@ -22,11 +22,11 @@ export function ProfileHeader({
   const average = stats?.average_score ?? null
 
   return (
-    <section className="mx-5 rounded-[1.75rem] bg-navy-900 p-6 text-white shadow-lift">
+    <section className="mx-5 rounded-[1.75rem] bg-surface-elevated p-6 text-white shadow-lift">
       <div className="flex flex-col items-center text-center">
         <Avatar src={avatarUrl} name={displayName} size="xl" className="ring-4 ring-white/10" />
         <h1 className="mt-4 text-2xl font-black tracking-tight">{displayName}</h1>
-        <p className="mt-0.5 text-sm font-medium text-navy-300">@{username}</p>
+        <p className="mt-0.5 text-sm font-medium text-ink-muted">@{username}</p>
         {stats?.level_name && (
           <LevelChip
             emoji={stats.level_emoji}
@@ -35,7 +35,7 @@ export function ProfileHeader({
             className="mt-3"
           />
         )}
-        {bio && <p className="mt-3 max-w-[32ch] text-sm leading-relaxed text-navy-100">{bio}</p>}
+        {bio && <p className="mt-3 max-w-[32ch] text-sm leading-relaxed text-ink-soft">{bio}</p>}
         {action && <div className="mt-5 w-full max-w-64">{action}</div>}
       </div>
 
@@ -70,22 +70,22 @@ export function ProfileHeader({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/5 py-3">
+    <div className="rounded-2xl bg-surface/5 py-3">
       <dd className="tabular text-lg font-extrabold">{value}</dd>
-      <dt className="mt-0.5 text-[0.65rem] font-semibold text-navy-300">{label}</dt>
+      <dt className="mt-0.5 text-[0.65rem] font-semibold text-ink-muted">{label}</dt>
     </div>
   )
 }
 
 function YahtzeeStat({ emoji, label, value }: { emoji: string; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
+    <div className="flex items-center gap-3 rounded-2xl bg-surface/5 px-4 py-3">
       <span aria-hidden className="text-xl">
         {emoji}
       </span>
       <span className="min-w-0">
         <dd className="tabular text-lg font-extrabold leading-none">{value}</dd>
-        <dt className="mt-1 text-[0.65rem] font-semibold text-navy-300">{label}</dt>
+        <dt className="mt-1 text-[0.65rem] font-semibold text-ink-muted">{label}</dt>
       </span>
     </div>
   )

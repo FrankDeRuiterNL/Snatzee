@@ -24,17 +24,17 @@ export function AuthShell({
       <Link
         href="/"
         aria-label="Terug"
-        className="press grid size-11 place-items-center rounded-full bg-white text-navy-900 ring-1 ring-navy-100 shadow-soft"
+        className="press grid size-11 place-items-center rounded-full bg-surface text-ink ring-1 ring-hairline shadow-soft"
       >
         <ChevronLeft className="size-5" aria-hidden />
       </Link>
 
       <header className="mt-8">
         <LogoMark size={56} />
-        <h1 className="mt-5 text-[2rem] font-black leading-tight tracking-tight text-navy-900">
+        <h1 className="mt-5 text-[2rem] font-black leading-tight tracking-tight text-ink">
           {title}
         </h1>
-        <p className="mt-2 text-[0.95rem] leading-relaxed text-navy-300">{subtitle}</p>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-muted">{subtitle}</p>
       </header>
 
       <div className="mt-8">{children}</div>

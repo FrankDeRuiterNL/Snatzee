@@ -30,7 +30,7 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn('flex gap-1 rounded-full bg-white p-1 ring-1 ring-navy-100', className)}
+      className={cn('flex gap-1 rounded-full bg-surface p-1 ring-1 ring-hairline', className)}
     >
       {options.map((option) => {
         const active = option.key === value
@@ -47,14 +47,14 @@ export function Segmented<T extends string>({
             }}
             className={cn(
               'press relative min-h-11 flex-1 rounded-full px-3 text-sm font-semibold transition-colors disabled:opacity-40',
-              active ? 'text-white' : 'text-navy-500',
+              active ? 'text-white' : 'text-ink-soft',
             )}
           >
             {active && (
               <motion.span
                 layoutId={layoutId ?? `segmented-${ariaLabel}`}
                 transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-                className="absolute inset-0 rounded-full bg-navy-900"
+                className="absolute inset-0 rounded-full bg-surface-elevated"
                 aria-hidden
               />
             )}
@@ -101,8 +101,8 @@ export function ChipScroller<T extends string>({
             className={cn(
               'press min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold transition-colors',
               active
-                ? 'bg-navy-900 text-white shadow-soft'
-                : 'bg-white text-navy-500 ring-1 ring-navy-100',
+                ? 'bg-surface-elevated text-white shadow-soft'
+                : 'bg-surface text-ink-soft ring-1 ring-hairline',
             )}
           >
             {option.label}

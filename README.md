@@ -15,7 +15,9 @@ Mobile-first PWA, te installeren op het homescreen van iPhone en Android.
 
 - [Techniek](#techniek)
 - [Deployen met Docker](#deployen-met-docker) — de complete handleiding
+- [Dark mode](#dark-mode)
 - [Beheerders](#beheerders)
+- [Yahtzee's registreren](#yahtzees-registreren)
 - [Levels, achievements en geluid](#levels-achievements-en-geluid)
 - [Lokaal ontwikkelen](#lokaal-ontwikkelen)
 - [Alternatief: gehost Supabase](#alternatief-gehost-supabase)
@@ -341,6 +343,29 @@ docker run --rm -v snatzee_storage-data:/data -v "$PWD":/backup alpine \
 
 ---
 
+## Dark mode
+
+Snatzee is standaard donker. De diepte komt uit gestapelde navy-lagen in
+plaats van zwart, zodat kaarten duidelijk van de achtergrond loskomen:
+
+| Token | Kleur | Gebruikt voor |
+| --- | --- | --- |
+| `canvas` | `#07131F` | Paginaachtergrond |
+| `canvas-soft` | `#0B1D2D` | Bottom sheets, inzinkingen |
+| `surface` | `#102638` | Kaarten |
+| `surface-elevated` | `#153044` | Hero-kaarten, dialogs, navigatie |
+| `surface-high` | `#1B3B53` | Hover, avatars |
+| `ink` / `ink-soft` / `ink-muted` | `#F4F7F9` / `#91A4B5` / `#667A8A` | Tekst |
+| `hairline` | `rgba(255,255,255,0.07)` | Randen |
+
+Mint (`#24C79A`, accent `#2EE6B0`) is de primaire accentkleur; oranje, paars
+en aqua blijven gereserveerd voor achievements, records en bijzondere
+momenten. De helpers `card-surface`, `card-elevated`, `sheen` en `glow-mint`
+in `globals.css` bundelen vulling, rand en schaduw, zodat elk oppervlak
+hetzelfde leest.
+
+---
+
 ## Beheerders
 
 Snatzee kent drie rollen: `user`, `admin` en `superadmin`.
@@ -367,13 +392,64 @@ Een superadmin kan rollen ook in de app toekennen, via **Instellingen → Beheer
 | | `user` | `admin` | `superadmin` |
 | --- | --- | --- | --- |
 | Eigen potjes en Yahtzee's beheren | ✓ | ✓ | ✓ |
-| Score van een ander verwijderen | | ✓ | ✓ |
 | Scoregrenzen en ranking-minimum aanpassen | | ✓ | ✓ |
+| Adminconsole op `/app/admin` | | | ✓ |
+| Scores en 1-worp registraties verwijderen | | | ✓ |
 | Rollen toekennen | | | ✓ |
+
+### Adminconsole
+
+Een superadmin krijgt onder **Instellingen** een extra ingang naar
+`/app/admin`, met twee tabs: **Scores** en **1-worp Yahtzee's**. Beide zijn
+doorzoekbaar op naam of username, sorteerbaar, en laden per 25 rijen bij —
+er wordt nooit een hele tabel opgehaald.
+
+Verwijderen vraagt eerst om bevestiging en schrijft daarna een regel in
+`admin_audit_log` (wie, wat, welke gebruiker, met de waarden van de
+verwijderde rij), zodat later te achterhalen is wat er is weggehaald.
+Statistieken en ranglijsten worden live berekend, dus die kloppen direct
+weer.
+
+De menu-ingang is puur gemak. De beveiliging zit in de database: elke
+admin-functie controleert `is_superadmin()` voordat er ook maar één rij
+teruggaat, en `admin_audit_log` heeft geen enkele policy, dus niemand leest
+of schrijft die tabel buiten die functies om.
 
 De rol staat in `profiles.role` en is **niet** rechtstreeks te wijzigen: een
 databasetrigger weigert elke update die de kolom aanraakt buiten
 `set_user_role()` om, dus een client kan zichzelf niet promoveren.
+
+---
+
+## Yahtzee's registreren
+
+Er zijn twee soorten Yahtzee, en ze worden bewust anders vastgelegd.
+
+**Gewone Yahtzee's horen bij een potje.** Bij het toevoegen van een potje zet
+je "Yahtzee gegooid?" aan en geef je met een stepper aan hoeveel het er waren.
+Dat aantal staat op de score-entry zelf (`score_entries.yahtzee_count`), want
+je weet het pas als het potje klaar is.
+
+**Een Yahtzee in één worp is een los moment.** Die registreer je meteen via de
+knop op Home, met een bevestiging vooraf zodat een misklik geen record
+vervuilt. Deze blijven losse events (`yahtzee_events`, `event_type =
+FIRST_ROLL`).
+
+De twee tellingen zijn onafhankelijk:
+
+```
+Yahtzee's totaal      = sum(score_entries.yahtzee_count)
+Yahtzee's in één worp = count(yahtzee_events where FIRST_ROLL)
+```
+
+Een Yahtzee in één worp wordt dus **niet** automatisch bij het potjestotaal
+opgeteld — je geeft bij het potje zelf al op hoeveel je er gooide, dus dat zou
+dubbel tellen.
+
+> Bestaande `NORMAL`-events uit een oudere versie worden bij migratie 0009
+> verplaatst naar het potje dat er qua tijd het dichtst bij zit. Events van
+> spelers zonder potjes kunnen nergens heen en blijven staan; de view telt die
+> gewoon mee, zodat er niets verdwijnt.
 
 ---
 
@@ -522,8 +598,8 @@ eigen potje.
 
 ```
 profiles           id, username (uniek), display_name, avatar_url, bio, is_private
-score_entries      user_id, score, is_win, played_at, note
-yahtzee_events     user_id, event_type (NORMAL | FIRST_ROLL)
+score_entries      user_id, score, is_win, yahtzee_count, played_at, note
+yahtzee_events     user_id, event_type (FIRST_ROLL; NORMAL alleen historisch)
 friendships        requester_id, addressee_id, status (pending | accepted | declined)
 groups             owner_id, name, emoji, description, invite_code
 group_members      group_id, user_id, role (owner | admin | member)
@@ -532,6 +608,7 @@ user_achievements  user_id, achievement_id, unlocked_at, source_id
 app_settings       key, value (jsonb)
 admin_allowlist    email, role  — rollen die vooraf worden toegekend
 player_levels      key, name, emoji, min_games
+admin_audit_log    admin_user_id, action, target_user_id, entity_type, metadata
 ```
 
 ### Yahtzee's worden één keer opgeslagen
@@ -652,6 +729,8 @@ src/
       page.tsx              home dashboard
       rankings/ history/ achievements/
       friends/ groups/[id]/ profile/ statistics/ settings/
+      admin/                adminconsole (alleen superadmin)
+    auth/confirm/           landingspagina voor bevestigingsmails
     u/[username]/           publiek profiel
     api/health/             healthcheck voor Docker
   components/
@@ -663,7 +742,7 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0008)
+supabase/migrations/        SQL migraties (0001 t/m 0010)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack

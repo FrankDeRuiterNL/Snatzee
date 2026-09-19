@@ -20,25 +20,25 @@ export default async function LandingPage() {
       </header>
 
       <section className="mt-10">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-100 px-3 py-1.5 text-xs font-bold text-mint-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-500/15 px-3 py-1.5 text-xs font-bold text-mint-300">
           <Sparkles className="size-3.5" aria-hidden />
           Voor iedereen die Yahtzee speelt
         </span>
 
-        <h1 className="mt-5 text-[2.6rem] font-black leading-[1.05] tracking-tight text-navy-900">
+        <h1 className="mt-5 text-[2.6rem] font-black leading-[1.05] tracking-tight text-ink">
           Jouw Yahtzee&#8209;scores,
           <br />
-          <span className="text-mint-600">eindelijk bijgehouden.</span>
+          <span className="text-mint-400">eindelijk bijgehouden.</span>
         </h1>
 
-        <p className="mt-4 text-[1.05rem] leading-relaxed text-navy-500">
+        <p className="mt-4 text-[1.05rem] leading-relaxed text-ink-soft">
           Speel gewoon met je vertrouwde scoreblaadje. Voeg na afloop je eindscore toe en Snatzee
           regelt de records, statistieken, achievements en ranglijsten.
         </p>
       </section>
 
-      <section className="mt-9 rounded-[1.75rem] bg-navy-900 p-6 text-white shadow-lift">
-        <p className="text-sm font-semibold text-navy-300">Jouw gemiddelde</p>
+      <section className="mt-9 rounded-[1.75rem] bg-surface-elevated p-6 text-white shadow-lift">
+        <p className="text-sm font-semibold text-ink-muted">Jouw gemiddelde</p>
         <p className="tabular mt-1 text-5xl font-black tracking-tight">247</p>
         <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-mint-400">
           <Flame className="size-4" aria-hidden />
@@ -51,9 +51,9 @@ export default async function LandingPage() {
             { label: 'Wins', value: '54' },
             { label: "Yahtzee's", value: '23' },
           ].map((stat) => (
-            <div key={stat.label} className="rounded-2xl bg-white/5 py-3">
+            <div key={stat.label} className="rounded-2xl bg-surface/5 py-3">
               <p className="tabular text-xl font-extrabold">{stat.value}</p>
-              <p className="mt-0.5 text-[0.7rem] font-semibold text-navy-300">{stat.label}</p>
+              <p className="mt-0.5 text-[0.7rem] font-semibold text-ink-muted">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -90,10 +90,10 @@ export default async function LandingPage() {
 }
 
 const ACCENTS = {
-  mint: 'bg-mint-100 text-mint-700',
-  tangerine: 'bg-tangerine-100 text-tangerine-600',
-  grape: 'bg-grape-100 text-grape-600',
-  aqua: 'bg-aqua-100 text-aqua-500',
+  mint: 'bg-mint-500/15 text-mint-300',
+  tangerine: 'bg-tangerine-500/15 text-tangerine-300',
+  grape: 'bg-grape-500/15 text-grape-300',
+  aqua: 'bg-aqua-500/15 text-aqua-300',
 } as const
 
 function Feature({
@@ -108,13 +108,13 @@ function Feature({
   children: React.ReactNode
 }) {
   return (
-    <li className="flex gap-4 rounded-[1.5rem] bg-white p-4 ring-1 ring-navy-100/70 shadow-soft">
+    <li className="flex gap-4 rounded-[1.5rem] bg-surface p-4 ring-1 ring-hairline shadow-soft">
       <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${ACCENTS[accent]}`}>
         <Icon className="size-5" strokeWidth={2.4} aria-hidden />
       </span>
       <span>
-        <span className="block font-bold tracking-tight text-navy-900">{title}</span>
-        <span className="mt-0.5 block text-sm leading-relaxed text-navy-300">{children}</span>
+        <span className="block font-bold tracking-tight text-ink">{title}</span>
+        <span className="mt-0.5 block text-sm leading-relaxed text-ink-muted">{children}</span>
       </span>
     </li>
   )

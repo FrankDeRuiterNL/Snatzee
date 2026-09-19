@@ -37,7 +37,7 @@ export function CelebrationOverlay({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22 }}
           onClick={onDismiss}
-          className="fixed inset-0 z-[60] grid place-items-center bg-navy-950/80 px-6 backdrop-blur-md"
+          className="fixed inset-0 z-[60] grid place-items-center bg-black/85 px-6 backdrop-blur-md"
         >
           <Confetti pieces={big ? 64 : 34} seed={celebration.id} />
 
@@ -83,7 +83,7 @@ export function CelebrationOverlay({
             </h2>
 
             {celebration.detail && (
-              <p className="mt-3 max-w-[26ch] text-base font-medium text-navy-100">
+              <p className="mt-3 max-w-[26ch] text-base font-medium text-ink-soft">
                 {celebration.detail}
               </p>
             )}
@@ -91,7 +91,7 @@ export function CelebrationOverlay({
             <button
               type="button"
               onClick={onDismiss}
-              className="press mt-9 min-h-12 rounded-full bg-white/10 px-7 text-sm font-semibold text-white ring-1 ring-white/20"
+              className="press mt-9 min-h-12 rounded-full bg-surface/10 px-7 text-sm font-semibold text-white ring-1 ring-white/20"
             >
               Top!
             </button>

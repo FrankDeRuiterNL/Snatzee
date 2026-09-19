@@ -242,6 +242,10 @@ services:
         # follows the address bar instead of this baked-in URL. That is what
         # lets the same build serve several domains.
         NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
+        # Mirrors the GoTrue provider flags, so a button is only offered when
+        # the provider is actually configured.
+        NEXT_PUBLIC_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
+        NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
     image: snatzee:latest
     restart: unless-stopped
     depends_on:
@@ -261,6 +265,8 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL}
       NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
+      NEXT_PUBLIC_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
+      NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
       # Server-side rendering reaches Supabase over the Docker network
       # rather than going back out through the public hostname.
       SUPABASE_INTERNAL_URL: http://gateway

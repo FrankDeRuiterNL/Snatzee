@@ -46,7 +46,7 @@ export function LogoLockup({ size = 44, className }: { size?: number; className?
         className="rounded-[24%] shadow-soft"
       />
       <span className="text-[1.35rem] font-extrabold tracking-tight">
-        <span className="text-navy-900">Snat</span>
+        <span className="text-ink">Snat</span>
         <span className="text-mint-500">zee</span>
       </span>
       <span className="sr-only">Snatzee</span>

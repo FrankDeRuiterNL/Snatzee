@@ -1,9 +1,12 @@
 'use client'
 
 import { useId, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Check, Dice5, Trophy } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { Stepper } from '@/components/ui/stepper'
+import { ToggleRow } from '@/components/ui/toggle-row'
 import { FieldError, Input, Label, Textarea } from '@/components/ui/input'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { NOTE_MAX, SCORE_MAX, SCORE_MIN } from '@/lib/constants'
@@ -87,6 +90,8 @@ function ScoreForm({
 
   const [score, setScore] = useState(entry ? String(entry.score) : '')
   const [isWin, setIsWin] = useState(entry?.is_win ?? false)
+  const [threwYahtzee, setThrewYahtzee] = useState((entry?.yahtzee_count ?? 0) > 0)
+  const [yahtzeeCount, setYahtzeeCount] = useState(Math.max(entry?.yahtzee_count ?? 0, 1))
   const [playedAt, setPlayedAt] = useState(() =>
     entry ? toDateInputValue(new Date(entry.played_at)) : toDateInputValue(),
   )
@@ -111,6 +116,10 @@ function ScoreForm({
     setError(null)
     const supabase = getSupabaseBrowserClient()
 
+    // The stepper keeps its value while the toggle is off, so the count only
+    // counts when the player actually says they threw one.
+    const yahtzees = threwYahtzee ? yahtzeeCount : 0
+
     const { data, error: rpcError } = isEdit
       ? await supabase.rpc('update_score_entry', {
           p_id: entry.id,
@@ -118,12 +127,14 @@ function ScoreForm({
           p_is_win: isWin,
           p_played_at: fromDateInputValue(playedAt),
           p_note: note.trim() || null,
+          p_yahtzee_count: yahtzees,
         })
       : await supabase.rpc('record_score_entry', {
           p_score: parsed,
           p_is_win: isWin,
           p_played_at: fromDateInputValue(playedAt),
           p_note: note.trim() || null,
+          p_yahtzee_count: yahtzees,
         })
 
     onSavingChange(false)
@@ -162,7 +173,7 @@ function ScoreForm({
           aria-describedby={`${scoreId}-hint`}
           className="tabular h-20 rounded-[1.5rem] text-center text-5xl font-black tracking-tight"
         />
-        <p id={`${scoreId}-hint`} className="mt-2 text-center text-xs text-navy-300">
+        <p id={`${scoreId}-hint`} className="mt-2 text-center text-xs text-ink-muted">
           Tussen {SCORE_MIN} en {SCORE_MAX} punten
         </p>
         <FieldError>{error}</FieldError>
@@ -194,6 +205,42 @@ function ScoreForm({
         </div>
       </div>
 
+      <div className="rounded-2xl bg-surface p-4 ring-1 ring-hairline">
+        <ToggleRow
+          label="Yahtzee gegooid?"
+          description="Tel de Yahtzees die je tijdens dit potje gooide."
+          checked={threwYahtzee}
+          onCheckedChange={(next) => {
+            setThrewYahtzee(next)
+            if (next && yahtzeeCount < 1) setYahtzeeCount(1)
+          }}
+        />
+
+        <AnimatePresence initial={false}>
+          {threwYahtzee && (
+            <motion.div
+              key="yahtzee-count"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="pt-4">
+                <Label htmlFor="yahtzee-stepper">Hoeveel Yahtzee&apos;s?</Label>
+                <Stepper
+                  label="Aantal Yahtzee's"
+                  value={yahtzeeCount}
+                  onChange={setYahtzeeCount}
+                  min={1}
+                  max={30}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       <div>
         <Label htmlFor={dateId}>Datum gespeeld</Label>
         <Input
@@ -207,7 +254,7 @@ function ScoreForm({
 
       <div>
         <Label htmlFor={noteId}>
-          Notitie <span className="font-normal text-navy-300">(optioneel)</span>
+          Notitie <span className="font-normal text-ink-muted">(optioneel)</span>
         </Label>
         <Textarea
           id={noteId}
@@ -242,8 +289,8 @@ function WinOption({
       className={cn(
         'press flex min-h-14 items-center justify-center gap-2 rounded-2xl text-[0.95rem] font-semibold ring-1 transition-colors',
         selected && tone === 'win' && 'bg-mint-500 text-navy-950 ring-mint-500',
-        selected && tone === 'loss' && 'bg-navy-900 text-white ring-navy-900',
-        !selected && 'bg-cream-100 text-navy-500 ring-navy-100',
+        selected && tone === 'loss' && 'bg-surface-elevated text-white ring-hairline-strong',
+        !selected && 'bg-canvas text-ink-soft ring-hairline',
       )}
     >
       {icon}

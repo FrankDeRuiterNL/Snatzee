@@ -22,8 +22,8 @@ export function ToggleRow({
   return (
     <div className={cn('flex min-h-14 items-center justify-between gap-4', className)}>
       <span className="min-w-0">
-        <span className="block text-[0.95rem] font-semibold text-navy-900">{label}</span>
-        {description && <span className="mt-0.5 block text-sm text-navy-300">{description}</span>}
+        <span className="block text-[0.95rem] font-semibold text-ink">{label}</span>
+        {description && <span className="mt-0.5 block text-sm text-ink-muted">{description}</span>}
       </span>
       <Switch.Root
         checked={checked}
@@ -35,10 +35,10 @@ export function ToggleRow({
         aria-label={label}
         className={cn(
           'relative h-8 w-14 shrink-0 rounded-full transition-colors disabled:opacity-50',
-          checked ? 'bg-mint-500' : 'bg-navy-100',
+          checked ? 'bg-mint-500' : 'bg-white/10',
         )}
       >
-        <Switch.Thumb className="block size-6 translate-x-1 rounded-full bg-white shadow-soft transition-transform data-[state=checked]:translate-x-7" />
+        <Switch.Thumb className="block size-6 translate-x-1 rounded-full bg-surface shadow-soft transition-transform data-[state=checked]:translate-x-7" />
       </Switch.Root>
     </div>
   )

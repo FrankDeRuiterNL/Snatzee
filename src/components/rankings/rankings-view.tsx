@@ -119,9 +119,9 @@ export function RankingsView({
       </div>
 
       <div className="px-5">
-        <h2 className="text-lg font-extrabold tracking-tight text-navy-900">{config.title}</h2>
+        <h2 className="text-lg font-extrabold tracking-tight text-ink">{config.title}</h2>
         {metric === 'average_score' && (
-          <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-navy-300">
+          <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-ink-muted">
             <Info className="size-4 shrink-0" aria-hidden />
             Minimaal {minGamesForAverage} potjes nodig
           </p>
@@ -165,7 +165,7 @@ export function RankingsView({
           className="sticky z-30 px-5"
           style={{ bottom: 'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 1rem)' }}
         >
-          <div className="rounded-[1.5rem] bg-cream-100/80 p-1 backdrop-blur">
+          <div className="rounded-[1.5rem] bg-canvas/80 p-1 backdrop-blur">
             <LeaderboardRow row={me} decimals={config.decimals ?? 0} sticky />
           </div>
         </div>

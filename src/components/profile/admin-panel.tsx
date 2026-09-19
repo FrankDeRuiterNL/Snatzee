@@ -88,19 +88,19 @@ export function AdminPanel({
   }
 
   return (
-    <section className="rounded-[1.75rem] bg-navy-900 p-5 text-white shadow-lift">
+    <section className="rounded-[1.75rem] bg-surface-elevated p-5 text-white shadow-lift">
       <h2 className="mb-1 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-mint-400">
         <ShieldCheck className="size-4" aria-hidden strokeWidth={2.4} />
         Beheer
       </h2>
-      <p className="mb-5 text-sm text-navy-300">
+      <p className="mb-5 text-sm text-ink-muted">
         Je bent ingelogd als <strong className="font-semibold text-white">{role}</strong>.
       </p>
 
       <div className="space-y-5">
         {TUNABLE.map((setting) => (
           <div key={setting.key}>
-            <Label htmlFor={setting.key} className="text-navy-100">
+            <Label htmlFor={setting.key} className="text-ink-soft">
               {setting.label}
             </Label>
             <div className="flex gap-2">
@@ -113,7 +113,7 @@ export function AdminPanel({
                 onChange={(e) =>
                   setValues((prev) => ({ ...prev, [setting.key]: e.target.value }))
                 }
-                className="bg-white/10 text-white ring-white/20 placeholder:text-navy-300 focus:bg-white/15"
+                className="bg-surface/10 text-white ring-white/20 placeholder:text-ink-muted focus:bg-surface/15"
               />
               <Button
                 variant="primary"
@@ -123,13 +123,13 @@ export function AdminPanel({
                 Opslaan
               </Button>
             </div>
-            {setting.hint && <p className="mt-1.5 text-xs text-navy-300">{setting.hint}</p>}
+            {setting.hint && <p className="mt-1.5 text-xs text-ink-muted">{setting.hint}</p>}
           </div>
         ))}
 
         {role === 'superadmin' && (
           <form onSubmit={assignRole} className="border-t border-white/10 pt-5">
-            <Label htmlFor={usernameId} className="text-navy-100">
+            <Label htmlFor={usernameId} className="text-ink-soft">
               Rol toekennen
             </Label>
             <div className="flex gap-2">
@@ -141,13 +141,13 @@ export function AdminPanel({
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                className="bg-white/10 text-white ring-white/20 placeholder:text-navy-300 focus:bg-white/15"
+                className="bg-surface/10 text-white ring-white/20 placeholder:text-ink-muted focus:bg-surface/15"
               />
               <select
                 value={targetRole}
                 onChange={(e) => setTargetRole(e.target.value as AppRole)}
                 aria-label="Rol"
-                className="min-h-12 rounded-2xl bg-white/10 px-3 font-semibold text-white ring-1 ring-white/20 focus:outline-none"
+                className="min-h-12 rounded-2xl bg-surface/10 px-3 font-semibold text-white ring-1 ring-white/20 focus:outline-none"
               >
                 <option value="user">user</option>
                 <option value="admin">admin</option>

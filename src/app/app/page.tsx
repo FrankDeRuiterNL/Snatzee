@@ -98,18 +98,18 @@ export default async function HomePage() {
         <section className="px-5">
           <Link
             href="/app/achievements"
-            className="press flex items-center gap-4 rounded-[1.5rem] bg-navy-900 p-4 text-white shadow-soft"
+            className="press flex items-center gap-4 rounded-[1.5rem] bg-surface-elevated p-4 text-white shadow-soft"
           >
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/10 text-mint-400">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface/10 text-mint-400">
               <Award className="size-5" strokeWidth={2.4} aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-bold tracking-tight">Achievements</span>
-              <span className="mt-0.5 block text-sm text-navy-300">
+              <span className="mt-0.5 block text-sm text-ink-muted">
                 {unlockedCount} van {achievements.length} vrijgespeeld
               </span>
             </span>
-            <ChevronRight className="size-5 shrink-0 text-navy-300" aria-hidden />
+            <ChevronRight className="size-5 shrink-0 text-ink-muted" aria-hidden />
           </Link>
         </section>
 

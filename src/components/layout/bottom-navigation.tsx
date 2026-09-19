@@ -36,7 +36,7 @@ export function BottomNavigation() {
       className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
     >
-      <div className="relative flex w-full max-w-[26rem] items-center justify-between rounded-[1.75rem] bg-navy-900/95 px-2 py-2 shadow-float backdrop-blur-xl">
+      <div className="relative flex w-full max-w-[26rem] items-center justify-between rounded-[1.75rem] bg-surface-elevated/90 px-2 py-2 shadow-float ring-1 ring-hairline-strong backdrop-blur-xl">
         {left.map((tab) => (
           <NavItem key={tab.href} {...tab} active={isActive(pathname, tab.href, tab.exact)} />
         ))}
@@ -48,7 +48,7 @@ export function BottomNavigation() {
             openScoreSheet()
           }}
           aria-label="Potje toevoegen"
-          className="press -mt-8 grid size-14 shrink-0 place-items-center rounded-full bg-mint-500 text-navy-950 shadow-[0_8px_24px_-6px_rgba(36,199,154,0.7)] ring-4 ring-cream-100"
+          className="press -mt-8 grid size-14 shrink-0 place-items-center rounded-full bg-mint-500 text-navy-950 shadow-[0_8px_24px_-6px_rgba(36,199,154,0.6)] ring-4 ring-canvas"
         >
           <Plus className="size-7" strokeWidth={2.75} aria-hidden />
         </button>
@@ -89,14 +89,14 @@ function NavItem({
         />
       )}
       <Icon
-        className={cn('relative size-5 transition-colors', active ? 'text-mint-400' : 'text-navy-300')}
+        className={cn('relative size-5 transition-colors', active ? 'text-mint-400' : 'text-ink-muted')}
         strokeWidth={active ? 2.6 : 2}
         aria-hidden
       />
       <span
         className={cn(
           'relative text-[0.625rem] font-semibold transition-colors',
-          active ? 'text-white' : 'text-navy-300',
+          active ? 'text-white' : 'text-ink-muted',
         )}
       >
         {label}

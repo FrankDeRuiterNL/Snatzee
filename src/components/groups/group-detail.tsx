@@ -112,24 +112,24 @@ export function GroupDetail({
 
   return (
     <div className="space-y-5">
-      <section className="mx-5 rounded-[1.75rem] bg-navy-900 p-6 text-white shadow-lift">
+      <section className="mx-5 rounded-[1.75rem] bg-surface-elevated p-6 text-white shadow-lift">
         <div className="flex items-center gap-4">
           <span
             aria-hidden
-            className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-3xl"
+            className="grid size-14 shrink-0 place-items-center rounded-2xl bg-surface/10 text-3xl"
           >
             {group.emoji ?? '🎲'}
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-black tracking-tight">{group.name}</h1>
-            <p className="mt-0.5 text-sm text-navy-300">
+            <p className="mt-0.5 text-sm text-ink-muted">
               {members.length} {pluralize(members.length, 'lid', 'leden')}
             </p>
           </div>
         </div>
 
         {group.description && (
-          <p className="mt-4 text-sm leading-relaxed text-navy-100">{group.description}</p>
+          <p className="mt-4 text-sm leading-relaxed text-ink-soft">{group.description}</p>
         )}
 
         <div className="mt-5 flex -space-x-2">
@@ -139,11 +139,11 @@ export function GroupDetail({
               src={member.avatar_url}
               name={member.display_name}
               size="sm"
-              className="ring-2 ring-navy-900"
+              className="ring-2 ring-hairline-strong"
             />
           ))}
           {members.length > 7 && (
-            <span className="grid size-10 place-items-center rounded-full bg-white/10 text-xs font-bold ring-2 ring-navy-900">
+            <span className="grid size-10 place-items-center rounded-full bg-surface/10 text-xs font-bold ring-2 ring-hairline-strong">
               +{members.length - 7}
             </span>
           )}
@@ -161,7 +161,7 @@ export function GroupDetail({
           <Button
             variant="soft"
             size="sm"
-            className="flex-1 bg-white/10! text-white! ring-white/20!"
+            className="flex-1 bg-surface/10! text-white! ring-white/20!"
             onClick={copyCode}
           >
             <Copy className="size-4" aria-hidden />
@@ -171,8 +171,8 @@ export function GroupDetail({
       </section>
 
       <div className="px-5">
-        <h2 className="text-lg font-extrabold tracking-tight text-navy-900">Ranglijsten</h2>
-        <p className="mt-0.5 text-sm text-navy-300">Alleen de leden van {group.name}.</p>
+        <h2 className="text-lg font-extrabold tracking-tight text-ink">Ranglijsten</h2>
+        <p className="mt-0.5 text-sm text-ink-muted">Alleen de leden van {group.name}.</p>
       </div>
 
       <RankingsView
@@ -215,7 +215,7 @@ export function GroupDetail({
           {members.map((member) => (
             <li
               key={member.user_id}
-              className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-navy-100"
+              className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-hairline"
             >
               <Link
                 href={`/u/${member.username}`}
@@ -223,10 +223,10 @@ export function GroupDetail({
               >
                 <Avatar src={member.avatar_url} name={member.display_name} size="sm" />
                 <span className="min-w-0">
-                  <span className="block truncate font-bold text-navy-900">
+                  <span className="block truncate font-bold text-ink">
                     {member.display_name}
                   </span>
-                  <span className="block truncate text-xs text-navy-300">
+                  <span className="block truncate text-xs text-ink-muted">
                     @{member.username} · {member.games_played}{' '}
                     {pluralize(member.games_played, 'potje', 'potjes')}
                   </span>
@@ -234,7 +234,7 @@ export function GroupDetail({
               </Link>
 
               {member.role === 'owner' ? (
-                <span className="rounded-full bg-tangerine-100 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-tangerine-600">
+                <span className="rounded-full bg-tangerine-500/15 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider text-tangerine-300">
                   Eigenaar
                 </span>
               ) : isOwner ? (
@@ -244,7 +244,7 @@ export function GroupDetail({
                   aria-label={`${member.display_name} verwijderen uit de groep`}
                   onClick={() => setRemoving(member)}
                 >
-                  <UserMinus className="size-5 text-navy-300" aria-hidden />
+                  <UserMinus className="size-5 text-ink-muted" aria-hidden />
                 </Button>
               ) : null}
             </li>
@@ -280,15 +280,15 @@ export function GroupDetail({
                     )
                   }}
                   className={`press flex w-full items-center gap-3 rounded-2xl p-3 text-left ring-1 ${
-                    checked ? 'bg-mint-100 ring-mint-500' : 'bg-white ring-navy-100'
+                    checked ? 'bg-mint-500/15 ring-mint-500' : 'bg-surface ring-hairline'
                   }`}
                 >
                   <Avatar src={friend.avatar_url} name={friend.display_name} size="sm" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-bold text-navy-900">
+                    <span className="block truncate font-bold text-ink">
                       {friend.display_name}
                     </span>
-                    <span className="block truncate text-xs text-navy-300">@{friend.username}</span>
+                    <span className="block truncate text-xs text-ink-muted">@{friend.username}</span>
                   </span>
                 </button>
               </li>

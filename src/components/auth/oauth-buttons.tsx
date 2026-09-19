@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { APPLE_SIGN_IN_ENABLED, GOOGLE_SIGN_IN_ENABLED } from '@/lib/constants'
 
 type Provider = 'google' | 'apple'
 
@@ -27,33 +28,40 @@ export function OAuthButtons({ next }: { next?: string }) {
     }
   }
 
+  // Nothing configured: render nothing at all rather than an empty gap.
+  if (!APPLE_SIGN_IN_ENABLED && !GOOGLE_SIGN_IN_ENABLED) return null
+
   return (
     <div className="space-y-3">
-      <Button
-        type="button"
-        variant="soft"
-        size="lg"
-        full
-        loading={pending === 'apple'}
-        disabled={pending !== null}
-        onClick={() => signIn('apple')}
-      >
-        <AppleMark />
-        Doorgaan met Apple
-      </Button>
+      {APPLE_SIGN_IN_ENABLED && (
+        <Button
+          type="button"
+          variant="soft"
+          size="lg"
+          full
+          loading={pending === 'apple'}
+          disabled={pending !== null}
+          onClick={() => signIn('apple')}
+        >
+          <AppleMark />
+          Doorgaan met Apple
+        </Button>
+      )}
 
-      <Button
-        type="button"
-        variant="soft"
-        size="lg"
-        full
-        loading={pending === 'google'}
-        disabled={pending !== null}
-        onClick={() => signIn('google')}
-      >
-        <GoogleMark />
-        Doorgaan met Google
-      </Button>
+      {GOOGLE_SIGN_IN_ENABLED && (
+        <Button
+          type="button"
+          variant="soft"
+          size="lg"
+          full
+          loading={pending === 'google'}
+          disabled={pending !== null}
+          onClick={() => signIn('google')}
+        >
+          <GoogleMark />
+          Doorgaan met Google
+        </Button>
+      )}
     </div>
   )
 }

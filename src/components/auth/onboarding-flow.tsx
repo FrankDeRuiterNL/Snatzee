@@ -119,7 +119,7 @@ export function OnboardingFlow({
           label={`Stap ${step + 1} van ${STEPS.length}`}
           className="flex-1"
         />
-        <span className="tabular text-xs font-bold text-navy-300">
+        <span className="tabular text-xs font-bold text-ink-muted">
           {step + 1}/{STEPS.length}
         </span>
       </div>
@@ -136,10 +136,10 @@ export function OnboardingFlow({
             {current === 'welkom' && (
               <div className="text-center">
                 <LogoMark size={96} className="mx-auto" />
-                <h1 className="mt-7 text-[2.1rem] font-black leading-tight tracking-tight text-navy-900">
+                <h1 className="mt-7 text-[2.1rem] font-black leading-tight tracking-tight text-ink">
                   Welkom bij Snatzee
                 </h1>
-                <p className="mx-auto mt-3 max-w-[32ch] text-[1.02rem] leading-relaxed text-navy-500">
+                <p className="mx-auto mt-3 max-w-[32ch] text-[1.02rem] leading-relaxed text-ink-soft">
                   Speel Yahtzee zoals je gewend bent. Voeg na afloop je eindscore toe — wij houden je
                   records, statistieken en achievements bij.
                 </p>
@@ -148,10 +148,10 @@ export function OnboardingFlow({
 
             {current === 'username' && (
               <div>
-                <h1 className="text-[1.9rem] font-black leading-tight tracking-tight text-navy-900">
+                <h1 className="text-[1.9rem] font-black leading-tight tracking-tight text-ink">
                   Kies je username
                 </h1>
-                <p className="mt-2 text-[0.95rem] text-navy-300">
+                <p className="mt-2 text-[0.95rem] text-ink-muted">
                   Zo vinden vrienden je terug. Kleine letters, cijfers en _.
                 </p>
 
@@ -160,7 +160,7 @@ export function OnboardingFlow({
                   <div className="relative">
                     <span
                       aria-hidden
-                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-navy-300"
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted"
                     >
                       @
                     </span>
@@ -179,27 +179,27 @@ export function OnboardingFlow({
                       className="pl-9 pr-11"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2">
-                      {checking && <Loader2 className="size-4 animate-spin text-navy-300" aria-hidden />}
+                      {checking && <Loader2 className="size-4 animate-spin text-ink-muted" aria-hidden />}
                       {!checking && available === true && (
-                        <Check className="size-5 text-mint-600" aria-hidden />
+                        <Check className="size-5 text-mint-400" aria-hidden />
                       )}
                       {!checking && available === false && (
-                        <X className="size-5 text-rose-ember-500" aria-hidden />
+                        <X className="size-5 text-rose-ember-300" aria-hidden />
                       )}
                     </span>
                   </div>
 
                   <p id={`${usernameId}-status`} className="mt-2 min-h-5 text-sm" role="status">
                     {normalized.length > 0 && !formatValid && (
-                      <span className="text-rose-ember-500">
+                      <span className="text-rose-ember-300">
                         Gebruik 3–20 tekens: a–z, 0–9 en _
                       </span>
                     )}
                     {formatValid && available === false && (
-                      <span className="text-rose-ember-500">Deze username is al bezet</span>
+                      <span className="text-rose-ember-300">Deze username is al bezet</span>
                     )}
                     {formatValid && available === true && (
-                      <span className="font-medium text-mint-600">@{normalized} is vrij 🎉</span>
+                      <span className="font-medium text-mint-400">@{normalized} is vrij 🎉</span>
                     )}
                   </p>
                   <FieldError>{error}</FieldError>
@@ -209,10 +209,10 @@ export function OnboardingFlow({
 
             {current === 'naam' && (
               <div>
-                <h1 className="text-[1.9rem] font-black leading-tight tracking-tight text-navy-900">
+                <h1 className="text-[1.9rem] font-black leading-tight tracking-tight text-ink">
                   Hoe mogen we je noemen?
                 </h1>
-                <p className="mt-2 text-[0.95rem] text-navy-300">
+                <p className="mt-2 text-[0.95rem] text-ink-muted">
                   Deze naam zie je terug op ranglijsten en profielen.
                 </p>
 
@@ -233,10 +233,10 @@ export function OnboardingFlow({
 
             {current === 'foto' && (
               <div className="text-center">
-                <h1 className="text-[1.9rem] font-black leading-tight tracking-tight text-navy-900">
+                <h1 className="text-[1.9rem] font-black leading-tight tracking-tight text-ink">
                   Zet er een gezicht bij
                 </h1>
-                <p className="mx-auto mt-2 max-w-[30ch] text-[0.95rem] text-navy-300">
+                <p className="mx-auto mt-2 max-w-[30ch] text-[0.95rem] text-ink-muted">
                   Optioneel — je kunt dit later altijd aanpassen in je instellingen.
                 </p>
 
@@ -262,10 +262,10 @@ export function OnboardingFlow({
                 >
                   <PartyPopper className="size-9" strokeWidth={2.2} />
                 </motion.span>
-                <h1 className="mt-7 text-[2.1rem] font-black leading-tight tracking-tight text-navy-900">
+                <h1 className="mt-7 text-[2.1rem] font-black leading-tight tracking-tight text-ink">
                   Je bent klaar!
                 </h1>
-                <p className="mx-auto mt-3 max-w-[30ch] text-[1.02rem] leading-relaxed text-navy-500">
+                <p className="mx-auto mt-3 max-w-[30ch] text-[1.02rem] leading-relaxed text-ink-soft">
                   Pak de dobbelstenen erbij, {displayName.trim() || normalized}. Voeg straks je eerste
                   potje toe en de statistieken beginnen te lopen.
                 </p>

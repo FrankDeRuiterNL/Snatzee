@@ -11,10 +11,10 @@ export function Card({
     <div
       className={cn(
         'rounded-[1.75rem] p-5',
-        tone === 'light' && 'bg-white ring-1 ring-navy-100/70 shadow-soft',
-        tone === 'navy' && 'bg-navy-900 text-white shadow-lift',
+        tone === 'light' && 'card-surface',
+        tone === 'navy' && 'card-elevated sheen text-ink',
         tone === 'mint' && 'bg-mint-500 text-navy-950 shadow-lift',
-        tone === 'plain' && 'bg-cream-50 ring-1 ring-navy-100/60',
+        tone === 'plain' && 'bg-canvas-soft ring-1 ring-hairline',
         className,
       )}
       {...props}
@@ -27,5 +27,5 @@ export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHead
 }
 
 export function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-navy-300', className)} {...props} />
+  return <p className={cn('text-sm text-ink-muted', className)} {...props} />
 }

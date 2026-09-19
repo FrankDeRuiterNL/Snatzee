@@ -73,8 +73,8 @@ export default async function StatisticsPage() {
           <h2 id="form-heading" className="sr-only">
             Vorm
           </h2>
-          <div className="rounded-[1.75rem] bg-navy-900 p-6 text-white shadow-lift">
-            <p className="text-sm font-semibold text-navy-300">Gemiddelde laatste 10 potjes</p>
+          <div className="rounded-[1.75rem] bg-surface-elevated p-6 text-white shadow-lift">
+            <p className="text-sm font-semibold text-ink-muted">Gemiddelde laatste 10 potjes</p>
             <p className="tabular mt-1 text-[3rem] font-black leading-none tracking-tight">
               {last10 === null ? '—' : formatNumber(last10, last10 % 1 === 0 ? 0 : 1)}
             </p>
@@ -99,7 +99,7 @@ export default async function StatisticsPage() {
         <LevelCard stats={stats} />
 
         <section aria-labelledby="chart-heading" className="space-y-3 px-5">
-          <h2 id="chart-heading" className="text-lg font-extrabold tracking-tight text-navy-900">
+          <h2 id="chart-heading" className="text-lg font-extrabold tracking-tight text-ink">
             Scoreontwikkeling
           </h2>
           <ScoreChart
@@ -115,7 +115,7 @@ export default async function StatisticsPage() {
         <section aria-labelledby="numbers-heading" className="px-5">
           <h2
             id="numbers-heading"
-            className="mb-3 text-lg font-extrabold tracking-tight text-navy-900"
+            className="mb-3 text-lg font-extrabold tracking-tight text-ink"
           >
             Alle cijfers
           </h2>

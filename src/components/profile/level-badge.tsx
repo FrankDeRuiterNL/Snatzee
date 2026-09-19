@@ -20,7 +20,7 @@ export function LevelChip({
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold',
-        tone === 'dark' ? 'bg-white/10 text-white' : 'bg-cream-100 text-navy-500',
+        tone === 'dark' ? 'bg-surface/10 text-white' : 'bg-canvas text-ink-soft',
         className,
       )}
     >
@@ -49,20 +49,20 @@ export function LevelCard({ stats }: { stats: UserStatistics }) {
   return (
     <section
       aria-labelledby="level-heading"
-      className="mx-5 rounded-[1.75rem] bg-white p-5 ring-1 ring-navy-100/70 shadow-soft"
+      className="mx-5 rounded-[1.75rem] bg-surface p-5 ring-1 ring-hairline shadow-soft"
     >
       <div className="flex items-center gap-4">
         <span
           aria-hidden
-          className="grid size-14 shrink-0 place-items-center rounded-2xl bg-cream-100 text-3xl"
+          className="grid size-14 shrink-0 place-items-center rounded-2xl bg-canvas text-3xl"
         >
           {stats.level_emoji ?? '🎲'}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-navy-300">Jouw niveau</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">Jouw niveau</p>
           <h2
             id="level-heading"
-            className="truncate text-lg font-extrabold tracking-tight text-navy-900"
+            className="truncate text-lg font-extrabold tracking-tight text-ink"
           >
             {stats.level_name}
           </h2>
@@ -70,7 +70,7 @@ export function LevelCard({ stats }: { stats: UserStatistics }) {
       </div>
 
       {to === null || remaining === null ? (
-        <p className="mt-4 text-sm font-medium text-mint-700">
+        <p className="mt-4 text-sm font-medium text-mint-300">
           Hoogste niveau bereikt — petje af. 🎉
         </p>
       ) : (
@@ -81,9 +81,9 @@ export function LevelCard({ stats }: { stats: UserStatistics }) {
             label={`Voortgang naar ${stats.next_level_name}`}
             className="mt-4"
           />
-          <p className="mt-2.5 text-sm text-navy-300">
+          <p className="mt-2.5 text-sm text-ink-muted">
             Nog{' '}
-            <strong className="font-bold text-navy-900">
+            <strong className="font-bold text-ink">
               {remaining} {pluralize(remaining, 'potje', 'potjes')}
             </strong>{' '}
             tot {stats.next_level_emoji} {stats.next_level_name}

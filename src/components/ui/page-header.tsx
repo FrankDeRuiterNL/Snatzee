@@ -22,16 +22,16 @@ export function PageHeader({
         <Link
           href={backHref}
           aria-label="Terug"
-          className="press mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-white text-navy-900 ring-1 ring-navy-100 shadow-soft"
+          className="press mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-surface text-ink ring-1 ring-hairline shadow-soft"
         >
           <ChevronLeft className="size-5" aria-hidden />
         </Link>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="text-[1.75rem] font-extrabold leading-tight tracking-tight text-navy-900">
+        <h1 className="text-[1.75rem] font-extrabold leading-tight tracking-tight text-ink">
           {title}
         </h1>
-        {subtitle && <p className="mt-1 text-sm text-navy-300">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
       </div>
       {action && <div className="shrink-0 pt-1">{action}</div>}
     </header>

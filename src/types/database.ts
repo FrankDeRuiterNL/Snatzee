@@ -35,6 +35,8 @@ export interface ScoreEntry {
   user_id: string
   score: number
   is_win: boolean
+  /** Normal Yahtzees thrown during this game, reported with the result. */
+  yahtzee_count: number
   played_at: string
   note: string | null
   created_at: string
@@ -188,6 +190,39 @@ export interface RecordScoreResult {
   unlocked: UnlockedAchievement[]
   is_personal_record: boolean
 }
+
+export interface AdminScoreRow {
+  id: string
+  user_id: string
+  username: string
+  display_name: string
+  avatar_url: string | null
+  score: number
+  is_win: boolean
+  yahtzee_count: number
+  note: string | null
+  played_at: string
+  created_at: string
+  total_count: number
+}
+
+export interface AdminFirstRollRow {
+  id: string
+  user_id: string
+  username: string
+  display_name: string
+  avatar_url: string | null
+  created_at: string
+  total_count: number
+}
+
+export interface AdminCounts {
+  score_entries: number
+  first_roll_yahtzees: number
+  players: number
+}
+
+export type AdminScoreSort = 'newest' | 'oldest' | 'highest' | 'lowest'
 
 export interface RecordYahtzeeResult {
   event: YahtzeeEvent

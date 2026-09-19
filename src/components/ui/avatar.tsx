@@ -29,8 +29,8 @@ export function Avatar({
   return (
     <span
       className={cn(
-        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-navy-50 font-bold text-navy-500',
-        ring && 'ring-2 ring-white',
+        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-high font-bold text-ink-soft',
+        ring && 'ring-2 ring-white/10',
         SIZES[size],
         className,
       )}

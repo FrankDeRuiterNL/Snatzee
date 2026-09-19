@@ -20,31 +20,31 @@ export const RARITY_ORDER = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY'] as const
 export const RARITY_STYLES = {
   COMMON: {
     label: 'Common',
-    ring: 'ring-navy-100',
-    chip: 'bg-navy-50 text-navy-500',
-    glow: 'from-navy-100 to-navy-50',
-    accent: 'text-navy-500',
+    ring: 'ring-hairline',
+    chip: 'bg-white/8 text-ink-soft',
+    glow: 'from-white/12 to-white/5',
+    accent: 'text-ink-soft',
   },
   RARE: {
     label: 'Rare',
-    ring: 'ring-aqua-100',
-    chip: 'bg-aqua-100 text-aqua-500',
-    glow: 'from-aqua-100 to-cream-50',
-    accent: 'text-aqua-500',
+    ring: 'ring-aqua-500/30',
+    chip: 'bg-aqua-500/15 text-aqua-300',
+    glow: 'from-aqua-500/20 to-surface',
+    accent: 'text-aqua-300',
   },
   EPIC: {
     label: 'Epic',
-    ring: 'ring-grape-100',
-    chip: 'bg-grape-100 text-grape-600',
-    glow: 'from-grape-100 to-cream-50',
-    accent: 'text-grape-600',
+    ring: 'ring-grape-500/30',
+    chip: 'bg-grape-500/15 text-grape-300',
+    glow: 'from-grape-500/20 to-surface',
+    accent: 'text-grape-300',
   },
   LEGENDARY: {
     label: 'Legendary',
-    ring: 'ring-tangerine-100',
-    chip: 'bg-tangerine-100 text-tangerine-600',
-    glow: 'from-tangerine-100 to-cream-50',
-    accent: 'text-tangerine-600',
+    ring: 'ring-tangerine-500/30',
+    chip: 'bg-tangerine-500/15 text-tangerine-300',
+    glow: 'from-tangerine-500/20 to-surface',
+    accent: 'text-tangerine-300',
   },
 } as const
 
@@ -88,3 +88,17 @@ export const LEADERBOARD_SCOPES: { key: LeaderboardScope; label: string }[] = [
   { key: 'friends', label: 'Vrienden' },
   { key: 'group', label: 'Groep' },
 ]
+
+
+/**
+ * Which social sign-in buttons to show.
+ *
+ * These mirror GOOGLE_ENABLED / APPLE_ENABLED in the environment: the
+ * provider is only configured in GoTrue when the flag is on, so offering the
+ * button otherwise would send people to a dead end.
+ */
+export const GOOGLE_SIGN_IN_ENABLED =
+  process.env.NEXT_PUBLIC_GOOGLE_ENABLED === 'true'
+export const APPLE_SIGN_IN_ENABLED =
+  process.env.NEXT_PUBLIC_APPLE_ENABLED === 'true'
+export const ANY_OAUTH_ENABLED = GOOGLE_SIGN_IN_ENABLED || APPLE_SIGN_IN_ENABLED

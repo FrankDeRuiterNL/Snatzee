@@ -41,20 +41,20 @@ export default async function FriendsPage({
       <div className="mb-4 px-5">
         <Link
           href="/app/groups"
-          className="press flex items-center gap-4 rounded-[1.5rem] bg-white p-4 ring-1 ring-navy-100/70 shadow-soft"
+          className="press flex items-center gap-4 rounded-[1.5rem] bg-surface p-4 ring-1 ring-hairline shadow-soft"
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grape-100 text-grape-600">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grape-500/15 text-grape-300">
             <Users className="size-5" strokeWidth={2.4} aria-hidden />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block font-bold tracking-tight text-navy-900">Groepen</span>
-            <span className="mt-0.5 block text-sm text-navy-300">
+            <span className="block font-bold tracking-tight text-ink">Groepen</span>
+            <span className="mt-0.5 block text-sm text-ink-muted">
               {groups.length === 0
                 ? 'Maak een groep voor je familie of vrijdagavondclub'
                 : `${groups.length} ${pluralize(groups.length, 'groep', 'groepen')}`}
             </span>
           </span>
-          <ChevronRight className="size-5 shrink-0 text-navy-300" aria-hidden />
+          <ChevronRight className="size-5 shrink-0 text-ink-muted" aria-hidden />
         </Link>
       </div>
 

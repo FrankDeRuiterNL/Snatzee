@@ -17,19 +17,19 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center rounded-[1.75rem] bg-white px-6 py-10 text-center ring-1 ring-navy-100/70 shadow-soft',
+        'flex flex-col items-center rounded-[1.75rem] bg-surface px-6 py-10 text-center ring-1 ring-hairline shadow-soft',
         className,
       )}
     >
       <span
         aria-hidden
-        className="grid size-16 place-items-center rounded-3xl bg-cream-100 text-3xl"
+        className="grid size-16 place-items-center rounded-3xl bg-canvas text-3xl"
       >
         {emoji}
       </span>
-      <h3 className="mt-4 text-lg font-extrabold tracking-tight text-navy-900">{title}</h3>
+      <h3 className="mt-4 text-lg font-extrabold tracking-tight text-ink">{title}</h3>
       {description && (
-        <p className="mt-2 max-w-[28ch] text-sm leading-relaxed text-navy-300">{description}</p>
+        <p className="mt-2 max-w-[28ch] text-sm leading-relaxed text-ink-muted">{description}</p>
       )}
       {action && <div className="mt-6 w-full max-w-64">{action}</div>}
     </div>

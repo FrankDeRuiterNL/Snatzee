@@ -63,7 +63,7 @@ export function AvatarUploader({
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="relative">
-        <Avatar src={value} name={name} size={size} className="ring-4 ring-white shadow-lift" />
+        <Avatar src={value} name={name} size={size} className="ring-4 ring-white/10 shadow-lift" />
 
         <button
           type="button"
@@ -73,7 +73,7 @@ export function AvatarUploader({
           }}
           disabled={uploading}
           aria-label={value ? 'Profielfoto vervangen' : 'Profielfoto uploaden'}
-          className="press absolute -bottom-1 -right-1 grid size-11 place-items-center rounded-full bg-mint-500 text-navy-950 shadow-soft ring-4 ring-cream-100 disabled:opacity-60"
+          className="press absolute -bottom-1 -right-1 grid size-11 place-items-center rounded-full bg-mint-500 text-navy-950 shadow-soft ring-4 ring-canvas-soft disabled:opacity-60"
         >
           {uploading ? (
             <Loader2 className="size-5 animate-spin" aria-hidden />
@@ -90,7 +90,7 @@ export function AvatarUploader({
             haptic('light')
             onChange(null)
           }}
-          className="press inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-navy-300"
+          className="press inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-muted"
         >
           <Trash2 className="size-4" aria-hidden />
           Foto verwijderen

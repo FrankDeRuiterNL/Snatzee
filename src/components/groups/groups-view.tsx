@@ -128,24 +128,24 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
               >
                 <Link
                   href={`/app/groups/${group.id}`}
-                  className="press flex items-center gap-4 rounded-[1.5rem] bg-white p-4 ring-1 ring-navy-100/70 shadow-soft"
+                  className="press flex items-center gap-4 rounded-[1.5rem] bg-surface p-4 ring-1 ring-hairline shadow-soft"
                 >
                   <span
                     aria-hidden
-                    className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cream-100 text-2xl"
+                    className="grid size-12 shrink-0 place-items-center rounded-2xl bg-canvas text-2xl"
                   >
                     {group.emoji ?? '🎲'}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-bold tracking-tight text-navy-900">
+                    <span className="block truncate font-bold tracking-tight text-ink">
                       {group.name}
                     </span>
-                    <span className="mt-0.5 block truncate text-sm text-navy-300">
+                    <span className="mt-0.5 block truncate text-sm text-ink-muted">
                       {group.member_count} {pluralize(group.member_count, 'lid', 'leden')}
                       {group.description ? ` · ${group.description}` : ''}
                     </span>
                   </span>
-                  <ChevronRight className="size-5 shrink-0 text-navy-300" aria-hidden />
+                  <ChevronRight className="size-5 shrink-0 text-ink-muted" aria-hidden />
                 </Link>
               </motion.li>
             ))}
@@ -203,7 +203,7 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
                   aria-label={`Icoon ${choice}`}
                   aria-pressed={emoji === choice}
                   className={`press grid size-12 shrink-0 place-items-center rounded-2xl text-2xl ring-1 ${
-                    emoji === choice ? 'bg-mint-100 ring-mint-500' : 'bg-white ring-navy-100'
+                    emoji === choice ? 'bg-mint-500/15 ring-mint-500' : 'bg-surface ring-hairline'
                   }`}
                 >
                   <span aria-hidden>{choice}</span>
@@ -214,7 +214,7 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
 
           <div>
             <Label htmlFor={descId}>
-              Omschrijving <span className="font-normal text-navy-300">(optioneel)</span>
+              Omschrijving <span className="font-normal text-ink-muted">(optioneel)</span>
             </Label>
             <Textarea
               id={descId}

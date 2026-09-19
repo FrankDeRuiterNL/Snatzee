@@ -4,7 +4,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={cn('animate-shimmer rounded-2xl bg-navy-100/60', className)}
+      className={cn('animate-shimmer rounded-2xl bg-white/6', className)}
     />
   )
 }

@@ -51,8 +51,8 @@ export function ScoreChart({ points, average }: { points: ChartPoint[]; average:
 
   if (points.length < 2) {
     return (
-      <div className="rounded-[1.75rem] bg-white p-8 text-center ring-1 ring-navy-100/70 shadow-soft">
-        <p className="text-sm text-navy-300">
+      <div className="rounded-[1.75rem] bg-surface p-8 text-center ring-1 ring-hairline shadow-soft">
+        <p className="text-sm text-ink-muted">
           Vanaf twee geregistreerde potjes tekenen we hier je scoreontwikkeling.
         </p>
       </div>
@@ -68,7 +68,7 @@ export function ScoreChart({ points, average }: { points: ChartPoint[]; average:
         onChange={setRange}
       />
 
-      <div className="rounded-[1.75rem] bg-white p-4 pr-5 ring-1 ring-navy-100/70 shadow-soft">
+      <div className="rounded-[1.75rem] bg-surface p-4 pr-5 ring-1 ring-hairline shadow-soft">
         <div className="h-56 w-full" role="img" aria-label="Grafiek van je scoreontwikkeling">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 12, right: 4, bottom: 4, left: -18 }}>
@@ -121,7 +121,7 @@ export function ScoreChart({ points, average }: { points: ChartPoint[]; average:
         </div>
 
         {average !== null && (
-          <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-navy-300">
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-muted">
             <span aria-hidden className="inline-block h-0.5 w-4 rounded-full bg-grape-500" />
             All-time gemiddelde: {formatNumber(average, average % 1 === 0 ? 0 : 1)}
           </p>

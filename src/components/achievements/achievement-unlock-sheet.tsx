@@ -32,7 +32,7 @@ export function AchievementUnlockSheet({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-navy-950/70 backdrop-blur-md sm:items-center"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 backdrop-blur-md sm:items-center"
         >
           <Confetti pieces={44} seed={queue.length} />
 
@@ -41,10 +41,10 @@ export function AchievementUnlockSheet({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="relative z-10 w-full max-w-[34rem] rounded-t-[2rem] bg-cream-100 px-6 pt-8 text-center shadow-float sm:rounded-[2rem]"
+            className="relative z-10 w-full max-w-[34rem] rounded-t-[2rem] bg-surface-elevated px-6 pt-8 text-center shadow-float ring-1 ring-hairline-strong sm:rounded-[2rem]"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.75rem)' }}
           >
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-mint-600">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-mint-400">
               Achievement unlocked
             </p>
 
@@ -70,8 +70,8 @@ export function AchievementUnlockSheet({
               {rarity?.label}
             </span>
 
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-navy-900">{current.name}</h2>
-            <p className="mx-auto mt-2 max-w-[30ch] text-[0.95rem] leading-relaxed text-navy-300">
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-ink">{current.name}</h2>
+            <p className="mx-auto mt-2 max-w-[30ch] text-[0.95rem] leading-relaxed text-ink-muted">
               {current.description}
             </p>
 

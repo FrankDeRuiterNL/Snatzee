@@ -9,8 +9,8 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       <input
         ref={ref}
         className={cn(
-          'min-h-12 w-full rounded-2xl bg-cream-100 px-4 text-navy-900 ring-1 ring-navy-100 transition',
-          'placeholder:text-navy-300 focus:bg-white focus:ring-2 focus:ring-mint-500 focus:outline-none',
+          'min-h-12 w-full rounded-2xl bg-canvas px-4 text-ink ring-1 ring-hairline transition',
+          'placeholder:text-ink-muted focus:bg-surface focus:ring-2 focus:ring-mint-500 focus:outline-none',
           'disabled:opacity-60',
           className,
         )}
@@ -28,8 +28,8 @@ export const Textarea = React.forwardRef<
     <textarea
       ref={ref}
       className={cn(
-        'min-h-24 w-full resize-none rounded-2xl bg-cream-100 px-4 py-3 text-navy-900 ring-1 ring-navy-100 transition',
-        'placeholder:text-navy-300 focus:bg-white focus:ring-2 focus:ring-mint-500 focus:outline-none',
+        'min-h-24 w-full resize-none rounded-2xl bg-canvas px-4 py-3 text-ink ring-1 ring-hairline transition',
+        'placeholder:text-ink-muted focus:bg-surface focus:ring-2 focus:ring-mint-500 focus:outline-none',
         className,
       )}
       {...props}
@@ -40,7 +40,7 @@ export const Textarea = React.forwardRef<
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn('mb-2 block text-sm font-semibold text-navy-500', className)}
+      className={cn('mb-2 block text-sm font-semibold text-ink-soft', className)}
       {...props}
     />
   )
@@ -49,7 +49,7 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
 export function FieldError({ children }: { children?: React.ReactNode }) {
   if (!children) return null
   return (
-    <p role="alert" className="mt-2 text-sm font-medium text-rose-ember-500">
+    <p role="alert" className="mt-2 text-sm font-medium text-rose-ember-300">
       {children}
     </p>
   )

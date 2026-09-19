@@ -39,12 +39,12 @@ export function RecentScores({ entries }: { entries: ScoreEntry[] }) {
   return (
     <section aria-labelledby="recent-heading" className="px-5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 id="recent-heading" className="text-lg font-extrabold tracking-tight text-navy-900">
+        <h2 id="recent-heading" className="text-lg font-extrabold tracking-tight text-ink">
           Laatste potjes
         </h2>
         <Link
           href="/app/history"
-          className="press inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold text-navy-300"
+          className="press inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold text-ink-muted"
         >
           Alles
           <ChevronRight className="size-4" aria-hidden />
@@ -54,7 +54,7 @@ export function RecentScores({ entries }: { entries: ScoreEntry[] }) {
       <div className="space-y-4">
         {Object.entries(groups).map(([day, dayEntries]) => (
           <div key={day}>
-            <p className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-navy-300">
+            <p className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-ink-muted">
               {day}
             </p>
             <div className="space-y-2">

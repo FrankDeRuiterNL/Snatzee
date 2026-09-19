@@ -1,9 +1,10 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { MailCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FieldError, Input, Label } from '@/components/ui/input'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -17,6 +18,18 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  /** Set once a confirmation mail has gone out, which swaps the form for the
+   *  "check your inbox" panel. */
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+  const [resendIn, setResendIn] = useState(0)
+
+  // Rate-limits the resend button; GoTrue refuses rapid repeats anyway.
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const timer = setTimeout(() => setResendIn((n) => n - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendIn])
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -33,7 +46,7 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
       })
 
       if (signUpError) {
@@ -42,12 +55,12 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
         return
       }
 
-      // With e-mail confirmation on, there is no session yet.
+      // With e-mail confirmation on there is no session yet, so the account
+      // is not usable until the link in the mail is opened.
       if (!data.session) {
         setPending(false)
-        toast.success('Check je mail 📬', {
-          description: 'We hebben je een bevestigingslink gestuurd.',
-        })
+        setAwaitingConfirmation(email.trim())
+        setResendIn(30)
         return
       }
 
@@ -73,6 +86,86 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
 
     router.replace(next ?? '/app')
     router.refresh()
+  }
+
+  async function resend() {
+    if (resending || resendIn > 0 || !awaitingConfirmation) return
+    setResending(true)
+
+    const supabase = getSupabaseBrowserClient()
+    const { error: resendError } = await supabase.auth.resend({
+      type: 'signup',
+      email: awaitingConfirmation,
+      options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
+    })
+
+    setResending(false)
+
+    if (resendError) {
+      toast.error('Versturen is niet gelukt', { description: resendError.message })
+      return
+    }
+
+    setResendIn(30)
+    toast.success('Mail opnieuw verzonden 📬')
+  }
+
+  if (awaitingConfirmation) {
+    return (
+      <div className="space-y-5">
+        <div className="rounded-[1.5rem] bg-surface p-5 ring-1 ring-hairline">
+          <span className="grid size-12 place-items-center rounded-2xl bg-mint-500/15 ring-1 ring-mint-500/30">
+            <MailCheck className="size-6 text-mint-400" aria-hidden />
+          </span>
+
+          <h2 className="mt-4 text-lg font-extrabold tracking-tight text-white">
+            Check je mail 📬
+          </h2>
+
+          <p className="mt-2 text-[0.95rem] leading-relaxed text-white">
+            We hebben een bevestigingslink gestuurd naar{' '}
+            <strong className="font-bold text-white">{awaitingConfirmation}</strong>. Open die
+            link om je account te activeren.
+          </p>
+
+          <p className="mt-3 text-[0.95rem] leading-relaxed text-white">
+            Niets ontvangen? Check ook even je <strong className="font-bold">spamfolder</strong> —
+            daar belandt de mail nog wel eens.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Button
+            type="button"
+            full
+            size="lg"
+            variant="soft"
+            loading={resending}
+            disabled={resending || resendIn > 0}
+            onClick={resend}
+          >
+            {resendIn > 0 ? `Opnieuw verzenden (${resendIn}s)` : 'Bevestigingsmail opnieuw sturen'}
+          </Button>
+
+          <Button
+            type="button"
+            full
+            size="lg"
+            variant="ghost"
+            onClick={() => setAwaitingConfirmation(null)}
+          >
+            Ander e-mailadres gebruiken
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-ink-soft">
+          Al bevestigd?{' '}
+          <Link href="/login" className="font-semibold text-mint-400 underline underline-offset-4">
+            Inloggen
+          </Link>
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -114,11 +207,11 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
         {mode === 'register' ? 'Account maken' : 'Inloggen'}
       </Button>
 
-      <p className="pt-2 text-center text-sm text-navy-300">
+      <p className="pt-2 text-center text-sm text-ink-muted">
         {mode === 'register' ? (
           <>
             Heb je al een account?{' '}
-            <Link href="/login" className="font-semibold text-navy-900 underline underline-offset-4">
+            <Link href="/login" className="font-semibold text-ink underline underline-offset-4">
               Inloggen
             </Link>
           </>
@@ -127,7 +220,7 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
             Nog geen account?{' '}
             <Link
               href="/register"
-              className="font-semibold text-navy-900 underline underline-offset-4"
+              className="font-semibold text-ink underline underline-offset-4"
             >
               Registreren
             </Link>

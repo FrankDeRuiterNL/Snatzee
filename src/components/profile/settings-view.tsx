@@ -1,12 +1,15 @@
 'use client'
 
 import { useId, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Bell,
+  ChevronRight,
   Eye,
   LogOut,
   Palette,
+  Shield,
   Trash2,
   UserCog,
 } from 'lucide-react'
@@ -153,6 +156,24 @@ export function SettingsView({
 
   return (
     <div className="space-y-6 px-5">
+      {profile.role === 'superadmin' && (
+        <Link
+          href="/app/admin"
+          className="press card-elevated sheen flex items-center gap-4 rounded-[1.75rem] p-4"
+        >
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-mint-500/15 text-mint-300 ring-1 ring-mint-500/30">
+            <Shield className="size-5" strokeWidth={2.4} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold tracking-tight text-ink">Admin</span>
+            <span className="mt-0.5 block text-sm text-ink-muted">
+              Beheer scores en Yahtzee-registraties
+            </span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-ink-muted" aria-hidden />
+        </Link>
+      )}
+
       {profile.role !== 'user' && <AdminPanel role={profile.role} settings={appSettings} />}
 
       <Section title="Account" icon={UserCog}>
@@ -225,9 +246,9 @@ export function SettingsView({
         </Button>
       </form>
 
-      <div className="rounded-[1.5rem] bg-rose-ember-100/50 p-4 ring-1 ring-rose-ember-100">
-        <h2 className="text-sm font-bold text-rose-ember-500">Gevarenzone</h2>
-        <p className="mt-1 text-sm leading-relaxed text-navy-500">
+      <div className="rounded-[1.5rem] bg-rose-ember-500/10 p-4 ring-1 ring-rose-ember-500/30">
+        <h2 className="text-sm font-bold text-rose-ember-300">Gevarenzone</h2>
+        <p className="mt-1 text-sm leading-relaxed text-ink-soft">
           Je account verwijderen wist je profiel, al je potjes, Yahtzees, achievements, vriendschappen
           en groepslidmaatschappen. Dit kan niet ongedaan worden gemaakt.
         </p>
@@ -271,7 +292,7 @@ export function SettingsView({
 
           <div>
             <Label htmlFor={bioId}>
-              Bio <span className="font-normal text-navy-300">(optioneel)</span>
+              Bio <span className="font-normal text-ink-muted">(optioneel)</span>
             </Label>
             <Textarea
               id={bioId}
@@ -330,12 +351,12 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-[1.75rem] bg-white p-5 ring-1 ring-navy-100/70 shadow-soft">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-navy-300">
+    <section className="rounded-[1.75rem] bg-surface p-5 ring-1 ring-hairline shadow-soft">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ink-muted">
         <Icon className="size-4" aria-hidden strokeWidth={2.4} />
         {title}
       </h2>
-      <div className="divide-y divide-navy-100/70">{children}</div>
+      <div className="divide-y divide-hairline">{children}</div>
     </section>
   )
 }
@@ -343,8 +364,8 @@ function Section({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-h-12 items-center justify-between gap-4 py-2">
-      <span className="text-[0.95rem] font-semibold text-navy-900">{label}</span>
-      <span className="selectable truncate text-sm text-navy-300">{value}</span>
+      <span className="text-[0.95rem] font-semibold text-ink">{label}</span>
+      <span className="selectable truncate text-sm text-ink-muted">{value}</span>
     </div>
   )
 }

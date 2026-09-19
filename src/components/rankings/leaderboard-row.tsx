@@ -8,9 +8,9 @@ import { cn, formatNumber } from '@/lib/utils'
 import type { LeaderboardRow as Row } from '@/types/database'
 
 const MEDALS: Record<number, string> = {
-  1: 'bg-tangerine-100 text-tangerine-600',
-  2: 'bg-navy-50 text-navy-500',
-  3: 'bg-grape-100 text-grape-600',
+  1: 'bg-tangerine-500/15 text-tangerine-300',
+  2: 'bg-white/8 text-ink-soft',
+  3: 'bg-grape-500/15 text-grape-300',
 }
 
 export function LeaderboardRow({
@@ -35,16 +35,16 @@ export function LeaderboardRow({
         className={cn(
           'press flex items-center gap-3 rounded-[1.5rem] p-3 pr-4 ring-1 transition-colors',
           row.is_current_user
-            ? 'bg-navy-900 text-white ring-navy-900 shadow-lift'
-            : 'bg-white ring-navy-100/70 shadow-soft',
+            ? 'bg-surface-elevated text-white ring-hairline-strong shadow-lift'
+            : 'bg-surface ring-hairline shadow-soft',
         )}
       >
         <span
           className={cn(
             'tabular grid size-9 shrink-0 place-items-center rounded-xl text-sm font-extrabold',
             row.is_current_user
-              ? 'bg-white/10 text-white'
-              : (MEDALS[row.rank] ?? 'bg-cream-100 text-navy-300'),
+              ? 'bg-surface/10 text-white'
+              : (MEDALS[row.rank] ?? 'bg-canvas text-ink-muted'),
           )}
         >
           {row.rank}
@@ -54,7 +54,7 @@ export function LeaderboardRow({
           <Avatar src={row.avatar_url} name={row.display_name} size="sm" />
           {row.rank === 1 && (
             <Crown
-              className="absolute -right-1 -top-2 size-4 rotate-12 text-tangerine-500"
+              className="absolute -right-1 -top-2 size-4 rotate-12 text-tangerine-400"
               aria-label="Eerste plaats"
               strokeWidth={2.6}
             />
@@ -65,7 +65,7 @@ export function LeaderboardRow({
           <span
             className={cn(
               'block truncate font-bold tracking-tight',
-              row.is_current_user ? 'text-white' : 'text-navy-900',
+              row.is_current_user ? 'text-white' : 'text-ink',
             )}
           >
             {row.display_name}
@@ -76,7 +76,7 @@ export function LeaderboardRow({
           <span
             className={cn(
               'block truncate text-xs',
-              row.is_current_user ? 'text-navy-300' : 'text-navy-300',
+              row.is_current_user ? 'text-ink-muted' : 'text-ink-muted',
             )}
           >
             @{row.username}
@@ -86,7 +86,7 @@ export function LeaderboardRow({
         <span
           className={cn(
             'tabular shrink-0 text-lg font-extrabold tracking-tight',
-            row.is_current_user ? 'text-mint-400' : 'text-navy-900',
+            row.is_current_user ? 'text-mint-400' : 'text-ink',
           )}
         >
           {formatNumber(row.value, decimals)}

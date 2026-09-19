@@ -12,13 +12,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-mint-500 text-navy-950 shadow-soft hover:bg-mint-400',
-        navy: 'bg-navy-900 text-white shadow-soft hover:bg-navy-800',
-        soft: 'bg-white text-navy-900 ring-1 ring-navy-100 shadow-soft hover:bg-cream-50',
-        ghost: 'bg-transparent text-navy-500 hover:bg-navy-50',
-        outline: 'bg-transparent text-navy-900 ring-1 ring-navy-100 hover:bg-white',
+        primary: 'bg-mint-500 text-navy-950 glow-mint hover:bg-mint-400',
+        navy: 'bg-surface-elevated text-white shadow-soft hover:bg-surface-high',
+        soft: 'bg-surface text-ink ring-1 ring-hairline shadow-soft hover:bg-canvas-soft',
+        ghost: 'bg-transparent text-ink-soft hover:bg-white/5',
+        outline: 'bg-transparent text-ink ring-1 ring-hairline hover:bg-surface',
         danger: 'bg-rose-ember-500 text-white shadow-soft hover:brightness-110',
-        dangerSoft: 'bg-rose-ember-100 text-rose-ember-500 hover:brightness-95',
+        dangerSoft: 'bg-rose-ember-500/15 text-rose-ember-300 ring-1 ring-rose-ember-500/25 hover:bg-rose-ember-500/25',
       },
       size: {
         sm: 'min-h-11 px-4 text-sm',

@@ -23,17 +23,17 @@ export function AchievementPreview({
   return (
     <section aria-labelledby="achievements-preview" className="px-5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 id="achievements-preview" className="text-lg font-extrabold tracking-tight text-navy-900">
+        <h2 id="achievements-preview" className="text-lg font-extrabold tracking-tight text-ink">
           Achievements
         </h2>
-        <span className="tabular text-sm font-semibold text-navy-300">
+        <span className="tabular text-sm font-semibold text-ink-muted">
           {unlocked.length} / {achievements.length}
         </span>
       </div>
 
       {preview.length === 0 ? (
-        <div className="rounded-[1.5rem] bg-white p-6 text-center ring-1 ring-navy-100/70 shadow-soft">
-          <p className="text-sm text-navy-300">
+        <div className="rounded-[1.5rem] bg-surface p-6 text-center ring-1 ring-hairline shadow-soft">
+          <p className="text-sm text-ink-muted">
             Nog niets vrijgespeeld. Begin met spelen om achievements te verdienen.
           </p>
         </div>
@@ -45,7 +45,7 @@ export function AchievementPreview({
               <div
                 key={achievement.id}
                 title={achievement.name}
-                className="flex flex-col items-center rounded-2xl bg-white p-3 ring-1 ring-navy-100/70 shadow-soft"
+                className="flex flex-col items-center rounded-2xl bg-surface p-3 ring-1 ring-hairline shadow-soft"
               >
                 <span
                   className={cn(
@@ -55,7 +55,7 @@ export function AchievementPreview({
                 >
                   <span aria-hidden>{achievement.icon}</span>
                 </span>
-                <span className="mt-1.5 line-clamp-1 text-[0.65rem] font-bold text-navy-500">
+                <span className="mt-1.5 line-clamp-1 text-[0.65rem] font-bold text-ink-soft">
                   {achievement.name}
                 </span>
               </div>
@@ -67,7 +67,7 @@ export function AchievementPreview({
       {showLink && (
         <Link
           href={href}
-          className="press mt-3 flex min-h-12 items-center justify-center gap-1 rounded-2xl bg-white text-sm font-semibold text-navy-900 ring-1 ring-navy-100/70 shadow-soft"
+          className="press mt-3 flex min-h-12 items-center justify-center gap-1 rounded-2xl bg-surface text-sm font-semibold text-ink ring-1 ring-hairline shadow-soft"
         >
           Bekijk alle achievements
           <ChevronRight className="size-4" aria-hidden />

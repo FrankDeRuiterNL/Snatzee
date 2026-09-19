@@ -13,7 +13,7 @@ export function HeroStatCard({ summary }: { summary: HomeSummary }) {
   const Trend = delta === null || delta === 0 ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight
   const trendTone =
     delta === null || delta === 0
-      ? 'text-navy-300'
+      ? 'text-ink-muted'
       : delta > 0
         ? 'text-mint-400'
         : 'text-tangerine-400'
@@ -21,9 +21,9 @@ export function HeroStatCard({ summary }: { summary: HomeSummary }) {
   return (
     <section
       aria-labelledby="hero-average"
-      className="mx-5 rounded-[1.75rem] bg-navy-900 p-6 text-white shadow-lift"
+      className="mx-5 rounded-[1.75rem] bg-surface-elevated p-6 text-white shadow-lift"
     >
-      <p id="hero-average" className="text-sm font-semibold text-navy-300">
+      <p id="hero-average" className="text-sm font-semibold text-ink-muted">
         Jouw gemiddelde
       </p>
 
@@ -51,9 +51,9 @@ export function HeroStatCard({ summary }: { summary: HomeSummary }) {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/5 py-3">
+    <div className="rounded-2xl bg-surface/5 py-3">
       <dd className="tabular text-xl font-extrabold">{value}</dd>
-      <dt className="mt-0.5 text-[0.7rem] font-semibold text-navy-300">{label}</dt>
+      <dt className="mt-0.5 text-[0.7rem] font-semibold text-ink-muted">{label}</dt>
     </div>
   )
 }

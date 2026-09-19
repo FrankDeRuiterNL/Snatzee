@@ -27,20 +27,20 @@ export function HomeHeader({
       </Link>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xl font-extrabold tracking-tight text-navy-900">
+        <p className="truncate text-xl font-extrabold tracking-tight text-ink">
           Hey, {firstName(displayName)} 👋
         </p>
         {levelName ? (
           <LevelChip emoji={levelEmoji ?? null} name={levelName} className="mt-1" />
         ) : (
-          <p className="truncate text-sm text-navy-300">@{username}</p>
+          <p className="truncate text-sm text-ink-muted">@{username}</p>
         )}
       </div>
 
       <Link
         href="/app/settings"
         aria-label="Instellingen"
-        className="press grid size-11 shrink-0 place-items-center rounded-full bg-white text-navy-500 ring-1 ring-navy-100 shadow-soft"
+        className="press grid size-11 shrink-0 place-items-center rounded-full bg-surface text-ink-soft ring-1 ring-hairline shadow-soft"
       >
         <Settings className="size-5" aria-hidden />
       </Link>

@@ -115,7 +115,7 @@ export function HistoryView({
             setSortOpen(true)
           }}
           aria-label={`Sorteren: ${SORTS.find((s) => s.key === sort)?.label}`}
-          className="press grid size-12 shrink-0 place-items-center rounded-full bg-white text-navy-500 ring-1 ring-navy-100"
+          className="press grid size-12 shrink-0 place-items-center rounded-full bg-surface text-ink-soft ring-1 ring-hairline"
         >
           <ArrowUpDown className="size-5" aria-hidden />
         </button>
@@ -144,8 +144,8 @@ export function HistoryView({
             {Object.entries(grouped).map(([day, dayEntries]) => (
               <section key={day}>
                 <div className="mb-2 flex items-baseline justify-between px-1">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-navy-300">{day}</h2>
-                  <span className="tabular text-xs font-semibold text-navy-300">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">{day}</h2>
+                  <span className="tabular text-xs font-semibold text-ink-muted">
                     {dayEntries.length}×
                   </span>
                 </div>
@@ -195,8 +195,8 @@ export function HistoryView({
               aria-pressed={sort === option.key}
               className={`press flex min-h-14 w-full items-center rounded-2xl px-4 text-left font-semibold ring-1 ${
                 sort === option.key
-                  ? 'bg-navy-900 text-white ring-navy-900'
-                  : 'bg-white text-navy-900 ring-navy-100'
+                  ? 'bg-surface-elevated text-white ring-hairline-strong'
+                  : 'bg-surface text-ink ring-hairline'
               }`}
             >
               {option.label}
@@ -244,14 +244,14 @@ export function HistoryView({
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="rounded-[1.5rem] bg-white p-6 text-center ring-1 ring-navy-100"
+              className="rounded-[1.5rem] bg-surface p-6 text-center ring-1 ring-hairline"
             >
-              <p className="tabular text-6xl font-black tracking-tight text-navy-900">
+              <p className="tabular text-6xl font-black tracking-tight text-ink">
                 {formatNumber(detail.score)}
               </p>
               <p
                 className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-bold ${
-                  detail.is_win ? 'bg-mint-100 text-mint-700' : 'bg-cream-100 text-navy-500'
+                  detail.is_win ? 'bg-mint-500/15 text-mint-300' : 'bg-canvas text-ink-soft'
                 }`}
               >
                 {detail.is_win ? '🏆 Gewonnen' : '🎲 Niet gewonnen'}
@@ -259,9 +259,9 @@ export function HistoryView({
             </motion.div>
 
             {detail.note && (
-              <div className="rounded-2xl bg-white p-4 ring-1 ring-navy-100">
-                <p className="text-xs font-bold uppercase tracking-wider text-navy-300">Notitie</p>
-                <p className="selectable mt-1.5 text-[0.95rem] leading-relaxed text-navy-700">
+              <div className="rounded-2xl bg-surface p-4 ring-1 ring-hairline">
+                <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">Notitie</p>
+                <p className="selectable mt-1.5 text-[0.95rem] leading-relaxed text-ink-soft">
                   {detail.note}
                 </p>
               </div>

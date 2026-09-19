@@ -26,7 +26,8 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: 'Snatzee',
-    statusBarStyle: 'default',
+    // Lets the app paint under the status bar, which the dark canvas needs.
+    statusBarStyle: 'black-translucent',
   },
   formatDetection: { telephone: false },
   icons: {
@@ -57,10 +58,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#F7F7F5' },
-    { media: '(prefers-color-scheme: dark)', color: '#F7F7F5' },
-  ],
+  themeColor: '#07131F',
   width: 'device-width',
   initialScale: 1,
   // Locks out the double-tap/pinch zoom that makes a PWA feel like a website,
@@ -77,10 +75,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* iOS launch images — one per device size and orientation. */}
         <AppleSplashLinks />
       </head>
-      <body className="bg-cream-100">
+      <body className="bg-canvas">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-navy-900 focus:px-4 focus:py-3 focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-surface-elevated focus:px-4 focus:py-3 focus:text-white"
         >
           Naar hoofdinhoud
         </a>
@@ -88,9 +86,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Toaster
           position="top-center"
           offset={16}
+          theme="dark"
+          richColors={false}
           toastOptions={{
             className:
-              'rounded-2xl! border-none! bg-navy-900! text-white! shadow-float! font-sans! text-sm!',
+              'rounded-2xl! border! border-white/10! bg-surface-elevated! text-ink! shadow-float! font-sans! text-sm!',
           }}
         />
         <ServiceWorkerRegistrar />

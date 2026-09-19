@@ -40,7 +40,7 @@ export function BottomSheet({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 z-50 bg-navy-950/40 backdrop-blur-[2px]"
+                className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
               />
             </Dialog.Overlay>
 
@@ -58,21 +58,21 @@ export function BottomSheet({
                 }}
                 className={cn(
                   'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] w-full max-w-[34rem] flex-col',
-                  'rounded-t-[2rem] bg-cream-100 shadow-float focus:outline-none',
+                  'rounded-t-[2rem] bg-canvas-soft shadow-float ring-1 ring-hairline focus:outline-none',
                   className,
                 )}
               >
                 <div className="flex justify-center pt-3 pb-1">
-                  <span aria-hidden className="h-1.5 w-11 rounded-full bg-navy-100" />
+                  <span aria-hidden className="h-1.5 w-11 rounded-full bg-white/10" />
                 </div>
 
                 <div className="flex items-start justify-between gap-3 px-5 pt-2 pb-4">
                   <div className="min-w-0">
-                    <Dialog.Title className="text-xl font-extrabold tracking-tight text-navy-900">
+                    <Dialog.Title className="text-xl font-extrabold tracking-tight text-ink">
                       {title}
                     </Dialog.Title>
                     {description ? (
-                      <Dialog.Description className="mt-1 text-sm text-navy-300">
+                      <Dialog.Description className="mt-1 text-sm text-ink-muted">
                         {description}
                       </Dialog.Description>
                     ) : (
@@ -82,7 +82,7 @@ export function BottomSheet({
                   {showClose && (
                     <Dialog.Close
                       aria-label="Sluiten"
-                      className="press grid size-11 shrink-0 place-items-center rounded-full bg-white text-navy-500 ring-1 ring-navy-100"
+                      className="press grid size-11 shrink-0 place-items-center rounded-full bg-surface text-ink-soft ring-1 ring-hairline"
                     >
                       <X className="size-5" aria-hidden />
                     </Dialog.Close>
