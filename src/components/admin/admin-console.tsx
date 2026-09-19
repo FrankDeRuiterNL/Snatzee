@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { AdminNotify } from '@/components/admin/admin-notify'
 import { AdminManagement } from '@/components/admin/admin-management'
+import { AdminGroups } from '@/components/admin/admin-groups'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { formatNumber, formatPlayedAt, formatTime } from '@/lib/utils'
@@ -26,7 +27,7 @@ import type {
   AdminScoreSort,
 } from '@/types/database'
 
-type Tab = 'scores' | 'first-roll' | 'notify' | 'manage'
+type Tab = 'scores' | 'first-roll' | 'groups' | 'notify' | 'manage'
 
 const PAGE_SIZE = 25
 
@@ -222,6 +223,8 @@ export function AdminConsole({
       <section className="grid grid-cols-2 gap-3 px-5">
         <CountTile label="Scores" value={counts?.score_entries} />
         <CountTile label="1-worp Yahtzee's" value={counts?.first_roll_yahtzees} accent />
+        <CountTile label="Groepen" value={counts?.groups} />
+        <CountTile label="Spelers" value={counts?.players} />
       </section>
 
       {/* A scroller rather than a segmented control: four full labels do
@@ -232,6 +235,7 @@ export function AdminConsole({
           options={[
             { key: 'scores', label: 'Scores' },
             { key: 'first-roll', label: "1-worp Yahtzee's" },
+            { key: 'groups', label: 'Groepen' },
             { key: 'notify', label: 'Meldingen' },
             { key: 'manage', label: 'Beheer' },
           ]}
@@ -242,6 +246,8 @@ export function AdminConsole({
 
       {tab === 'notify' ? (
         <AdminNotify />
+      ) : tab === 'groups' ? (
+        <AdminGroups onChanged={() => setCountsVersion((v) => v + 1)} />
       ) : tab === 'manage' ? (
         <AdminManagement role={role} settings={settings} />
       ) : (

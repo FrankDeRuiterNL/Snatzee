@@ -220,6 +220,7 @@ export interface AdminCounts {
   score_entries: number
   first_roll_yahtzees: number
   players: number
+  groups: number
 }
 
 export type AdminScoreSort = 'newest' | 'oldest' | 'highest' | 'lowest'
@@ -254,3 +255,19 @@ export interface AdminUser {
   has_push: boolean
   achievement_count: number
 }
+
+export interface AdminGroupRow {
+  id: string
+  name: string
+  emoji: string | null
+  description: string | null
+  invite_code: string
+  owner_id: string | null
+  owner_name: string | null
+  owner_username: string | null
+  member_count: number
+  created_at: string
+  total_count: number
+}
+
+export type AdminGroupSort = 'newest' | 'oldest' | 'largest' | 'smallest'

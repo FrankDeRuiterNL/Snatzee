@@ -690,8 +690,18 @@ superadmin. Vier tabbladen:
 | --- | --- |
 | Scores | Alle scores doorzoeken, sorteren en verwijderen |
 | 1-worp Yahtzee's | Hetzelfde voor de Yahtzees in de eerste worp |
+| Groepen | Elke groep zien en verwijderen, ook die waar je zelf niet in zit |
 | Meldingen | Een eigen pushmelding sturen (zie hieronder) |
 | Beheer | De app-instellingen, rollen toekennen en achievements resetten |
+
+Groepen zijn onder RLS alleen zichtbaar voor hun eigen leden, dus het tabblad
+**Groepen** loopt via een functie die zelf op superadmin controleert. Je kunt
+zoeken op groepsnaam, uitnodigingscode of eigenaar, sorteren op datum of
+ledenaantal, en een groep verwijderen. Dat verwijdert de groep en de
+lidmaatschappen; de scores van de leden blijven staan. Verliest iemand
+daardoor een achievement die op het aantal groepen steunde, dan wordt die
+automatisch ingetrokken. Elke verwijdering komt met naam, code en ledenaantal
+in het auditlog.
 
 Het tabblad **Beheer** bevat wat eerder als "Beheer"-kaart op de
 Instellingen-pagina stond: de minimumaantal potjes voor de gemiddelde-ranking,
@@ -971,7 +981,7 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0014)
+supabase/migrations/        SQL migraties (0001 t/m 0015)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
