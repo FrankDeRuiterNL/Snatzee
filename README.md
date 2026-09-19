@@ -168,6 +168,49 @@ Open daarna `http://<docker-host>:6666` en maak je account aan.
 
 ---
 
+### Opstartvolgorde
+
+`docker compose up -d` start alles in de juiste volgorde; elke service wacht
+op een echte health check van de vorige:
+
+```
+db → db-prepare → auth + rest → storage → migrate → app → gateway
+```
+
+Poort 6666 gaat pas open als alles erachter antwoordt, dus je krijgt geen 502
+tijdens het opstarten. De eerste keer duurt dat een paar minuten.
+
+Eén detail dat makkelijk misgaat: PostgREST bouwt zijn schema-cache zodra het
+verbinding maakt, en dat is bij een eerste start vóórdat de migraties draaien.
+`migrate` stuurt daarom aan het eind `notify pgrst, 'reload schema'`. Zonder
+dat zou de API blijven melden dat `get_leaderboard` niet bestaat tot je `rest`
+opnieuw start.
+
+### Serveren op meerdere domeinen
+
+De app volgt de adresbalk. De gateway serveert de Supabase-API's op dezelfde
+origin als de app, dus de browser praat met het domein waarop je al zit. Een
+extra domein kost geen herbouw en geen extra variabele.
+
+Zet `PUBLIC_URL` op het domein dat je als hoofdadres wilt — dat adres komt
+terug in OAuth-callbacks, e-maillinks, opgeslagen avatar-URL's en metadata —
+en noem alle domeinen in deze twee:
+
+```bash
+PUBLIC_URL=https://www.snatzee.nl
+
+ADDITIONAL_REDIRECT_URLS=https://www.snatzee.nl/**,https://snatzee.frankvandetechniek.nl/**
+MAILER_EXTERNAL_HOSTS=www.snatzee.nl,snatzee.frankvandetechniek.nl
+```
+
+> **Eén `PUBLIC_URL` tegelijk.** Een `.env`-bestand houdt de laatste regel van
+> een sleutel aan, dus twee actieve `PUBLIC_URL`-regels betekent stilletjes dat
+> de onderste wint. Zet alternatieven met `#` uit.
+
+Wijzig je `PUBLIC_URL` later, draai dan `docker compose up -d --build`: het
+zit in de build gebakken. Avatars die al waren geüpload blijven naar het oude
+domein wijzen, dus laat dat domein bereikbaar of upload ze opnieuw.
+
 ### Achter een reverse proxy met HTTPS
 
 Voor `https://www.snatzee.nl` zet je je eigen proxy (Traefik, Caddy, nginx,
@@ -290,7 +333,8 @@ docker run --rm -v snatzee_storage-data:/data -v "$PWD":/backup alpine \
 | `password authentication failed for user "supabase_storage_admin"` | De wachtwoorden van de servicerollen stonden niet goed. `db-prepare` zet ze bij elke start; komt de fout terug, dan klopt `POSTGRES_PASSWORD` niet met het bestaande volume — zie *Geheimen wijzigen*. |
 | `auth` stopt met `must be owner of function uid` | GoTrue mag zijn eigen `auth.uid()` niet vervangen. `db-prepare` draagt die functies aan GoTrue over; draai `docker compose up -d` opnieuw. |
 | `storage` blijft herstarten | Meestal een verkeerd `JWT_SECRET` in `.env`, of een volume dat bij een ander wachtwoord hoort. |
-| Inloggen lukt, maar je wordt teruggestuurd naar `/login` | `PUBLIC_URL` komt niet overeen met het adres in de browser. Corrigeer en draai `docker compose up -d --build` (de waarde zit in de build gebakken). |
+| Inloggen lukt, maar je wordt teruggestuurd naar `/login` | Staat het domein in `ADDITIONAL_REDIRECT_URLS`? Controleer ook dat er maar één actieve `PUBLIC_URL`-regel in `.env` staat. |
+| `Could not find the function public.… in the schema cache` | PostgREST draait op een cache van vóór de migraties. `migrate` stuurt daar een reload voor; blijft het staan, dan helpt `docker compose restart rest`. |
 | OAuth eindigt op een foutpagina | Redirect-URI bij de provider moet exact `${PUBLIC_URL}/auth/v1/callback` zijn, en het domein moet in `ADDITIONAL_REDIRECT_URLS` staan. |
 | Avatars laden niet | Wijzig je `PUBLIC_URL`, herbouw dan de app: het beeld-domein wordt tijdens de build vastgelegd. |
 | Poort 6666 is bezet | Zet `HTTP_PORT=7777` in `.env` en start opnieuw. |

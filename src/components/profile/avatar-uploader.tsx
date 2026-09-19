@@ -5,6 +5,7 @@ import { Camera, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/ui/avatar'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { publicStorageUrl } from '@/lib/supabase/env'
 import { AVATAR_MAX_BYTES } from '@/lib/constants'
 import { haptic } from '@/lib/haptics'
 
@@ -51,13 +52,12 @@ export function AvatarUploader({
       return
     }
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('avatars').getPublicUrl(path)
-
+    // Built from the canonical URL rather than the client's (which follows
+    // the current domain), so the value stored on the profile is the same
+    // whichever domain the upload was made from.
     setUploading(false)
     haptic('success')
-    onChange(publicUrl)
+    onChange(publicStorageUrl('avatars', path))
   }
 
   return (

@@ -94,7 +94,8 @@ services:
       # confirmation e-mails are built from it.
       API_EXTERNAL_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       GOTRUE_SITE_URL: ${PUBLIC_URL}
-      GOTRUE_MAILER_EXTERNAL_HOSTS: snatzee.frankvandetechniek.nl
+      # Every hostname that may appear in a confirmation or reset link.
+      GOTRUE_MAILER_EXTERNAL_HOSTS: ${MAILER_EXTERNAL_HOSTS:-}
       GOTRUE_JWT_ISSUER: ${PUBLIC_URL}
       # Every origin a user may be redirected back to after signing in.
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
@@ -155,6 +156,10 @@ services:
       PGRST_JWT_AUD: authenticated
       # Publish claims as request.jwt.claims, which is what auth.uid() reads.
       PGRST_DB_USE_LEGACY_GUCS: 'false'
+      # Lets the migrate step tell PostgREST to rebuild its schema cache
+      # once the tables and functions exist.
+      PGRST_DB_CHANNEL_ENABLED: 'true'
+      PGRST_DB_CHANNEL: pgrst
       PGRST_ADMIN_SERVER_PORT: 3001
       PGRST_ADMIN_SERVER_HOST: localhost
       PGRST_LOG_LEVEL: ${LOG_LEVEL:-error}
@@ -233,11 +238,21 @@ services:
         NEXT_PUBLIC_SUPABASE_URL: ${PUBLIC_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
         NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL}
+        # The gateway serves Supabase on the app's own origin, so the browser
+        # follows the address bar instead of this baked-in URL. That is what
+        # lets the same build serve several domains.
+        NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
     image: snatzee:latest
     restart: unless-stopped
     depends_on:
+      # The schema must exist and the API must be answering before the first
+      # server-rendered page tries to query it.
       migrate:
         condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -245,6 +260,7 @@ services:
       NEXT_PUBLIC_SUPABASE_URL: ${PUBLIC_URL}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL}
+      NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
       # Server-side rendering reaches Supabase over the Docker network
       # rather than going back out through the public hostname.
       SUPABASE_INTERNAL_URL: http://gateway
@@ -263,14 +279,16 @@ services:
     image: nginx:1.29-alpine
     restart: unless-stopped
     depends_on:
+      # Published last, so port 6666 only opens when everything behind it can
+      # actually answer rather than returning 502s during startup.
       app:
-        condition: service_started
+        condition: service_healthy
       auth:
-        condition: service_started
+        condition: service_healthy
       rest:
-        condition: service_started
+        condition: service_healthy
       storage:
-        condition: service_started
+        condition: service_healthy
     ports:
       - '${HTTP_PORT:-6666}:80'
     volumes:

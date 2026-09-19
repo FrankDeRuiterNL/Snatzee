@@ -1,10 +1,10 @@
 'use client'
 
 import { createBrowserClient } from '@supabase/ssr'
-import { SUPABASE_ANON_KEY, SUPABASE_STORAGE_KEY, SUPABASE_URL } from './env'
+import { SUPABASE_ANON_KEY, SUPABASE_STORAGE_KEY, getBrowserSupabaseUrl } from './env'
 
 export function createClient() {
-  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createBrowserClient(getBrowserSupabaseUrl(), SUPABASE_ANON_KEY, {
     auth: { storageKey: SUPABASE_STORAGE_KEY },
   })
 }

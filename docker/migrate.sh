@@ -63,5 +63,14 @@ for file in /migrations/*.sql; do
   "${PSQL[@]}" -f "$file" || fail "$(basename "$file") failed"
 done
 
+# PostgREST builds its schema cache when it connects, which happens before
+# these migrations run on a first boot. Without this it would keep serving a
+# cache that predates every table and function here, and the app would get
+# "Could not find the function public.get_leaderboard in the schema cache"
+# until something restarted it.
+echo "Asking PostgREST to reload its schema cache..."
+"${PSQL[@]}" -c "notify pgrst, 'reload schema';" || \
+  echo "  (could not notify PostgREST; restart the rest service if the API 404s)" >&2
+
 echo ""
 echo "Schema is up to date."
