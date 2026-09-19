@@ -1,10 +1,10 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ChevronRight, Plus, Ticket } from 'lucide-react'
+import { ChevronRight, Keyboard, Plus, QrCode, Ticket } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { BottomSheet } from '@/components/ui/sheet'
@@ -13,6 +13,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
 import { pluralize } from '@/lib/utils'
+import { parseInviteCode } from '@/lib/invite'
+import { QrScanner } from '@/components/groups/qr-scanner'
 
 const EMOJI_CHOICES = ['🎲', '👨‍👩‍👧', '🏖️', '💼', '🍻', '🏆', '🌙', '🔥', '🧩', '🥇']
 
@@ -30,12 +32,22 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
   const descId = useId()
   const codeId = useId()
 
+  // A QR code scanned with the phone's own camera app lands here as
+  // ?code=..., so the sheet opens ready to confirm rather than making
+  // someone retype what they just scanned. Seeded from the initial render
+  // so no effect has to write state.
+  const searchParams = useSearchParams()
+  const linkedCode = parseInviteCode(searchParams.get('code') ?? '')
+
   const [createOpen, setCreateOpen] = useState(false)
-  const [joinOpen, setJoinOpen] = useState(false)
+  const [joinOpen, setJoinOpen] = useState(() => linkedCode !== null)
+  const [joinMode, setJoinMode] = useState<'choose' | 'code' | 'scan'>(() =>
+    linkedCode ? 'code' : 'choose',
+  )
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('🎲')
   const [description, setDescription] = useState('')
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(() => linkedCode ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -73,28 +85,64 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
     router.refresh()
   }
 
+  const submitCode = useCallback(
+    async (raw: string) => {
+      const parsed = parseInviteCode(raw)
+      if (!parsed) {
+        setError('Dat is geen geldige uitnodigingscode')
+        return
+      }
+
+      setBusy(true)
+      setError(null)
+      const supabase = getSupabaseBrowserClient()
+      const { error: rpcError } = await supabase.rpc('join_group', { p_invite_code: parsed })
+      setBusy(false)
+
+      if (rpcError) {
+        setError(rpcError.message)
+        return
+      }
+
+      haptic('success')
+      toast.success('Je zit in de groep!')
+      setJoinOpen(false)
+      setJoinMode('choose')
+      setCode('')
+      // Drops ?code= so a refresh does not reopen the sheet.
+      router.replace('/app/groups')
+      router.refresh()
+    },
+    [router],
+  )
+
   async function joinGroup(event: React.FormEvent) {
     event.preventDefault()
     if (busy) return
+    await submitCode(code)
+  }
 
-    setBusy(true)
+  // The scanner fires as soon as it decodes anything, so it joins straight
+  // away: the person already chose this group by pointing at its code.
+  const handleScan = useCallback(
+    (value: string) => {
+      const parsed = parseInviteCode(value)
+      if (!parsed) {
+        setError('Deze QR-code hoort niet bij een Snatzee-groep')
+        setJoinMode('code')
+        return
+      }
+      setCode(parsed)
+      void submitCode(parsed)
+    },
+    [submitCode],
+  )
+
+  function openJoin() {
+    haptic('light')
     setError(null)
-    const supabase = getSupabaseBrowserClient()
-    const { error: rpcError } = await supabase.rpc('join_group', {
-      p_invite_code: code.trim().toUpperCase(),
-    })
-    setBusy(false)
-
-    if (rpcError) {
-      setError(rpcError.message)
-      return
-    }
-
-    haptic('success')
-    toast.success('Je zit in de groep!')
-    setJoinOpen(false)
-    setCode('')
-    router.refresh()
+    setJoinMode('choose')
+    setJoinOpen(true)
   }
 
   return (
@@ -110,8 +158,8 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
                 <Plus className="size-4" aria-hidden />
                 Groep maken
               </Button>
-              <Button full variant="ghost" onClick={() => setJoinOpen(true)}>
-                Ik heb een uitnodigingscode
+              <Button full variant="ghost" onClick={openJoin}>
+                Ik heb een uitnodiging
               </Button>
             </div>
           }
@@ -156,9 +204,9 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
               <Plus className="size-4" aria-hidden />
               Nieuwe groep
             </Button>
-            <Button variant="soft" className="flex-1" onClick={() => setJoinOpen(true)}>
+            <Button variant="soft" className="flex-1" onClick={openJoin}>
               <Ticket className="size-4" aria-hidden />
-              Code invoeren
+              Groep joinen
             </Button>
           </div>
         </>
@@ -229,30 +277,93 @@ export function GroupsView({ groups }: { groups: GroupSummary[] }) {
 
       <BottomSheet
         open={joinOpen}
-        onOpenChange={setJoinOpen}
+        onOpenChange={(open) => {
+          setJoinOpen(open)
+          // Closing leaves the camera behind; unmounting the scanner is
+          // what releases it.
+          if (!open) setJoinMode('choose')
+        }}
         title="Groep joinen"
-        description="Vul de uitnodigingscode in die je van een groepslid kreeg."
+        description={
+          joinMode === 'scan'
+            ? 'Scan de QR-code die het andere groepslid laat zien.'
+            : joinMode === 'code'
+              ? 'Vul de uitnodigingscode in die je van een groepslid kreeg.'
+              : 'Scan een QR-code of vul de code in die je hebt gekregen.'
+        }
         footer={
-          <Button type="submit" form="join-group" full size="lg" loading={busy}>
-            Deelnemen
-          </Button>
+          joinMode === 'code' ? (
+            <Button type="submit" form="join-group" full size="lg" loading={busy}>
+              Deelnemen
+            </Button>
+          ) : undefined
         }
       >
-        <form id="join-group" onSubmit={joinGroup} className="pb-2">
-          <Label htmlFor={codeId}>Uitnodigingscode</Label>
-          <Input
-            id={codeId}
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            maxLength={8}
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="A1B2C3D4"
-            className="text-center text-2xl font-black tracking-[0.3em]"
-          />
-          <FieldError>{error}</FieldError>
-        </form>
+        {joinMode === 'choose' && (
+          <div className="space-y-3 pb-4">
+            <Button
+              full
+              size="lg"
+              onClick={() => {
+                haptic('light')
+                setError(null)
+                setJoinMode('scan')
+              }}
+            >
+              <QrCode className="size-5" aria-hidden />
+              QR Code scannen
+            </Button>
+            <Button
+              variant="soft"
+              full
+              size="lg"
+              onClick={() => {
+                haptic('light')
+                setError(null)
+                setJoinMode('code')
+              }}
+            >
+              <Keyboard className="size-5" aria-hidden />
+              Code invoeren
+            </Button>
+          </div>
+        )}
+
+        {joinMode === 'scan' && (
+          <div className="space-y-3 pb-4">
+            <QrScanner onResult={handleScan} />
+            {busy && (
+              <p className="text-center text-sm text-mint-300" role="status">
+                Bezig met deelnemen…
+              </p>
+            )}
+            <FieldError>{error}</FieldError>
+            <Button variant="ghost" full onClick={() => setJoinMode('choose')}>
+              Terug
+            </Button>
+          </div>
+        )}
+
+        {joinMode === 'code' && (
+          <form id="join-group" onSubmit={joinGroup} className="pb-2">
+            <Label htmlFor={codeId}>Uitnodigingscode</Label>
+            <Input
+              id={codeId}
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              maxLength={8}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="A1B2C3D4"
+              className="text-center text-2xl font-black tracking-[0.3em]"
+            />
+            <FieldError>{error}</FieldError>
+            <Button variant="ghost" full className="mt-3" onClick={() => setJoinMode('choose')}>
+              Terug
+            </Button>
+          </form>
+        )}
       </BottomSheet>
     </div>
   )

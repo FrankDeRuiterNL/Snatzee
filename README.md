@@ -478,6 +478,37 @@ databasetrigger weigert elke update die de kolom aanraakt buiten
 
 ---
 
+## Groepen delen
+
+Op een groepspagina zit onder de naam de knop **Uitnodigen**, met twee opties:
+
+- **Kopieer ID** — zet de uitnodigingscode op het klembord, zoals eerder.
+- **QR Code** — toont een QR-code op het scherm, met de code er nog eens
+  uitgeschreven onder.
+
+De QR bevat een volledige link (`/app/groups?code=...`), geen kale code. Dat
+betekent dat ook de gewone camera-app van een telefoon hem kan openen: die komt
+dan in Snatzee uit met de code al ingevuld. Iemand zonder de app belandt op de
+site in plaats van naar een code te staren waar hij niets mee kan.
+
+Op de Groepen-pagina heet de knop **Groep joinen** en biedt hij dezelfde twee
+kanten:
+
+- **QR Code scannen** — opent de camera en neemt je meteen op in de groep zodra
+  de code herkend is.
+- **Code invoeren** — het invulveld zoals het was.
+
+Scannen gebruikt de `BarcodeDetector` van de browser waar die bestaat, en valt
+anders terug op jsQR. Dat laatste is wat iOS nodig heeft: Safari levert nog geen
+BarcodeDetector. De jsQR-bundel wordt pas geladen als de scanner echt geopend
+wordt.
+
+De camera werkt alleen op een **https-adres**. Op `http://localhost:6666` blijft
+scannen dus uit; de app zegt dat dan ook in plaats van een vage camerafout te
+tonen.
+
+---
+
 ## Yahtzee's registreren
 
 Er zijn twee soorten Yahtzee, en ze worden bewust anders vastgelegd.

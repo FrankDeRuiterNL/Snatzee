@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Copy, LogOut, UserMinus, UserPlus } from 'lucide-react'
+import { Copy, LogOut, QrCode, Share2, UserMinus, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/ui/avatar'
 import { Marquee } from '@/components/ui/marquee'
+import { InviteQrCode } from '@/components/groups/qr-code'
+import { inviteUrl } from '@/lib/invite'
 import { Button } from '@/components/ui/button'
 import { BottomSheet } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -45,6 +47,8 @@ export function GroupDetail({
   const [removing, setRemoving] = useState<GroupMemberRow | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [inviteSheetOpen, setInviteSheetOpen] = useState(false)
+  const [showQr, setShowQr] = useState(false)
 
   const memberIds = new Set(members.map((m) => m.user_id))
   const invitable = friends.filter((f) => !memberIds.has(f.id))
@@ -167,10 +171,14 @@ export function GroupDetail({
             variant="soft"
             size="sm"
             className="flex-1 bg-surface/10! text-white! ring-white/20!"
-            onClick={copyCode}
+            onClick={() => {
+              haptic('light')
+              setShowQr(false)
+              setInviteSheetOpen(true)
+            }}
           >
-            <Copy className="size-4" aria-hidden />
-            {group.invite_code}
+            <Share2 className="size-4" aria-hidden />
+            Uitnodigen
           </Button>
         </div>
       </section>
@@ -194,6 +202,53 @@ export function GroupDetail({
           Groep verlaten
         </Button>
       </div>
+
+      <BottomSheet
+        open={inviteSheetOpen}
+        onOpenChange={(open) => {
+          setInviteSheetOpen(open)
+          // Always reopen on the choice, not on whatever was last shown.
+          if (!open) setShowQr(false)
+        }}
+        title="Uitnodigen"
+        description={
+          showQr
+            ? 'Laat de ander deze code scannen met Groep joinen — of met de cameraapp.'
+            : `Deel ${group.name} met iemand die nog geen lid is.`
+        }
+      >
+        <div className="space-y-3 pb-4">
+          {showQr ? (
+            <>
+              <InviteQrCode value={inviteUrl(group.invite_code)} />
+              <p className="text-center font-mono text-lg font-bold tracking-[0.2em] text-ink">
+                {group.invite_code}
+              </p>
+              <Button variant="ghost" full onClick={() => setShowQr(false)}>
+                Terug
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="soft" full size="lg" onClick={copyCode}>
+                <Copy className="size-5" aria-hidden />
+                Kopieer ID
+              </Button>
+              <Button
+                full
+                size="lg"
+                onClick={() => {
+                  haptic('light')
+                  setShowQr(true)
+                }}
+              >
+                <QrCode className="size-5" aria-hidden />
+                QR Code
+              </Button>
+            </>
+          )}
+        </div>
+      </BottomSheet>
 
       <BottomSheet
         open={membersOpen}

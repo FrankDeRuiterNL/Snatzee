@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Dice5, Sparkles, Trophy, Users, Zap } from 'lucide-react'
+import { Dice5, Trophy, Users, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LogoLockup } from '@/components/ui/logo'
 import { getCurrentUser } from '@/lib/supabase/queries'
@@ -20,12 +20,7 @@ export default async function LandingPage() {
       </header>
 
       <section className="mt-10">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-mint-500/15 px-3 py-1.5 text-xs font-bold text-mint-300">
-          <Sparkles className="size-3.5" aria-hidden />
-          Voor iedereen die Yahtzee speelt
-        </span>
-
-        <h1 className="mt-5 text-[2.6rem] font-black leading-[1.05] tracking-tight text-ink">
+        <h1 className="text-[2.6rem] font-black leading-[1.05] tracking-tight text-ink">
           Jouw Yahtzee&#8209;scores,
           <br />
           <span className="text-mint-400">eindelijk bijgehouden.</span>
