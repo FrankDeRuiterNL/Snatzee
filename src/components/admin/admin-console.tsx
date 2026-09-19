@@ -8,23 +8,25 @@ import { toast } from 'sonner'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Segmented } from '@/components/ui/segmented'
+import { ChipScroller } from '@/components/ui/segmented'
 import { BottomSheet } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { AdminNotify } from '@/components/admin/admin-notify'
+import { AdminManagement } from '@/components/admin/admin-management'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { formatNumber, formatPlayedAt, formatTime } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
 import type {
+  AppRole,
   AdminCounts,
   AdminFirstRollRow,
   AdminScoreRow,
   AdminScoreSort,
 } from '@/types/database'
 
-type Tab = 'scores' | 'first-roll' | 'notify'
+type Tab = 'scores' | 'first-roll' | 'notify' | 'manage'
 
 const PAGE_SIZE = 25
 
@@ -35,7 +37,13 @@ const SORTS: { key: AdminScoreSort; label: string }[] = [
   { key: 'lowest', label: 'Laagste score' },
 ]
 
-export function AdminConsole() {
+export function AdminConsole({
+  role,
+  settings,
+}: {
+  role: AppRole
+  settings: Record<string, number>
+}) {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('scores')
   const [counts, setCounts] = useState<AdminCounts | null>(null)
@@ -216,14 +224,16 @@ export function AdminConsole() {
         <CountTile label="1-worp Yahtzee's" value={counts?.first_roll_yahtzees} accent />
       </section>
 
+      {/* A scroller rather than a segmented control: four full labels do
+          not fit side by side at phone width. */}
       <div className="px-5">
-        <Segmented
+        <ChipScroller
           ariaLabel="Adminweergave"
-          layoutId="admin-tab"
           options={[
             { key: 'scores', label: 'Scores' },
             { key: 'first-roll', label: "1-worp Yahtzee's" },
             { key: 'notify', label: 'Meldingen' },
+            { key: 'manage', label: 'Beheer' },
           ]}
           value={tab}
           onChange={setTab}
@@ -232,6 +242,8 @@ export function AdminConsole() {
 
       {tab === 'notify' ? (
         <AdminNotify />
+      ) : tab === 'manage' ? (
+        <AdminManagement role={role} settings={settings} />
       ) : (
         <>
       <div className="flex items-center gap-2 px-5">

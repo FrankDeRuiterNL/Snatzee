@@ -246,10 +246,11 @@ export interface PushSubscriptionRow {
   last_seen_at: string
 }
 
-export interface NotifiableUser {
+export interface AdminUser {
   user_id: string
   username: string
   display_name: string
   avatar_url: string | null
   has_push: boolean
+  achievement_count: number
 }

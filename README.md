@@ -650,6 +650,28 @@ wachtrij te legen via `POST /api/push/drain`.
 Een gelijkspel neemt de koppositie niet over: wie de score als eerste haalde,
 houdt hem. Je eigen record verbeteren stuurt niemand een melding.
 
+### De adminpagina
+
+**Instellingen → Snatzee Admin**, alleen zichtbaar en bereikbaar voor een
+superadmin. Vier tabbladen:
+
+| Tab | Wat je er doet |
+| --- | --- |
+| Scores | Alle scores doorzoeken, sorteren en verwijderen |
+| 1-worp Yahtzee's | Hetzelfde voor de Yahtzees in de eerste worp |
+| Meldingen | Een eigen pushmelding sturen (zie hieronder) |
+| Beheer | De app-instellingen, rollen toekennen en achievements resetten |
+
+Het tabblad **Beheer** bevat wat eerder als "Beheer"-kaart op de
+Instellingen-pagina stond: de minimumaantal potjes voor de gemiddelde-ranking,
+de laagst en hoogst toegestane score, en het toekennen van rollen. Daar staat
+nu ook **Achievements resetten**: dat wist de behaalde achievements van één
+speler zonder de scores aan te raken. Omdat achievements worden afgeleid uit de
+data en niet gelogd, komt alles waar de speler nog aan voldoet terug zodra er
+weer iets geregistreerd wordt — het is dus bedoeld om een foute toekenning op
+te ruimen, niet als straf. Elke reset komt in het auditlog, inclusief welke
+achievements het betrof.
+
 ### Een eigen melding sturen (superadmin)
 
 **Instellingen → Snatzee Admin → Meldingen.** Alleen een superadmin ziet die
@@ -918,7 +940,7 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0013)
+supabase/migrations/        SQL migraties (0001 t/m 0014)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack

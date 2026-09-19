@@ -12,7 +12,7 @@ import { ListSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
-import type { NotifiableUser } from '@/types/database'
+import type { AdminUser } from '@/types/database'
 
 /**
  * Send a notification to everyone, or to a hand-picked few.
@@ -38,14 +38,14 @@ export function AdminNotify() {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const [query, setQuery] = useState('')
-  const [users, setUsers] = useState<NotifiableUser[] | null>(null)
+  const [users, setUsers] = useState<AdminUser[] | null>(null)
 
   useEffect(() => {
     let cancelled = false
     const supabase = getSupabaseBrowserClient()
 
     void supabase
-      .rpc('admin_list_notifiable_users', { p_search: null })
+      .rpc('admin_list_users', { p_search: null })
       .then((response: { data: unknown; error: { message: string } | null }) => {
         if (cancelled) return
         if (response.error) {
@@ -53,7 +53,7 @@ export function AdminNotify() {
           setUsers([])
           return
         }
-        setUsers((response.data ?? []) as NotifiableUser[])
+        setUsers((response.data ?? []) as AdminUser[])
       })
 
     return () => {

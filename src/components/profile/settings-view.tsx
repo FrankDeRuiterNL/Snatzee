@@ -19,7 +19,6 @@ import { BottomSheet } from '@/components/ui/sheet'
 import { FieldError, Input, Label, Textarea } from '@/components/ui/input'
 import { ToggleRow } from '@/components/ui/toggle-row'
 import { AvatarUploader } from '@/components/profile/avatar-uploader'
-import { AdminPanel } from '@/components/profile/admin-panel'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { DISPLAY_NAME_MAX } from '@/lib/constants'
 import { haptic } from '@/lib/haptics'
@@ -53,11 +52,9 @@ function writeLocalPreference(key: string, value: boolean) {
 export function SettingsView({
   profile,
   email,
-  appSettings,
 }: {
   profile: Profile
   email: string | null
-  appSettings: Record<string, number>
 }) {
   const router = useRouter()
   const displayNameId = useId()
@@ -256,14 +253,12 @@ export function SettingsView({
           <span className="min-w-0 flex-1">
             <span className="block font-bold tracking-tight text-ink">Admin</span>
             <span className="mt-0.5 block text-sm text-ink-muted">
-              Beheer scores en Yahtzee-registraties
+              Scores, meldingen en instellingen
             </span>
           </span>
           <ChevronRight className="size-5 shrink-0 text-ink-muted" aria-hidden />
         </Link>
       )}
-
-      {profile.role !== 'user' && <AdminPanel role={profile.role} settings={appSettings} />}
 
       <Section title="Account" icon={UserCog}>
         <Row label="E-mailadres" value={email ?? '—'} />

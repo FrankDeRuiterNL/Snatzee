@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui/page-header'
 import { PageTransition } from '@/components/layout/page-transition'
 import { AdminConsole } from '@/components/admin/admin-console'
-import { getCurrentProfile } from '@/lib/supabase/queries'
+import { getAppSettings, getCurrentProfile } from '@/lib/supabase/queries'
 
 export const metadata = { title: 'Admin' }
 export const dynamic = 'force-dynamic'
@@ -15,17 +15,19 @@ export default async function AdminPage() {
   if (!profile) redirect('/login')
   if (profile.role !== 'superadmin') redirect('/app')
 
+  const appSettings = await getAppSettings()
+
   return (
     <PageTransition>
       <div style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}>
         <PageHeader
           title="Snatzee Admin"
-          subtitle="Beheer scores en Yahtzee-registraties"
+          subtitle="Scores, meldingen en instellingen"
           backHref="/app/settings"
         />
       </div>
 
-      <AdminConsole />
+      <AdminConsole role={profile.role} settings={appSettings} />
     </PageTransition>
   )
 }
