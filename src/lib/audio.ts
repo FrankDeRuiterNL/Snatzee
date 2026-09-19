@@ -43,9 +43,15 @@ function getAudio(name: SoundName) {
 
   const audio = new Audio()
   // Opus in ogg is roughly a third smaller; Safari falls back to mp3.
-  audio.src = audio.canPlayType('audio/ogg; codecs=opus')
-    ? `/audio/${name}.ogg`
-    : `/audio/${name}.mp3`
+  //
+  // The logo is the exception: it is the one sound the document preloads,
+  // and a preload can only name one file. Picking the format here would
+  // mean Chrome and Firefox fetching the ogg while the preloaded mp3 went
+  // unused, which is exactly the delay the preload exists to remove.
+  audio.src =
+    name !== 'logo' && audio.canPlayType('audio/ogg; codecs=opus')
+      ? `/audio/${name}.ogg`
+      : `/audio/${name}.mp3`
   audio.preload = 'auto'
   audio.volume = VOLUMES[name]
   cache.set(name, audio)
@@ -82,9 +88,17 @@ export function preloadSounds(names: SoundName[] = ['logo', 'score', 'achievemen
 /**
  * Plays the audio logo once per launch.
  *
- * Browsers block audio until the page has been interacted with, so if the
- * immediate attempt is refused this waits for the first tap — but only
- * briefly, because a launch sound arriving a minute later is worse than none.
+ * Autoplay is the whole difficulty here. No browser will start audible
+ * playback before the page has been interacted with, and an app opened
+ * from the homescreen is never interacted with — the launch is a tap on
+ * an icon in another process. Chrome makes an exception for installed
+ * apps; Safari does not, at any iOS version, so on iPhone the sound
+ * genuinely cannot arrive before the first touch.
+ *
+ * What it can do is arrive ON that touch rather than after it. The
+ * listeners are registered in the CAPTURE phase, so they run before the
+ * app's own handlers: touching a navigation button starts the sound at
+ * touch-down, instead of once the next page has rendered.
  */
 export function playLaunchSound() {
   if (typeof window === 'undefined' || !isSoundEnabled()) return
@@ -109,7 +123,7 @@ export function playLaunchSound() {
   if (!attempt) return
 
   attempt.then(markPlayed).catch(() => {
-    // One shared abort signal detaches both listeners, whether the sound
+    // One shared abort signal detaches every listener, whether the sound
     // played or the window for it simply expired.
     const controller = new AbortController()
     // Long enough to catch the first real tap, short enough that the logo
@@ -119,10 +133,17 @@ export function playLaunchSound() {
     const onGesture = () => {
       clearTimeout(timer)
       controller.abort()
+      // Must stay synchronous inside the gesture: awaiting anything first
+      // spends the permission the tap just granted.
       void audio.play().then(markPlayed).catch(() => {})
     }
 
-    const options = { once: true, signal: controller.signal } as const
+    // Capture phase, so this is the first handler to see the gesture
+    // rather than the last. touchstart is listed as well because iOS
+    // fires it before pointerdown on some versions, and whichever
+    // arrives first aborts the rest.
+    const options = { once: true, capture: true, passive: true, signal: controller.signal } as const
+    window.addEventListener('touchstart', onGesture, options)
     window.addEventListener('pointerdown', onGesture, options)
     window.addEventListener('keydown', onGesture, options)
   })

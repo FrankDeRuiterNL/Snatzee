@@ -157,3 +157,19 @@ export async function refreshPushSubscription() {
     // Nothing to do: the next launch tries again.
   }
 }
+
+/**
+ * Asks the server to send whatever the database has queued.
+ *
+ * Database triggers decide what is worth a notification, but Postgres
+ * cannot reach the push services, so something has to prompt the flush.
+ * Calling this straight after the action that queued something is what
+ * makes delivery feel immediate without running a background worker.
+ *
+ * Entirely best-effort: the queue keeps until the next flush, and every
+ * launch flushes too, so a failure here only delays.
+ */
+export function pingNotificationDrain() {
+  if (typeof window === 'undefined') return
+  void fetch('/api/push/drain', { method: 'POST', keepalive: true }).catch(() => {})
+}

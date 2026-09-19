@@ -12,7 +12,13 @@ import {
   promptInstall,
   subscribeToInstallState,
 } from '@/lib/pwa'
-import { enablePush, getNotificationPermission, isPushSupported, refreshPushSubscription } from '@/lib/push'
+import {
+  enablePush,
+  getNotificationPermission,
+  isPushSupported,
+  pingNotificationDrain,
+  refreshPushSubscription,
+} from '@/lib/push'
 
 /**
  * The two nudges an installed app needs, and the honest limits behind them.
@@ -102,8 +108,9 @@ export function PwaPrompts() {
 
   useEffect(() => {
     // A subscription whose endpoint the browser rotated is re-registered
-    // here, quietly, without asking for anything.
-    void refreshPushSubscription()
+    // here, quietly, without asking for anything. Anything the database
+    // queued while the app was closed goes out straight afterwards.
+    void refreshPushSubscription().then(pingNotificationDrain)
 
     const appear = window.setTimeout(decide, APPEAR_DELAY_MS)
     // Chromium may deliver `beforeinstallprompt` after the card was decided;

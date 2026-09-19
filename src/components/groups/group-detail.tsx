@@ -13,6 +13,7 @@ import { RankingsView } from '@/components/rankings/rankings-view'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
 import { pluralize } from '@/lib/utils'
+import { pingNotificationDrain } from '@/lib/push'
 
 export interface GroupMemberRow {
   user_id: string
@@ -74,6 +75,7 @@ export function GroupDetail({
     }
 
     haptic('success')
+    pingNotificationDrain()
     toast.success(`${selected.length} ${pluralize(selected.length, 'lid', 'leden')} toegevoegd`)
     setSelected([])
     setInviteOpen(false)

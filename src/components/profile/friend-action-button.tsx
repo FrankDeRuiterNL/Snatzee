@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
 import type { FriendshipStatus } from '@/types/database'
+import { pingNotificationDrain } from '@/lib/push'
 
 export function FriendActionButton({
   userId,
@@ -61,6 +62,8 @@ export function FriendActionButton({
     }
 
     haptic('success')
+    // The request is queued by a trigger; nudge the server to send it.
+    pingNotificationDrain()
     if (localStatus === 'pending' && isIncoming) {
       setLocalStatus('accepted')
       toast.success(`Jullie zijn nu vrienden 🎉`)

@@ -12,6 +12,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { BottomSheet } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
+import { AdminNotify } from '@/components/admin/admin-notify'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { formatNumber, formatPlayedAt, formatTime } from '@/lib/utils'
@@ -23,7 +24,7 @@ import type {
   AdminScoreSort,
 } from '@/types/database'
 
-type Tab = 'scores' | 'first-roll'
+type Tab = 'scores' | 'first-roll' | 'notify'
 
 const PAGE_SIZE = 25
 
@@ -222,12 +223,17 @@ export function AdminConsole() {
           options={[
             { key: 'scores', label: 'Scores' },
             { key: 'first-roll', label: "1-worp Yahtzee's" },
+            { key: 'notify', label: 'Meldingen' },
           ]}
           value={tab}
           onChange={setTab}
         />
       </div>
 
+      {tab === 'notify' ? (
+        <AdminNotify />
+      ) : (
+        <>
       <div className="flex items-center gap-2 px-5">
         <div className="relative flex-1">
           <Search
@@ -322,6 +328,8 @@ export function AdminConsole() {
           ))}
         </div>
       </BottomSheet>
+        </>
+      )}
 
       <ConfirmDialog
         open={deletingScore !== null}

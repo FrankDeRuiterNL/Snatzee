@@ -14,6 +14,7 @@ import { NOTE_MAX, SCORE_MAX, SCORE_MIN } from '@/lib/constants'
 import { cn, fromDateInputValue, toDateInputValue } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
 import type { RecordScoreResult, ScoreEntry } from '@/types/database'
+import { pingNotificationDrain } from '@/lib/push'
 
 export interface ScoreSheetResult {
   entry: ScoreEntry
@@ -145,6 +146,8 @@ function ScoreForm({
 
     const result = data as RecordScoreResult
     haptic('success')
+    // A new top score dethrones someone; the trigger queued it already.
+    pingNotificationDrain()
     onDone({
       entry: result.entry,
       unlocked: result.unlocked ?? [],

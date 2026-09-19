@@ -245,3 +245,11 @@ export interface PushSubscriptionRow {
   created_at: string
   last_seen_at: string
 }
+
+export interface NotifiableUser {
+  user_id: string
+  username: string
+  display_name: string
+  avatar_url: string | null
+  has_push: boolean
+}

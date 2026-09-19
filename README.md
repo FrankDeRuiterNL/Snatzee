@@ -580,6 +580,37 @@ Verder levert iOS push **alleen** aan een app die op het beginscherm staat. In
 een Safari-tab bestaat `PushManager` niet, dus daar meldt de instelling dat de
 app eerst geïnstalleerd moet worden.
 
+### Welke meldingen de app zelf stuurt
+
+| Wanneer | Wie krijgt hem |
+| --- | --- |
+| Iemand stuurt een vriendschapsverzoek | De ontvanger van het verzoek |
+| Iemand voegt je toe aan een groep | Het toegevoegde lid — niet jijzelf als je de groep maakt of met een code binnenkomt |
+| Iemand gaat over de hoogste score heen | De speler die de toppositie kwijtraakt |
+
+Die momenten worden door de database bepaald, niet door de app: triggers
+schrijven een regel in `notification_outbox`. Alleen Postgres ziet elke score
+binnenkomen, en alleen de Next.js-server kan een pushbericht ondertekenen, dus
+daar komen ze samen. De app vraagt na elke actie — en bij elke start — om de
+wachtrij te legen via `POST /api/push/drain`.
+
+Een gelijkspel neemt de koppositie niet over: wie de score als eerste haalde,
+houdt hem. Je eigen record verbeteren stuurt niemand een melding.
+
+### Een eigen melding sturen (superadmin)
+
+**Instellingen → Snatzee Admin → Meldingen.** Alleen een superadmin ziet die
+link, de pagina stuurt iedereen zonder die rol terug naar `/app`, en
+`admin_broadcast_notification` weigert de aanvraag in de database zelf. Er is
+dus geen weg omheen: een gewone gebruiker kan het scherm niet zien en de
+onderliggende aanroep niet doen.
+
+Je vult een titel (max 80 tekens) en een tekst (max 300) in, en kiest
+**Iedereen** of **Selectie**. Bij een selectie staat elke speler in de lijst,
+maar spelers zonder meldingen aan zijn uitgegrijsd en tellen niet mee — zodat
+duidelijk is waarom iemand niets ontvangt. Elke verzending komt in het auditlog
+te staan, met titel, tekst en het aantal ontvangers.
+
 ### Zelf meldingen versturen
 
 `src/lib/push-server.ts` is het verzendkanaal: `sendPushToUser(userId, payload)`
@@ -589,9 +620,9 @@ endpoints op die de pushdienst afkeurt met 404 of 410. De service worker toont
 wat binnenkomt en opent bij een tik de meegestuurde `url` in een bestaand
 venster als dat er is.
 
-Er hangt nog geen gebeurtenis aan: het transport ligt klaar, welke meldingen de
-app verstuurt (vriendschapsverzoek, verbroken record, nieuwe nummer één) is de
-volgende stap.
+De outbox is de plek om een nieuwe melding aan te haken: schrijf er vanuit een
+trigger een regel in met `queue_notification(...)` en de rest — versturen,
+opruimen van dode endpoints, het auditlog — gebeurt vanzelf.
 
 ---
 
@@ -743,6 +774,19 @@ Row Level Security staat aan op alle tabellen:
 
 ## Achievements
 
+### Achievements volgen de data terug omlaag
+
+Een achievement is geen logboekregel maar een afgeleide: hij geldt zolang de
+data hem draagt. Verwijdert een superadmin een score of een 1-worp Yahtzee, dan
+worden de achievements die daarop steunden meteen weer ingetrokken, en het
+auditlog noteert welke dat waren. Hetzelfde gebeurt als een speler een groep
+verlaat of een vriendschap verdwijnt.
+
+De regels staan één keer, in `achievement_is_earned(...)`. Zowel het toekennen
+als het intrekken gebruikt die functie, zodat de twee niet uit elkaar kunnen
+lopen.
+
+
 36 achievements in vijf categorieën (scores, yahtzee, wins, games, sociaal), met rarity
 `COMMON` / `RARE` / `EPIC` / `LEGENDARY`. Vijf ervan zijn **secret** en blijven verborgen tot
 je ze vrijspeelt.
@@ -821,7 +865,7 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0011)
+supabase/migrations/        SQL migraties (0001 t/m 0013)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack

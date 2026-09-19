@@ -33,7 +33,7 @@ function configure() {
   configured = true
 }
 
-function serviceClient() {
+export function serviceClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
 
@@ -119,4 +119,72 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
     (total, result) => ({ sent: total.sent + result.sent, removed: total.removed + result.removed }),
     { sent: 0, removed: 0 },
   )
+}
+
+interface OutboxRow {
+  id: string
+  user_id: string
+  title: string
+  body: string
+  url: string
+  data: Record<string, unknown> | null
+}
+
+/**
+ * Flushes the notification outbox.
+ *
+ * The queue is filled by database triggers, because only Postgres sees
+ * every friend request, group add and toppling of the top score as it
+ * happens — and only this process can sign a push request. Claiming is a
+ * separate step from completing, so an overlapping flush takes a
+ * different batch rather than sending anything twice.
+ */
+export async function drainNotifications(limit = 50) {
+  if (!isPushConfigured()) return { claimed: 0, sent: 0, failed: 0, skipped: 'not-configured' as const }
+
+  const supabase = serviceClient()
+
+  const { data, error } = await supabase.rpc('claim_notifications', { p_limit: limit })
+  if (error || !data?.length) return { claimed: 0, sent: 0, failed: 0 }
+
+  const rows = data as OutboxRow[]
+  let sent = 0
+  let failed = 0
+
+  await Promise.all(
+    rows.map(async (row) => {
+      try {
+        const result = await sendPushToUser(row.user_id, {
+          title: row.title,
+          body: row.body,
+          url: row.url,
+          // Per person and per kind, so a second friend request replaces
+          // the first on the lock screen instead of stacking.
+          tag: `snatzee-${row.id.slice(0, 8)}`,
+          data: row.data ?? {},
+        })
+
+        if (result.sent > 0) {
+          sent += 1
+          await supabase.rpc('complete_notification', { p_id: row.id, p_error: null })
+        } else {
+          // Nothing reachable: record it rather than leaving the row
+          // claimed forever with no explanation.
+          failed += 1
+          await supabase.rpc('complete_notification', {
+            p_id: row.id,
+            p_error: 'Geen bereikbare apparaten',
+          })
+        }
+      } catch (sendError) {
+        failed += 1
+        await supabase.rpc('complete_notification', {
+          p_id: row.id,
+          p_error: String((sendError as Error)?.message ?? sendError).slice(0, 200),
+        })
+      }
+    }),
+  )
+
+  return { claimed: rows.length, sent, failed }
 }

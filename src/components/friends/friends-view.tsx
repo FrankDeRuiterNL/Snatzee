@@ -16,6 +16,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
 import { pluralize } from '@/lib/utils'
 import type { SearchUserRow } from '@/types/database'
+import { pingNotificationDrain } from '@/lib/push'
 
 type Tab = 'friends' | 'requests' | 'search'
 
@@ -85,6 +86,7 @@ export function FriendsView({
       }
 
       haptic('success')
+      pingNotificationDrain()
       toast.success('Vriendverzoek verzonden', { description: `Naar ${displayName}` })
       setSearch((prev) =>
         prev
