@@ -89,7 +89,7 @@ export function BottomSheet({
                   )}
                 </div>
 
-                <div className="scroll-x flex-1 overflow-y-auto overscroll-contain px-5">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5">
                   {children}
                 </div>
 

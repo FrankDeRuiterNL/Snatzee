@@ -6,6 +6,7 @@ import { Check, Dice5, Trophy } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Stepper } from '@/components/ui/stepper'
+import { ScoreWheel } from '@/components/score/score-wheel'
 import { ToggleRow } from '@/components/ui/toggle-row'
 import { FieldError, Input, Label, Textarea } from '@/components/ui/input'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -88,7 +89,7 @@ function ScoreForm({
   const dateId = useId()
   const noteId = useId()
 
-  const [score, setScore] = useState(entry ? String(entry.score) : '')
+  const [score, setScore] = useState(entry?.score ?? 0)
   const [isWin, setIsWin] = useState(entry?.is_win ?? false)
   const [threwYahtzee, setThrewYahtzee] = useState((entry?.yahtzee_count ?? 0) > 0)
   const [yahtzeeCount, setYahtzeeCount] = useState(Math.max(entry?.yahtzee_count ?? 0, 1))
@@ -102,15 +103,13 @@ function ScoreForm({
     event.preventDefault()
     if (saving) return
 
-    const parsed = Number.parseInt(score, 10)
-    if (!score.trim() || Number.isNaN(parsed)) {
-      setError('Vul een eindscore in')
-      return
-    }
-    if (parsed < SCORE_MIN || parsed > SCORE_MAX) {
+    // The wheel cannot leave this range, but the value still goes through the
+    // same check the database applies.
+    if (!Number.isFinite(score) || score < SCORE_MIN || score > SCORE_MAX) {
       setError(`Score moet tussen ${SCORE_MIN} en ${SCORE_MAX} liggen`)
       return
     }
+    const parsed = score
 
     onSavingChange(true)
     setError(null)
@@ -157,24 +156,23 @@ function ScoreForm({
   return (
     <form id="score-form" onSubmit={handleSubmit} className="space-y-6 pb-2">
       <div>
-        <Label htmlFor={scoreId}>Eindscore</Label>
-        <Input
-          id={scoreId}
-          type="number"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoFocus={!isEdit}
-          enterKeyHint="done"
-          min={SCORE_MIN}
-          max={SCORE_MAX}
-          placeholder="0"
-          value={score}
-          onChange={(e) => setScore(e.target.value)}
-          aria-describedby={`${scoreId}-hint`}
-          className="tabular h-20 rounded-[1.5rem] text-center text-5xl font-black tracking-tight"
-        />
-        <p id={`${scoreId}-hint`} className="mt-2 text-center text-xs text-ink-muted">
-          Tussen {SCORE_MIN} en {SCORE_MAX} punten
+        <div className="mb-2 flex items-baseline justify-between">
+          <Label htmlFor={scoreId} className="mb-0">
+            Eindscore
+          </Label>
+          <output
+            id={scoreId}
+            aria-live="polite"
+            className="tabular text-2xl font-black tracking-tight text-mint-400"
+          >
+            {score}
+          </output>
+        </div>
+
+        <ScoreWheel value={score} onChange={setScore} />
+
+        <p className="mt-2 text-center text-xs text-ink-muted">
+          Scroll om je score te kiezen · {SCORE_MIN}–{SCORE_MAX} punten
         </p>
         <FieldError>{error}</FieldError>
       </div>
