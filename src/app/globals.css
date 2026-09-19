@@ -120,8 +120,22 @@
   }
 
   html {
-    /* Never let the page scroll sideways on a phone. */
+    /* Never let the page scroll sideways on a phone.
+     *
+     * `clip` rather than `hidden`: both stop sideways scrolling, but
+     * `hidden` turns the element into a scroll container, which forces the
+     * other axis from `visible` to `auto`. With that on html AND body, the
+     * document ends up with two nested scrollers, and a wheel event over
+     * an area that belongs to the outer one scrolls nothing. That is the
+     * desktop "page won't scroll" case; touch scrolling inside the column
+     * keeps working, which is why phones never showed it.
+     *
+     * The `hidden` line above it is the fallback for Safari below 16,
+     * which ignores `clip` entirely: without it those browsers would drop
+     * the declaration and allow sideways scrolling again.
+     */
     overflow-x: hidden;
+    overflow-x: clip;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     scroll-behavior: smooth;
@@ -130,6 +144,7 @@
   body {
     @apply bg-canvas text-ink font-sans antialiased;
     overflow-x: hidden;
+    overflow-x: clip;
     min-height: 100dvh;
     /* Stop iOS rubber-banding the whole document behind the app shell. */
     overscroll-behavior-y: none;

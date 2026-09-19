@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { Dice5, Flame, Sparkles, Trophy, Users, Zap } from 'lucide-react'
+import { Dice5, Sparkles, Trophy, Users, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LogoLockup } from '@/components/ui/logo'
 import { getCurrentUser } from '@/lib/supabase/queries'
@@ -35,28 +35,6 @@ export default async function LandingPage() {
           Speel gewoon met je vertrouwde scoreblaadje. Voeg na afloop je eindscore toe en Snatzee
           regelt de records, statistieken, achievements en ranglijsten.
         </p>
-      </section>
-
-      <section className="mt-9 rounded-[1.75rem] bg-surface-elevated p-6 text-white shadow-lift">
-        <p className="text-sm font-semibold text-ink-muted">Jouw gemiddelde</p>
-        <p className="tabular mt-1 text-5xl font-black tracking-tight">247</p>
-        <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-mint-400">
-          <Flame className="size-4" aria-hidden />
-          +12 sinds vorige maand
-        </p>
-
-        <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: 'Potjes', value: '128' },
-            { label: 'Wins', value: '54' },
-            { label: "Yahtzee's", value: '23' },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-2xl bg-surface/5 py-3">
-              <p className="tabular text-xl font-extrabold">{stat.value}</p>
-              <p className="mt-0.5 text-[0.7rem] font-semibold text-ink-muted">{stat.label}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       <ul className="mt-8 space-y-3">
