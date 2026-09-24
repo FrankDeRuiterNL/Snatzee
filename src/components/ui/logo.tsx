@@ -53,3 +53,33 @@ export function LogoLockup({ size = 44, className }: { size?: number; className?
     </span>
   )
 }
+
+/**
+ * Stacked lockup: the mark with the wordmark beneath it.
+ *
+ * For the launch screen, where the logo is the whole composition rather
+ * than something sitting in a header — so it reads centred rather than
+ * running off to one side, and the wordmark can carry more weight than
+ * the compact horizontal version allows.
+ */
+export function LogoStack({ size = 101, className }: { size?: number; className?: string }) {
+  return (
+    <span className={cn('inline-flex flex-col items-center gap-3', className)}>
+      <Image
+        src="/brand/mark.png"
+        alt=""
+        aria-hidden
+        width={size}
+        height={size}
+        priority
+        className="rounded-[24%] shadow-soft"
+      />
+      {/* 30% up on the header lockup's 1.35rem. */}
+      <span className="text-[1.755rem] font-extrabold tracking-tight">
+        <span className="text-ink">Snat</span>
+        <span className="text-mint-500">zee</span>
+      </span>
+      <span className="sr-only">Snatzee</span>
+    </span>
+  )
+}

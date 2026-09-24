@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { LogoLockup } from '@/components/ui/logo'
+import { LogoStack } from '@/components/ui/logo'
 import { getLaunchSoundState, subscribeLaunchSound } from '@/lib/audio'
 
 /**
@@ -127,7 +127,7 @@ export function LaunchSplash() {
             className="flex w-full items-center justify-center"
             style={{ flex: `1 1 ${RESERVED_ABOVE_BUTTON}px` }}
           >
-            <LogoLockup size={101} />
+            <LogoStack size={101} />
           </div>
 
           <span className="press rounded-full bg-mint-500 px-8 py-4 text-lg font-black tracking-tight text-navy-950 glow-mint">
