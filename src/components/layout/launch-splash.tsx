@@ -28,6 +28,18 @@ import { getLaunchSoundState, subscribeLaunchSound } from '@/lib/audio'
 const AUTO_DISMISS_MS = 4_000
 
 /**
+ * Keeps the button exactly where the centred layout used to put it.
+ *
+ * That layout stacked a 72px logo, a 40px gap and the button, centred as
+ * one group. The logo is now bigger and sits higher, but the button
+ * should not move — so the region above it keeps the height the logo and
+ * gap used to contribute, and grows by the same share as the space below.
+ * Doing it with flex rather than a calc() means the safe-area padding on
+ * the container is accounted for automatically.
+ */
+const RESERVED_ABOVE_BUTTON = 112
+
+/**
  * Runs before the first paint, so the screen is either there immediately
  * or never drawn at all.
  *
@@ -103,17 +115,28 @@ export function LaunchSplash() {
             if (event.key === 'Enter' || event.key === ' ') dismiss()
           }}
           id="launch-splash"
-          className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-10 bg-canvas px-8"
+          className="fixed inset-0 z-[80] flex flex-col items-center bg-canvas px-8"
           style={{
             paddingTop: 'env(safe-area-inset-top, 0px)',
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           }}
         >
-          <LogoLockup size={72} />
+          {/* Everything from the top of the screen down to the button,
+              with the logo centred in it. */}
+          <div
+            className="flex w-full items-center justify-center"
+            style={{ flex: `1 1 ${RESERVED_ABOVE_BUTTON}px` }}
+          >
+            <LogoLockup size={101} />
+          </div>
 
           <span className="press rounded-full bg-mint-500 px-8 py-4 text-lg font-black tracking-tight text-navy-950 glow-mint">
             Tijd voor Snatzee!
           </span>
+
+          {/* Takes the same share of the free space as the region above,
+              which is what pins the button to its old position. */}
+          <div aria-hidden style={{ flex: '1 1 0px' }} />
         </motion.div>
       )}
     </AnimatePresence>
