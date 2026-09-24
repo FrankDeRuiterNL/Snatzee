@@ -35,10 +35,13 @@ export interface RequestSummary extends FriendSummary {
 export function FriendsView({
   friends,
   requests,
+  sent,
   initialTab = 'friends',
 }: {
   friends: FriendSummary[]
   requests: RequestSummary[]
+  /** Requests this user sent that have not been answered yet. */
+  sent: RequestSummary[]
   initialTab?: Tab
 }) {
   const router = useRouter()
@@ -46,6 +49,7 @@ export function FriendsView({
   const [query, setQuery] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [removing, setRemoving] = useState<FriendSummary | null>(null)
+  const [withdrawing, setWithdrawing] = useState<RequestSummary | null>(null)
 
   // Search results carry the query they belong to, so "loading" is derived and
   // the effect only ever writes state after the request resolves.
@@ -129,6 +133,30 @@ export function FriendsView({
     [busyId, router],
   )
 
+  /**
+   * Withdraws a request this user sent.
+   *
+   * remove_friend deletes the row whichever direction it points in, so a
+   * pending outgoing request needs no separate RPC.
+   */
+  async function withdrawRequest() {
+    if (!withdrawing) return
+    const target = withdrawing
+    setWithdrawing(null)
+
+    const supabase = getSupabaseBrowserClient()
+    const { error } = await supabase.rpc('remove_friend', { p_user_id: target.id })
+
+    if (error) {
+      toast.error('Intrekken is niet gelukt', { description: error.message })
+      return
+    }
+
+    haptic('light')
+    toast.success(`Verzoek aan ${target.display_name} ingetrokken`)
+    router.refresh()
+  }
+
   async function removeFriend() {
     if (!removing) return
     const supabase = getSupabaseBrowserClient()
@@ -201,14 +229,20 @@ export function FriendsView({
       )}
 
       {tab === 'requests' && (
-        <div className="px-5">
-          {requests.length === 0 ? (
+        <div className="space-y-6 px-5">
+          {requests.length === 0 && sent.length === 0 ? (
             <EmptyState
               emoji="📭"
               title="Geen openstaande verzoeken"
-              description="Nieuwe vriendverzoeken verschijnen hier."
+              description="Verzoeken die je krijgt én verstuurt verschijnen hier."
             />
           ) : (
+            <>
+          {requests.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-muted">
+              Ontvangen
+            </h2>
             <ul className="space-y-2">
               {requests.map((request) => (
                 <li key={request.friendship_id}>
@@ -244,6 +278,42 @@ export function FriendsView({
                 </li>
               ))}
             </ul>
+          </section>
+          )}
+
+          {sent.length > 0 && (
+            <section>
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-muted">
+                Verzonden
+              </h2>
+              <p className="mb-2 text-sm text-ink-muted">
+                Deze spelers hebben nog niet gereageerd.
+              </p>
+              <ul className="space-y-2">
+                {sent.map((request) => (
+                  <li key={request.friendship_id}>
+                    <PersonRow
+                      person={request}
+                      action={
+                        <Button
+                          variant="soft"
+                          size="sm"
+                          aria-label={`Verzoek aan ${request.display_name} intrekken`}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            setWithdrawing(request)
+                          }}
+                        >
+                          Intrekken
+                        </Button>
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+            </>
           )}
         </div>
       )}
@@ -364,6 +434,20 @@ export function FriendsView({
         confirmLabel="Verwijderen"
         destructive
         onConfirm={removeFriend}
+      />
+
+      <ConfirmDialog
+        open={withdrawing !== null}
+        onOpenChange={(open) => !open && setWithdrawing(null)}
+        title="Verzoek intrekken?"
+        description={
+          withdrawing
+            ? `${withdrawing.display_name} ziet je vriendverzoek dan niet meer. Je kunt er later opnieuw een sturen.`
+            : undefined
+        }
+        confirmLabel="Intrekken"
+        destructive
+        onConfirm={withdrawRequest}
       />
     </div>
   )

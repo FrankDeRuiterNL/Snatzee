@@ -681,7 +681,11 @@ wie twee groepen met de speler deelt krijgt twee verschillende feiten. Leden
 zonder meldingen aan en de speler zelf krijgen niets.
 
 Open vriendschapsverzoeken staan ook als rood cijfer op het tabblad Vrienden in
-de navigatie.
+de navigatie. Dat cijfer telt alleen de verzoeken die op jou wachten.
+
+Het tabblad **Verzoeken** toont twee lijsten: **Ontvangen**, met accepteren en
+weigeren, en **Verzonden**, met de verzoeken die jij hebt gestuurd en waarop nog
+niet gereageerd is. Die kun je daar ook weer intrekken.
 
 Die momenten worden door de database bepaald, niet door de app: triggers
 schrijven een regel in `notification_outbox`. Alleen Postgres ziet elke score

@@ -11,13 +11,23 @@ interface ProfileJoin {
   avatar_url: string | null
 }
 
-/** Accepted friends plus incoming pending requests, in one pass. */
+/**
+ * Accepted friends, incoming pending requests and outgoing ones, in one
+ * pass.
+ *
+ * Outgoing requests used to be dropped here because only incoming ones can
+ * be acted on — but that left the Verzoeken tab empty after sending one,
+ * while the search results already said "Verzonden". They are returned
+ * separately rather than mixed in, because the only thing you can do with
+ * your own request is withdraw it.
+ */
 export async function getFriendsAndRequests(): Promise<{
   friends: FriendSummary[]
   requests: RequestSummary[]
+  sent: RequestSummary[]
 }> {
   const user = await getCurrentUser()
-  if (!user) return { friends: [], requests: [] }
+  if (!user) return { friends: [], requests: [], sent: [] }
 
   const supabase = await createSupabaseServerClient()
 
@@ -28,7 +38,7 @@ export async function getFriendsAndRequests(): Promise<{
     .in('status', ['pending', 'accepted'])
 
   const rows = (data as Pick<Friendship, 'id' | 'requester_id' | 'addressee_id' | 'status'>[] | null) ?? []
-  if (rows.length === 0) return { friends: [], requests: [] }
+  if (rows.length === 0) return { friends: [], requests: [], sent: [] }
 
   const otherIds = rows.map((r) => (r.requester_id === user.id ? r.addressee_id : r.requester_id))
 
@@ -59,6 +69,7 @@ export async function getFriendsAndRequests(): Promise<{
 
   const friends: FriendSummary[] = []
   const requests: RequestSummary[] = []
+  const sent: RequestSummary[] = []
 
   for (const row of rows) {
     const otherId = row.requester_id === user.id ? row.addressee_id : row.requester_id
@@ -68,11 +79,12 @@ export async function getFriendsAndRequests(): Promise<{
     if (row.status === 'accepted') {
       friends.push(summary)
     } else if (row.addressee_id === user.id) {
-      // Only incoming requests are actionable.
       requests.push({ ...summary, friendship_id: row.id })
+    } else {
+      sent.push({ ...summary, friendship_id: row.id })
     }
   }
 
   friends.sort((a, b) => b.games_played - a.games_played)
-  return { friends, requests }
+  return { friends, requests, sent }
 }

@@ -20,7 +20,7 @@ export default async function FriendsPage({
   if (!profile) redirect('/login')
 
   const { tab } = await searchParams
-  const [{ friends, requests }, groups] = await Promise.all([
+  const [{ friends, requests, sent }, groups] = await Promise.all([
     getFriendsAndRequests(),
     getMyGroups(),
   ])
@@ -58,7 +58,7 @@ export default async function FriendsPage({
         </Link>
       </div>
 
-      <FriendsView friends={friends} requests={requests} initialTab={initialTab} />
+      <FriendsView friends={friends} requests={requests} sent={sent} initialTab={initialTab} />
     </PageTransition>
   )
 }
