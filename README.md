@@ -683,6 +683,11 @@ zonder meldingen aan en de speler zelf krijgen niets.
 Open vriendschapsverzoeken staan ook als rood cijfer op het tabblad Vrienden in
 de navigatie. Dat cijfer telt alleen de verzoeken die op jou wachten.
 
+Onder het tabblad **Zoeken** staat onderaan een kaart om iemand uit te nodigen
+die nog geen Snatzee heeft. Die opent het deelmenu van het toestel met een
+bericht met je eigen username en het adres uit `PUBLIC_URL`; op een desktop,
+waar `navigator.share` meestal ontbreekt, gaat de tekst naar het klembord.
+
 Het tabblad **Verzoeken** toont twee lijsten: **Ontvangen**, met accepteren en
 weigeren, en **Verzonden**, met de verzoeken die jij hebt gestuurd en waarop nog
 niet gereageerd is. Die kun je daar ook weer intrekken.
@@ -1016,6 +1021,9 @@ scripts/                    seed, brand assets en sleutelgeneratie
 - Inputs zijn minimaal 16px zodat Safari niet inzoomt; geen dubbeltap-zoom, geen
   horizontaal scrollen, geen blauwe selectie-highlight
 - Floating bottom navigation die rekening houdt met de home indicator
+- Pull-to-refresh: sleep bovenaan omlaag om de pagina opnieuw op te halen. De app
+  heeft een eigen implementatie nodig omdat `overscroll-behavior-y: none` die van
+  de browser uitschakelt — en een geïnstalleerde app geen herlaadknop heeft.
 - Web Push via de service worker (`push`, `notificationclick`, `pushsubscriptionchange`),
   met de installatie- en meldingenkaarten uit [Pushmeldingen](#pushmeldingen)
 

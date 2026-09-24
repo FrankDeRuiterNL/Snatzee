@@ -58,7 +58,13 @@ export default async function FriendsPage({
         </Link>
       </div>
 
-      <FriendsView friends={friends} requests={requests} sent={sent} initialTab={initialTab} />
+      <FriendsView
+        friends={friends}
+        requests={requests}
+        sent={sent}
+        username={profile.username}
+        initialTab={initialTab}
+      />
     </PageTransition>
   )
 }

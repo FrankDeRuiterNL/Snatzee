@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { QuickActionsProvider } from '@/components/layout/quick-actions-provider'
 import { BottomNavigation } from '@/components/layout/bottom-navigation'
 import { PwaPrompts } from '@/components/pwa/pwa-prompts'
+import { PullToRefresh } from '@/components/layout/pull-to-refresh'
 import {
   getCurrentProfile,
   getCurrentUser,
@@ -30,6 +31,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {children}
           </main>
         </div>
+        {/* Sits above the column so the indicator is not clipped by it. */}
+        <PullToRefresh />
         <BottomNavigation friendRequests={friendRequests} />
         {/* Install / notification nudges — signed-in only, so the first thing a
             new visitor sees is the app itself. */}

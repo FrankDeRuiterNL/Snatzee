@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Segmented } from '@/components/ui/segmented'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { InviteOutsider } from '@/components/friends/invite-outsider'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
@@ -36,12 +37,15 @@ export function FriendsView({
   friends,
   requests,
   sent,
+  username,
   initialTab = 'friends',
 }: {
   friends: FriendSummary[]
   requests: RequestSummary[]
   /** Requests this user sent that have not been answered yet. */
   sent: RequestSummary[]
+  /** The signed-in user's own username, used to sign the invite. */
+  username: string
   initialTab?: Tab
 }) {
   const router = useRouter()
@@ -419,6 +423,10 @@ export function FriendsView({
               ))}
             </ul>
           )}
+
+          {/* Always here, whatever the search turned up: the person you
+              are looking for may simply not have an account yet. */}
+          <InviteOutsider username={username} />
         </div>
       )}
 
