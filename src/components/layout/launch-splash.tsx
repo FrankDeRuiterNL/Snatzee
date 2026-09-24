@@ -27,14 +27,42 @@ import { getLaunchSoundState, subscribeLaunchSound } from '@/lib/audio'
 /** Long enough to notice, short enough not to be a wall. */
 const AUTO_DISMISS_MS = 4_000
 
+/**
+ * Runs before the first paint, so the screen is either there immediately
+ * or never drawn at all.
+ *
+ * Rendering the overlay only once React knew the cue was blocked meant
+ * waiting for hydration, a fetch and a decode — long enough to see the
+ * app first and the screen a moment later. It is server-rendered now, and
+ * this hides it up front in the cases that can be known synchronously:
+ * sound off, the cue already played this session, or a platform that
+ * autoplayed last time and so will not need a tap.
+ */
+const SUPPRESS_SCRIPT = `(function(){try{
+var off=localStorage.getItem('snatzee:sound')==='false'
+||sessionStorage.getItem('snatzee:logo-played')==='true'
+||localStorage.getItem('snatzee:launch-autoplay')==='true';
+if(off)document.documentElement.dataset.splash='off';
+}catch(e){}})()`
+
+/**
+ * Emitted by the server so the markup below is hidden before it paints.
+ * Inert once the app is running; the component takes over from there.
+ */
+export function LaunchSplashSuppressor() {
+  return <script dangerouslySetInnerHTML={{ __html: SUPPRESS_SCRIPT }} />
+}
+
 export function LaunchSplash() {
   // The cue's state lives outside React, so it is read the way external
-  // stores are meant to be read. The server snapshot is 'idle', which
-  // renders nothing and so matches the first client paint.
+  // stores are meant to be read. The server snapshot is 'idle' and the
+  // overlay is drawn in that state, which is what puts it in the very
+  // first paint; it is taken away again as soon as the cue reports it has
+  // nothing pending.
   const state = useSyncExternalStore(subscribeLaunchSound, getLaunchSoundState, () => 'idle' as const)
   const [dismissed, setDismissed] = useState(false)
 
-  const visible = state === 'waiting' && !dismissed
+  const visible = state !== 'done' && !dismissed
 
   useEffect(() => {
     if (!visible) return
@@ -62,6 +90,7 @@ export function LaunchSplash() {
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') dismiss()
           }}
+          id="launch-splash"
           className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-10 bg-canvas px-8"
           style={{
             paddingTop: 'env(safe-area-inset-top, 0px)',

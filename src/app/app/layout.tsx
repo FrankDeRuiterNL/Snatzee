@@ -4,7 +4,7 @@ import { QuickActionsProvider } from '@/components/layout/quick-actions-provider
 import { BottomNavigation } from '@/components/layout/bottom-navigation'
 import { PwaPrompts } from '@/components/pwa/pwa-prompts'
 import { PullToRefresh } from '@/components/layout/pull-to-refresh'
-import { LaunchSplash } from '@/components/layout/launch-splash'
+import { LaunchSplash, LaunchSplashSuppressor } from '@/components/layout/launch-splash'
 import {
   getAppSettings,
   getCurrentProfile,
@@ -25,9 +25,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getPendingFriendRequestCount(),
     getAppSettings(),
   ])
+  const splashEnabled = appSettings.launch_splash === 1
 
   return (
     <Suspense fallback={null}>
+      {/* Before everything else, so the screen is painted with the first
+          frame rather than after hydration. */}
+      {splashEnabled && (
+        <>
+          <LaunchSplashSuppressor />
+          <LaunchSplash />
+        </>
+      )}
       <QuickActionsProvider>
         {/* Centred mobile-width column: a phone app on a phone, a focused
             card on a desktop screen. */}
@@ -38,7 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         {/* Sits above the column so the indicator is not clipped by it. */}
         <PullToRefresh />
-        {appSettings.launch_splash === 1 && <LaunchSplash />}
+
         <BottomNavigation friendRequests={friendRequests} />
         {/* Install / notification nudges — signed-in only, so the first thing a
             new visitor sees is the app itself. */}

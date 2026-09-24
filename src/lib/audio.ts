@@ -97,16 +97,35 @@ const raw = new Map<SoundName, ArrayBuffer>()
 const loading = new Map<SoundName, Promise<AudioBuffer | null>>()
 
 /**
- * Whether the launch cue is still waiting for a gesture.
+ * Where the launch cue has got to.
  *
- * `waiting` is the only state in which a tap-to-start screen earns its
- * keep — if the cue autoplayed, already played this session, or sound is
- * switched off, there is nothing for it to fix.
+ * `waiting` means it was refused and a gesture would start it — the only
+ * state in which a tap-to-start screen earns its keep. `done` covers
+ * every way of being finished with it: played, already played this
+ * session, sound switched off, or the window for it expired.
  */
-export type LaunchSoundState = 'idle' | 'waiting' | 'played'
+export type LaunchSoundState = 'idle' | 'waiting' | 'done'
 
 let launchState: LaunchSoundState = 'idle'
 const launchListeners = new Set<(state: LaunchSoundState) => void>()
+
+/**
+ * Remembers whether the cue was allowed to play on its own.
+ *
+ * Read by the inline script that decides whether to paint the
+ * tap-to-start screen at all: a platform that autoplayed last launch will
+ * autoplay this one, so the screen can be suppressed before first paint
+ * instead of flashing up and vanishing.
+ */
+const AUTOPLAY_KEY = 'snatzee:launch-autoplay'
+
+function rememberAutoplay(worked: boolean) {
+  try {
+    window.localStorage.setItem(AUTOPLAY_KEY, worked ? 'true' : 'false')
+  } catch {
+    // Without storage the screen simply shows and hides again.
+  }
+}
 
 function setLaunchState(next: LaunchSoundState) {
   if (launchState === next) return
@@ -329,10 +348,20 @@ export function preloadSounds(names: SoundName[] = ['logo', 'score', 'achievemen
  * touch-down, instead of once the next page has rendered.
  */
 export function playLaunchSound() {
-  if (typeof window === 'undefined' || !isSoundEnabled()) return
+  if (typeof window === 'undefined') return
+
+  // Both early exits report `done`: there is nothing pending, so anything
+  // waiting on the cue — the tap-to-start screen — can stop waiting.
+  if (!isSoundEnabled()) {
+    setLaunchState('done')
+    return
+  }
 
   try {
-    if (window.sessionStorage.getItem(LOGO_PLAYED_KEY) === 'true') return
+    if (window.sessionStorage.getItem(LOGO_PLAYED_KEY) === 'true') {
+      setLaunchState('done')
+      return
+    }
   } catch {
     // Without sessionStorage it may replay on navigation; acceptable.
   }
@@ -353,7 +382,7 @@ export function playLaunchSound() {
     if (!start('logo')) return false
     done = true
     markPlayed()
-    setLaunchState('played')
+    setLaunchState('done')
     return true
   }
 
@@ -364,6 +393,7 @@ export function playLaunchSound() {
   }
 
   void attempt().then((played) => {
+    rememberAutoplay(played)
     if (played) return
 
     // Autoplay was refused: from here the cue depends on a gesture, which
@@ -376,7 +406,7 @@ export function playLaunchSound() {
     const timer = setTimeout(() => {
       controller.abort()
       // Nobody touched anything in time; stop offering to play it.
-      if (!done) setLaunchState('idle')
+      if (!done) setLaunchState('done')
     }, 20_000)
     const stop = () => {
       clearTimeout(timer)

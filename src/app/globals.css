@@ -289,6 +289,13 @@
     }
   }
 
+  /* Set by the inline script before first paint, for the launches where
+     the tap-to-start screen is not needed. Keeping it in CSS rather than
+     unmounting means React still owns the element once it hydrates. */
+  :root[data-splash='off'] #launch-splash {
+    display: none !important;
+  }
+
   .tabular {
     font-variant-numeric: tabular-nums;
   }
