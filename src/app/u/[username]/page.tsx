@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import {
   getAchievementsForUser,
   getCurrentUser,
+  getFriendCount,
   getProfileByUsername,
   getPublicScores,
   getUserStatistics,
@@ -48,6 +49,7 @@ export default async function PublicProfilePage({
 
   const viewer = await getCurrentUser()
   const isSelf = viewer?.id === profile.id
+  const friendCount = await getFriendCount(profile.id)
 
   // Friendship state drives both the action button and private-profile access.
   type FriendshipRow = Pick<Friendship, 'id' | 'status' | 'requester_id' | 'addressee_id'>
@@ -102,6 +104,7 @@ export default async function PublicProfilePage({
               avatarUrl={profile.avatar_url}
               bio={locked ? null : profile.bio}
               stats={stats}
+              friendCount={friendCount}
               action={
                 isSelf ? (
                   <Button asChild variant="soft" full size="sm">

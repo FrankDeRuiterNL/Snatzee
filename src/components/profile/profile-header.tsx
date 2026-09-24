@@ -1,6 +1,6 @@
 import { Avatar } from '@/components/ui/avatar'
 import { LevelChip } from '@/components/profile/level-badge'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, pluralize } from '@/lib/utils'
 import type { UserStatistics } from '@/types/database'
 
 /** Big navy profile card with the four headline numbers. */
@@ -10,6 +10,7 @@ export function ProfileHeader({
   avatarUrl,
   bio,
   stats,
+  friendCount = 0,
   action,
 }: {
   displayName: string
@@ -17,6 +18,7 @@ export function ProfileHeader({
   avatarUrl: string | null
   bio?: string | null
   stats: UserStatistics | null
+  friendCount?: number
   action?: React.ReactNode
 }) {
   const average = stats?.average_score ?? null
@@ -26,7 +28,10 @@ export function ProfileHeader({
       <div className="flex flex-col items-center text-center">
         <Avatar src={avatarUrl} name={displayName} size="xl" className="ring-4 ring-white/10" />
         <h1 className="mt-4 text-2xl font-black tracking-tight">{displayName}</h1>
-        <p className="mt-0.5 text-sm font-medium text-ink-muted">@{username}</p>
+        <p className="mt-0.5 text-sm font-medium text-ink-muted">
+          @{username} · {formatNumber(friendCount)}{' '}
+          {pluralize(friendCount, 'vriend', 'vrienden')}
+        </p>
         {stats?.level_name && (
           <LevelChip
             emoji={stats.level_emoji}

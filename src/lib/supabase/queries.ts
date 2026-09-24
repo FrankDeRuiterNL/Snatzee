@@ -145,3 +145,16 @@ export async function getPendingFriendRequestCount(): Promise<number> {
   if (error) return 0
   return Number(data ?? 0)
 }
+
+/**
+ * How many accepted friends a player has.
+ *
+ * Goes through an RPC because friendships are only visible to the two
+ * people in them — a plain count would read 0 on anyone else's profile.
+ */
+export async function getFriendCount(userId: string): Promise<number> {
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase.rpc('friend_count', { p_user: userId })
+  if (error) return 0
+  return Number(data ?? 0)
+}

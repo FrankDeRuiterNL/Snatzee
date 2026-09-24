@@ -52,6 +52,7 @@ export default async function ProfilePage() {
           avatarUrl={profile.avatar_url}
           bio={profile.bio}
           stats={stats}
+          friendCount={friends.length}
           action={
             <Button asChild variant="soft" full size="sm">
               <Link href={`/u/${profile.username}`}>Bekijk publiek profiel</Link>
