@@ -74,8 +74,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="nl" className={jakarta.variable} suppressHydrationWarning>
       <head>
         {/* Starts the audio logo downloading with the document instead of
-            after hydration, so it can play the instant it is allowed to. */}
-        <link rel="preload" as="audio" href="/audio/logo.mp3" type="audio/mpeg" />
+            after hydration, so it can play the instant it is allowed to.
+            `as="fetch"` and not `as="audio"`: the cue is decoded through
+            the Web Audio API, so it is fetched, not streamed into an
+            <audio> element, and a mismatched `as` means the preload is
+            fetched and then thrown away. */}
+        <link
+          rel="preload"
+          as="fetch"
+          href="/audio/logo.mp3"
+          type="audio/mpeg"
+          crossOrigin="anonymous"
+        />
         {/* iOS launch images — one per device size and orientation. */}
         <AppleSplashLinks />
       </head>

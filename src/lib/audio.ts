@@ -1,9 +1,17 @@
 /**
  * Short branded audio cues.
  *
- * Sound is additive: every call is best-effort and silently does nothing when
- * playback is unavailable, muted, or blocked by the browser's autoplay policy.
- * Nothing in the app should ever wait on, or depend on, a sound playing.
+ * Played through the Web Audio API rather than <audio> elements, and that
+ * is the whole point of this file's shape. An <audio> element on iOS is
+ * media: the system registers it with Now Playing, so after the launch
+ * sound the lock screen showed "Home · Snatzee" with a play button and a
+ * scrubber, as though the app were a paused podcast. Web Audio is treated
+ * as app sound effects instead and never appears there.
+ *
+ * Sound stays additive: every call is best-effort and silently does
+ * nothing when playback is unavailable, muted, or blocked by the
+ * browser's autoplay policy. Nothing should ever wait on, or depend on,
+ * a sound playing.
  */
 export type SoundName = 'logo' | 'achievement' | 'score'
 
@@ -17,7 +25,15 @@ const VOLUMES: Record<SoundName, number> = {
   score: 0.6,
 }
 
-const cache = new Map<SoundName, HTMLAudioElement>()
+/**
+ * mp3 for everything.
+ *
+ * The ogg/opus variants are smaller, but decodeAudioData on Safari cannot
+ * read them, and the saving across three short cues is a couple of tens
+ * of kilobytes. One format keeps the preload in the document pointing at
+ * the file that is actually fetched.
+ */
+const sourceUrl = (name: SoundName) => `/audio/${name}.mp3`
 
 export function isSoundEnabled() {
   if (typeof window === 'undefined') return false
@@ -37,65 +53,138 @@ export function setSoundEnabled(enabled: boolean) {
   }
 }
 
-function getAudio(name: SoundName) {
-  const existing = cache.get(name)
-  if (existing) return existing
+let context: AudioContext | null = null
+const buffers = new Map<SoundName, AudioBuffer>()
+const loading = new Map<SoundName, Promise<AudioBuffer | null>>()
 
-  const audio = new Audio()
-  // Opus in ogg is roughly a third smaller; Safari falls back to mp3.
-  //
-  // The logo is the exception: it is the one sound the document preloads,
-  // and a preload can only name one file. Picking the format here would
-  // mean Chrome and Firefox fetching the ogg while the preloaded mp3 went
-  // unused, which is exactly the delay the preload exists to remove.
-  audio.src =
-    name !== 'logo' && audio.canPlayType('audio/ogg; codecs=opus')
-      ? `/audio/${name}.ogg`
-      : `/audio/${name}.mp3`
-  audio.preload = 'auto'
-  audio.volume = VOLUMES[name]
-  cache.set(name, audio)
-  return audio
-}
+function getContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  if (context) return context
 
-/** Fire and forget. Returns whether playback was even attempted. */
-export function playSound(name: SoundName): boolean {
-  if (typeof window === 'undefined' || !isSoundEnabled()) return false
+  const Ctor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!Ctor) return null
 
   try {
-    const audio = getAudio(name)
-    audio.currentTime = 0
-    // Rejects when the browser requires a user gesture first.
-    void audio.play().catch(() => {})
+    context = new Ctor()
+  } catch {
+    return null
+  }
+  return context
+}
+
+/** Fetches and decodes once; repeat calls share the same promise. */
+function loadBuffer(name: SoundName): Promise<AudioBuffer | null> {
+  const ready = buffers.get(name)
+  if (ready) return Promise.resolve(ready)
+
+  const inFlight = loading.get(name)
+  if (inFlight) return inFlight
+
+  const ctx = getContext()
+  if (!ctx) return Promise.resolve(null)
+
+  const promise = fetch(sourceUrl(name))
+    .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error('404'))))
+    // Callback form as well as the promise: older Safari only has the
+    // callback signature, and returns undefined from decodeAudioData.
+    .then(
+      (data) =>
+        new Promise<AudioBuffer>((resolve, reject) => {
+          const maybe = ctx.decodeAudioData(data, resolve, reject)
+          if (maybe && typeof maybe.then === 'function') maybe.then(resolve, reject)
+        }),
+    )
+    .then((buffer) => {
+      buffers.set(name, buffer)
+      return buffer
+    })
+    .catch(() => null)
+    .finally(() => loading.delete(name))
+
+  loading.set(name, promise)
+  return promise
+}
+
+/** Starts a decoded buffer. Returns false when it could not be played. */
+function start(name: SoundName): boolean {
+  const ctx = getContext()
+  const buffer = buffers.get(name)
+  if (!ctx || !buffer || ctx.state !== 'running') return false
+
+  try {
+    const source = ctx.createBufferSource()
+    source.buffer = buffer
+    const gain = ctx.createGain()
+    gain.gain.value = VOLUMES[name]
+    source.connect(gain).connect(ctx.destination)
+    source.start()
     return true
   } catch {
     return false
   }
 }
 
+/**
+ * Resumes the context if a gesture allows it.
+ *
+ * A context created without one starts suspended, and resume() only takes
+ * effect from inside a user gesture — the same rule that governs <audio>,
+ * so this is no more restrictive than before.
+ */
+function isRunning() {
+  // Read through the module variable rather than a narrowed local: resume()
+  // changes the state at runtime, which the control-flow analysis cannot see.
+  return context?.state === 'running'
+}
+
+async function ensureRunning(): Promise<boolean> {
+  const ctx = getContext()
+  if (!ctx) return false
+  if (isRunning()) return true
+
+  try {
+    // Raced on purpose. Without user activation Chrome leaves resume()
+    // pending forever rather than rejecting it, so awaiting it bare
+    // strands the caller -- which is exactly what stopped the launch
+    // sound's gesture fallback from ever being attached.
+    await Promise.race([ctx.resume(), new Promise((resolve) => setTimeout(resolve, 250))])
+  } catch {
+    return false
+  }
+
+  return isRunning()
+}
+
+/** Fire and forget. Returns whether playback was even attempted. */
+export function playSound(name: SoundName): boolean {
+  if (typeof window === 'undefined' || !isSoundEnabled()) return false
+
+  void (async () => {
+    await loadBuffer(name)
+    if (await ensureRunning()) start(name)
+  })()
+
+  return true
+}
+
 /** Warms the cache so the first real cue is not delayed by a fetch. */
 export function preloadSounds(names: SoundName[] = ['logo', 'score', 'achievement']) {
   if (typeof window === 'undefined' || !isSoundEnabled()) return
-  for (const name of names) {
-    try {
-      getAudio(name).load()
-    } catch {
-      // Ignore: preloading is an optimisation, not a requirement.
-    }
-  }
+  for (const name of names) void loadBuffer(name)
 }
 
 /**
  * Plays the audio logo once per launch.
  *
- * Autoplay is the whole difficulty here. No browser will start audible
- * playback before the page has been interacted with, and an app opened
- * from the homescreen is never interacted with — the launch is a tap on
- * an icon in another process. Chrome makes an exception for installed
- * apps; Safari does not, at any iOS version, so on iPhone the sound
- * genuinely cannot arrive before the first touch.
+ * Autoplay is the difficulty. No browser starts audible playback before
+ * the page has been interacted with, and an app opened from the
+ * homescreen never has been — the launch was a tap on an icon in another
+ * process. Chrome makes an exception for installed apps; Safari does not,
+ * at any iOS version.
  *
- * What it can do is arrive ON that touch rather than after it. The
+ * What it can do is arrive ON the first touch rather than after it. The
  * listeners are registered in the CAPTURE phase, so they run before the
  * app's own handlers: touching a navigation button starts the sound at
  * touch-down, instead of once the next page has rendered.
@@ -117,12 +206,26 @@ export function playLaunchSound() {
     }
   }
 
-  const audio = getAudio('logo')
+  // Whichever path gets there first wins; the other becomes a no-op, so a
+  // late resume and a first tap cannot both fire the sound.
+  let done = false
+  const fire = () => {
+    if (done) return false
+    if (!start('logo')) return false
+    done = true
+    markPlayed()
+    return true
+  }
 
-  const attempt = audio.play()
-  if (!attempt) return
+  const attempt = async () => {
+    await loadBuffer('logo')
+    if (!(await ensureRunning())) return false
+    return fire()
+  }
 
-  attempt.then(markPlayed).catch(() => {
+  void attempt().then((played) => {
+    if (played) return
+
     // One shared abort signal detaches every listener, whether the sound
     // played or the window for it simply expired.
     const controller = new AbortController()
@@ -133,9 +236,12 @@ export function playLaunchSound() {
     const onGesture = () => {
       clearTimeout(timer)
       controller.abort()
-      // Must stay synchronous inside the gesture: awaiting anything first
-      // spends the permission the tap just granted.
-      void audio.play().then(markPlayed).catch(() => {})
+      // resume() must be called synchronously inside the gesture; the
+      // buffer is already decoded by now, so nothing is awaited first.
+      const ctx = getContext()
+      if (!ctx) return
+      if (ctx.state === 'running') fire()
+      else void ctx.resume().then(fire).catch(() => {})
     }
 
     // Capture phase, so this is the first handler to see the gesture
