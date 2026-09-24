@@ -86,7 +86,14 @@ function declareAmbient() {
 }
 
 let context: AudioContext | null = null
+/** Decoded and ready to play. Bound to the context that decoded them. */
 const buffers = new Map<SoundName, AudioBuffer>()
+/**
+ * The undecoded bytes, kept so a replacement context can decode them
+ * again without a second download. decodeAudioData detaches what it is
+ * given, so it is always handed a copy.
+ */
+const raw = new Map<SoundName, ArrayBuffer>()
 const loading = new Map<SoundName, Promise<AudioBuffer | null>>()
 
 function getContext(): AudioContext | null {
@@ -119,17 +126,20 @@ function loadBuffer(name: SoundName): Promise<AudioBuffer | null> {
   const ctx = getContext()
   if (!ctx) return Promise.resolve(null)
 
-  const promise = fetch(sourceUrl(name))
-    .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error('404'))))
-    // Callback form as well as the promise: older Safari only has the
-    // callback signature, and returns undefined from decodeAudioData.
-    .then(
-      (data) =>
-        new Promise<AudioBuffer>((resolve, reject) => {
-          const maybe = ctx.decodeAudioData(data, resolve, reject)
-          if (maybe && typeof maybe.then === 'function') maybe.then(resolve, reject)
-        }),
-    )
+  const bytes = raw.get(name)
+  const fetched = bytes
+    ? Promise.resolve(bytes)
+    : fetch(sourceUrl(name))
+        .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error('404'))))
+        .then((data) => {
+          raw.set(name, data)
+          return data
+        })
+
+  const promise = fetched
+    // A copy, because decodeAudioData detaches the buffer it is given and
+    // the original has to survive for a possible second context.
+    .then((data) => decode(ctx, data.slice(0)))
     .then((buffer) => {
       buffers.set(name, buffer)
       return buffer
@@ -139,6 +149,33 @@ function loadBuffer(name: SoundName): Promise<AudioBuffer | null> {
 
   loading.set(name, promise)
   return promise
+}
+
+/** Promise form where it exists, callback form for older Safari. */
+function decode(ctx: AudioContext, data: ArrayBuffer): Promise<AudioBuffer> {
+  return new Promise<AudioBuffer>((resolve, reject) => {
+    const maybe = ctx.decodeAudioData(data, resolve, reject)
+    if (maybe && typeof maybe.then === 'function') maybe.then(resolve, reject)
+  })
+}
+
+/**
+ * Throws away a context that will not start and forgets everything it
+ * decoded, so the next getContext() builds a fresh one.
+ *
+ * AudioBuffers belong to the context that produced them, hence clearing
+ * the cache; the downloaded bytes are kept.
+ */
+function resetContext() {
+  const dead = context
+  context = null
+  buffers.clear()
+  loading.clear()
+  try {
+    void dead?.close()
+  } catch {
+    // Already closed, or closing is unsupported. Either is fine.
+  }
 }
 
 /** Starts a decoded buffer. Returns false when it could not be played. */
@@ -260,31 +297,71 @@ export function playLaunchSound() {
   void attempt().then((played) => {
     if (played) return
 
-    // One shared abort signal detaches every listener, whether the sound
-    // played or the window for it simply expired.
     const controller = new AbortController()
     // Long enough to catch the first real tap, short enough that the logo
     // never arrives out of nowhere minutes into a session.
     const timer = setTimeout(() => controller.abort(), 20_000)
-
-    const onGesture = () => {
+    const stop = () => {
       clearTimeout(timer)
       controller.abort()
-      // resume() must be called synchronously inside the gesture; the
-      // buffer is already decoded by now, so nothing is awaited first.
-      const ctx = getContext()
-      if (!ctx) return
-      if (ctx.state === 'running') fire()
-      else void ctx.resume().then(fire).catch(() => {})
     }
 
-    // Capture phase, so this is the first handler to see the gesture
-    // rather than the last. touchstart is listed as well because iOS
-    // fires it before pointerdown on some versions, and whichever
-    // arrives first aborts the rest.
-    const options = { once: true, capture: true, passive: true, signal: controller.signal } as const
-    window.addEventListener('touchstart', onGesture, options)
-    window.addEventListener('pointerdown', onGesture, options)
-    window.addEventListener('keydown', onGesture, options)
+    // At most one replacement context, so a genuinely dead one is retried
+    // exactly once rather than on every event.
+    let recreated = false
+
+    const onGesture = () => {
+      if (done) return stop()
+
+      const ctx = getContext()
+      if (!ctx) return
+
+      if (ctx.state === 'running') {
+        if (fire()) stop()
+        return
+      }
+
+      // resume() must be called synchronously inside the gesture; the
+      // buffer is already decoded by now, so nothing is awaited first.
+      void ctx
+        .resume()
+        .then(() => {
+          // A single tap delivers several of these events. Once the cue
+          // has played the rest have nothing to do — and must not fall
+          // through to the recovery below, which would tear down a
+          // perfectly good context and the buffers decoded into it.
+          if (done) return stop()
+          if (fire()) return stop()
+
+          // Only when the context really refused to start: resumed, and
+          // still not running.
+          if (!recreated && context && context.state !== 'running') {
+            recreated = true
+            resetContext()
+            void loadBuffer('logo')
+          }
+        })
+        .catch(() => {})
+    }
+
+    /*
+     * Every gesture, not just the first, and deliberately not `once`.
+     *
+     * touchstart is not an activation triggering event — the HTML spec
+     * lists pointerdown, pointerup, touchend, mousedown and keydown, and
+     * WebKit follows it. The previous version listened for touchstart
+     * with `once` and a shared abort signal, so on iOS the very first
+     * touch tore every listener down and then called resume() with no
+     * activation to spend: it never started, and nothing was left
+     * listening. That is why the sound stopped entirely.
+     *
+     * touchstart and pointerdown stay at the front because when they do
+     * carry activation the sound lands at touch-down rather than after
+     * the tap completes; the rest are the guaranteed ones behind them.
+     */
+    const options = { capture: true, passive: true, signal: controller.signal } as const
+    for (const type of ['touchstart', 'pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) {
+      window.addEventListener(type, onGesture, options)
+    }
   })
 }
