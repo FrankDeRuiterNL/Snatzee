@@ -96,6 +96,35 @@ const buffers = new Map<SoundName, AudioBuffer>()
 const raw = new Map<SoundName, ArrayBuffer>()
 const loading = new Map<SoundName, Promise<AudioBuffer | null>>()
 
+/**
+ * Whether the launch cue is still waiting for a gesture.
+ *
+ * `waiting` is the only state in which a tap-to-start screen earns its
+ * keep — if the cue autoplayed, already played this session, or sound is
+ * switched off, there is nothing for it to fix.
+ */
+export type LaunchSoundState = 'idle' | 'waiting' | 'played'
+
+let launchState: LaunchSoundState = 'idle'
+const launchListeners = new Set<(state: LaunchSoundState) => void>()
+
+function setLaunchState(next: LaunchSoundState) {
+  if (launchState === next) return
+  launchState = next
+  for (const listener of launchListeners) listener(next)
+}
+
+export function getLaunchSoundState() {
+  return launchState
+}
+
+export function subscribeLaunchSound(listener: (state: LaunchSoundState) => void) {
+  launchListeners.add(listener)
+  return () => {
+    launchListeners.delete(listener)
+  }
+}
+
 let unlockAttached = false
 
 /**
@@ -324,6 +353,7 @@ export function playLaunchSound() {
     if (!start('logo')) return false
     done = true
     markPlayed()
+    setLaunchState('played')
     return true
   }
 
@@ -336,10 +366,18 @@ export function playLaunchSound() {
   void attempt().then((played) => {
     if (played) return
 
+    // Autoplay was refused: from here the cue depends on a gesture, which
+    // is exactly what the tap-to-start screen exists to provide.
+    setLaunchState('waiting')
+
     const controller = new AbortController()
     // Long enough to catch the first real tap, short enough that the logo
     // never arrives out of nowhere minutes into a session.
-    const timer = setTimeout(() => controller.abort(), 20_000)
+    const timer = setTimeout(() => {
+      controller.abort()
+      // Nobody touched anything in time; stop offering to play it.
+      if (!done) setLaunchState('idle')
+    }, 20_000)
     const stop = () => {
       clearTimeout(timer)
       controller.abort()

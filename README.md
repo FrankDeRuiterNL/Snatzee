@@ -465,6 +465,18 @@ ranglijsten en grafieken gevuld zijn.
 minimumaantal potjes voor de gemiddelde-ranking en de laagst en hoogst
 toegestane score. Aan te passen in **Snatzee Admin → Beheer**.
 
+Daar staat ook **Startscherm bij openen**. Staat die aan, dan toont de app bij
+het openen een tik-scherm met het logo en de knop "Tijd voor Snatzee!". Dat
+bestaat om één reden: geen enkele browser speelt geluid voordat er met de
+pagina iets is gedaan, en een app openen vanaf het beginscherm is dat niet.
+De tik maakt er wél een interactie van, dus het openingsgeluid speelt meteen in
+plaats van bij de eerste aanraking daarna.
+
+Het scherm verschijnt alleen wanneer het iets oplost: is het geluid vanzelf al
+gespeeld (Android, desktop), staat geluid uit, of speelde het deze sessie al,
+dan blijft het weg. Het verdwijnt vanzelf na vier seconden en de app laadt er
+gewoon achter door.
+
 ### Brand assets
 
 Iconen, splashscreens en geluiden worden gegenereerd uit de bronbestanden in
@@ -520,7 +532,7 @@ src/
     push.ts push-server.ts  Web Push, client en verzendkant
     image.ts invite.ts pwa.ts audio.ts haptics.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0018)
+supabase/migrations/        SQL migraties (0001 t/m 0019)
 docker/
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
   nginx/                    gateway op één poort

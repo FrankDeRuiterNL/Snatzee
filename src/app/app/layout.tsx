@@ -4,7 +4,9 @@ import { QuickActionsProvider } from '@/components/layout/quick-actions-provider
 import { BottomNavigation } from '@/components/layout/bottom-navigation'
 import { PwaPrompts } from '@/components/pwa/pwa-prompts'
 import { PullToRefresh } from '@/components/layout/pull-to-refresh'
+import { LaunchSplash } from '@/components/layout/launch-splash'
 import {
+  getAppSettings,
   getCurrentProfile,
   getCurrentUser,
   getPendingFriendRequestCount,
@@ -19,7 +21,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Drives the badge on the Vrienden tab. Read here so it is correct on
   // first paint and refreshed by router.refresh() after accepting one.
-  const friendRequests = await getPendingFriendRequestCount()
+  const [friendRequests, appSettings] = await Promise.all([
+    getPendingFriendRequestCount(),
+    getAppSettings(),
+  ])
 
   return (
     <Suspense fallback={null}>
@@ -33,6 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         {/* Sits above the column so the indicator is not clipped by it. */}
         <PullToRefresh />
+        {appSettings.launch_splash === 1 && <LaunchSplash />}
         <BottomNavigation friendRequests={friendRequests} />
         {/* Install / notification nudges — signed-in only, so the first thing a
             new visitor sees is the app itself. */}

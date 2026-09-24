@@ -6,6 +6,7 @@ import { ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
+import { ToggleRow } from '@/components/ui/toggle-row'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
 import type { AppRole } from '@/types/database'
@@ -38,6 +39,10 @@ export function AdminPanel({
   )
   const [savingKey, setSavingKey] = useState<string | null>(null)
 
+  // Stored as 0/1 so the existing integer RPC can write it.
+  const [launchSplash, setLaunchSplash] = useState(() => settings.launch_splash === 1)
+  const [splashBusy, setSplashBusy] = useState(false)
+
   const [targetUser, setTargetUser] = useState('')
   const [targetRole, setTargetRole] = useState<AppRole>('admin')
   const [assigning, setAssigning] = useState(false)
@@ -61,6 +66,29 @@ export function AdminPanel({
 
     haptic('success')
     toast.success(`${label} bijgewerkt`)
+    router.refresh()
+  }
+
+  async function toggleLaunchSplash(next: boolean) {
+    if (splashBusy) return
+    setSplashBusy(true)
+    setLaunchSplash(next)
+
+    const supabase = getSupabaseBrowserClient()
+    const { error } = await supabase.rpc('update_app_setting', {
+      p_key: 'launch_splash',
+      p_value: next ? 1 : 0,
+    })
+    setSplashBusy(false)
+
+    if (error) {
+      setLaunchSplash(!next)
+      toast.error('Opslaan is niet gelukt', { description: error.message })
+      return
+    }
+
+    haptic('success')
+    toast.success(next ? 'Startscherm staat aan' : 'Startscherm staat uit')
     router.refresh()
   }
 
@@ -126,6 +154,16 @@ export function AdminPanel({
             {setting.hint && <p className="mt-1.5 text-xs text-ink-muted">{setting.hint}</p>}
           </div>
         ))}
+
+        <div className="border-t border-white/10 pt-5">
+          <ToggleRow
+            label="Startscherm bij openen"
+            description="Toont bij het openen een tik-scherm, zodat het openingsgeluid meteen speelt in plaats van bij de eerste aanraking. Verschijnt alleen wanneer het geluid niet vanzelf mag spelen."
+            checked={launchSplash}
+            disabled={splashBusy}
+            onCheckedChange={toggleLaunchSplash}
+          />
+        </div>
 
         {role === 'superadmin' && (
           <form onSubmit={assignRole} className="border-t border-white/10 pt-5">
