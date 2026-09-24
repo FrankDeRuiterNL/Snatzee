@@ -53,6 +53,38 @@ export function setSoundEnabled(enabled: boolean) {
   }
 }
 
+/**
+ * `navigator.audioSession`, which is not in lib.dom yet.
+ *
+ * Only Safari implements it at the time of writing; everywhere else the
+ * property is simply absent and the block below does nothing.
+ */
+interface AudioSessionLike {
+  type: 'auto' | 'playback' | 'transient' | 'transient-solo' | 'ambient' | 'play-and-record'
+}
+
+/**
+ * Declares these sounds as ambient: mixable with whatever else is playing.
+ *
+ * Largely belt-and-braces. Safari already treats a page holding an
+ * AudioContext as ambient under the default `auto`, so the switch away
+ * from <audio> elements is what actually stopped Snatzee interrupting
+ * someone's music. Saying it explicitly pins the category, so the user
+ * agent cannot decide from its own heuristics that a cue is media and
+ * promote the page to `playback`, which would pause their music.
+ *
+ * Ambient obeys the ringer switch, which is correct for UI sound: a
+ * phone on silent should stay silent.
+ */
+function declareAmbient() {
+  try {
+    const session = (navigator as Navigator & { audioSession?: AudioSessionLike }).audioSession
+    if (session) session.type = 'ambient'
+  } catch {
+    // Unsupported or read-only: the default is already close enough.
+  }
+}
+
 let context: AudioContext | null = null
 const buffers = new Map<SoundName, AudioBuffer>()
 const loading = new Map<SoundName, Promise<AudioBuffer | null>>()
@@ -71,6 +103,8 @@ function getContext(): AudioContext | null {
   } catch {
     return null
   }
+
+  declareAmbient()
   return context
 }
 
