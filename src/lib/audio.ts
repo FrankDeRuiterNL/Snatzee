@@ -96,6 +96,44 @@ const buffers = new Map<SoundName, AudioBuffer>()
 const raw = new Map<SoundName, ArrayBuffer>()
 const loading = new Map<SoundName, Promise<AudioBuffer | null>>()
 
+let unlockAttached = false
+
+/**
+ * Keeps the context awake for sounds that fire outside a gesture.
+ *
+ * The score and achievement cues play from a callback that runs *after*
+ * the save round-trip has resolved, so there is no live user gesture by
+ * then. Safari needs resume() to happen inside one, and it puts a context
+ * back to `suspended`/`interrupted` when the app is backgrounded or left
+ * idle -- so those cues fell silent while the launch sound, which does
+ * run in a gesture, kept working.
+ *
+ * An <audio> element did not have this problem: unlocking one is
+ * permanent. A context's state is not, so every gesture is used to top it
+ * up. The person pressed "Opslaan" a moment before the sound is wanted,
+ * which is all the activation this needs.
+ */
+function keepUnlocked() {
+  if (unlockAttached || typeof window === 'undefined') return
+  unlockAttached = true
+
+  const wake = () => {
+    const ctx = context
+    if (!ctx || ctx.state === 'running' || ctx.state === 'closed') return
+    void ctx.resume().catch(() => {})
+  }
+
+  const options = { capture: true, passive: true } as const
+  for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) {
+    window.addEventListener(type, wake, options)
+  }
+  // Returning to the app is worth a try too, though it carries no gesture
+  // and so only helps where the policy is laxer than Safari's.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') wake()
+  })
+}
+
 function getContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
   if (context) return context
@@ -112,6 +150,7 @@ function getContext(): AudioContext | null {
   }
 
   declareAmbient()
+  keepUnlocked()
   return context
 }
 
