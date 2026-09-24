@@ -73,12 +73,24 @@ export function LaunchSplash() {
 
   const dismiss = useCallback(() => setDismissed(true), [])
 
+  /*
+   * `initial={false}` on both, and no entrance animation at all.
+   *
+   * framer-motion writes an element's `initial` into the server markup,
+   * so `initial={{ opacity: 0 }}` shipped this overlay as opacity:0. It
+   * only became visible once framer had hydrated and animated it in --
+   * precisely the window in which the app showed through. A launch
+   * screen has to be opaque in the very first frame; only the way out
+   * is animated.
+   */
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {visible && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          // No `initial` and no `animate`: any entrance transition makes
+          // framer take the opacity under 1 for a frame or two just as
+          // the app is being revealed behind it. Only the exit animates.
+          initial={false}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
           // The whole surface dismisses, not just the button: the button
@@ -97,13 +109,7 @@ export function LaunchSplash() {
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           }}
         >
-          <motion.div
-            initial={{ scale: 0.94, y: 8 }}
-            animate={{ scale: 1, y: 0 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 260 }}
-          >
-            <LogoLockup size={72} />
-          </motion.div>
+          <LogoLockup size={72} />
 
           <span className="press rounded-full bg-mint-500 px-8 py-4 text-lg font-black tracking-tight text-navy-950 glow-mint">
             Tijd voor Snatzee!
