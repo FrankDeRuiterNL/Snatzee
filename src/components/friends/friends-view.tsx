@@ -255,16 +255,30 @@ export function FriendsView({
               className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted"
               aria-hidden
             />
+            {/*
+              iOS decides a field is a login box from its name, id and
+              placeholder, and the placeholder here used to say "username" —
+              which is why Safari offered to fill in a Keychain account.
+              A neutral name, autoComplete off and a placeholder without
+              credential words keep it a search box. The data- attributes do
+              the same for 1Password and LastPass.
+            */}
             <Input
               type="search"
+              name="speler-zoeken"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Zoek op username of naam"
+              placeholder="Zoek een speler"
+              autoComplete="off"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
               enterKeyHint="search"
               aria-label="Spelers zoeken"
+              aria-autocomplete="none"
+              data-1p-ignore
+              data-lpignore="true"
+              data-form-type="other"
               className="pl-12"
             />
           </div>

@@ -3,7 +3,11 @@ import { redirect } from 'next/navigation'
 import { QuickActionsProvider } from '@/components/layout/quick-actions-provider'
 import { BottomNavigation } from '@/components/layout/bottom-navigation'
 import { PwaPrompts } from '@/components/pwa/pwa-prompts'
-import { getCurrentProfile, getCurrentUser } from '@/lib/supabase/queries'
+import {
+  getCurrentProfile,
+  getCurrentUser,
+  getPendingFriendRequestCount,
+} from '@/lib/supabase/queries'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
@@ -11,6 +15,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const profile = await getCurrentProfile()
   if (!profile?.onboarding_completed) redirect('/onboarding')
+
+  // Drives the badge on the Vrienden tab. Read here so it is correct on
+  // first paint and refreshed by router.refresh() after accepting one.
+  const friendRequests = await getPendingFriendRequestCount()
 
   return (
     <Suspense fallback={null}>
@@ -22,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {children}
           </main>
         </div>
-        <BottomNavigation />
+        <BottomNavigation friendRequests={friendRequests} />
         {/* Install / notification nudges — signed-in only, so the first thing a
             new visitor sees is the app itself. */}
         <PwaPrompts />

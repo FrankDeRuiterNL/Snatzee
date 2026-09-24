@@ -668,9 +668,20 @@ app eerst geïnstalleerd moet worden.
 
 | Wanneer | Wie krijgt hem |
 | --- | --- |
-| Iemand stuurt een vriendschapsverzoek | De ontvanger van het verzoek |
+| Iemand stuurt een vriendschapsverzoek | De ontvanger van het verzoek; de melding opent meteen het tabblad Verzoeken |
 | Iemand voegt je toe aan een groep | Het toegevoegde lid — niet jijzelf als je de groep maakt of met een code binnenkomt |
 | Iemand gaat over de hoogste score heen | De speler die de toppositie kwijtraakt |
+| Een groepslid registreert een potje | De andere leden van die groep |
+
+De groepsmelding vermeldt de score, of het potje gewonnen is, hoeveel Yahtzees
+erin zaten en op welke plek de speler daarna in die groep staat — bijvoorbeeld
+*"Ann scoorde 325 punten · gewonnen · 2× Yahtzee · nu #1 van 2"*. Hij gaat één
+keer per gedeelde groep: de positie betekent alleen iets binnen een groep, dus
+wie twee groepen met de speler deelt krijgt twee verschillende feiten. Leden
+zonder meldingen aan en de speler zelf krijgen niets.
+
+Open vriendschapsverzoeken staan ook als rood cijfer op het tabblad Vrienden in
+de navigatie.
 
 Die momenten worden door de database bepaald, niet door de app: triggers
 schrijven een regel in `notification_outbox`. Alleen Postgres ziet elke score
@@ -981,7 +992,7 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0015)
+supabase/migrations/        SQL migraties (0001 t/m 0016)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack

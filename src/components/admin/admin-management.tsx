@@ -112,9 +112,13 @@ export function AdminManagement({
           />
           <Input
             type="search"
+            name="admin-zoeken"
+            autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Zoek op naam of username"
+            placeholder="Zoek een speler"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}

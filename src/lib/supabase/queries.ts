@@ -132,3 +132,16 @@ export async function getMyGroups(): Promise<(Group & { member_count: number })[
     member_count: g.group_members?.[0]?.count ?? 0,
   }))
 }
+
+/**
+ * Friend requests waiting on the signed-in user.
+ *
+ * Read in the app layout so the badge on the Vrienden tab is there on
+ * first paint rather than appearing a moment later.
+ */
+export async function getPendingFriendRequestCount(): Promise<number> {
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase.rpc('pending_friend_request_count')
+  if (error) return 0
+  return Number(data ?? 0)
+}
