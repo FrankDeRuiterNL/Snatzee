@@ -28,6 +28,16 @@ import { getLaunchSoundState, subscribeLaunchSound } from '@/lib/audio'
 const AUTO_DISMISS_MS = 4_000
 
 /**
+ * Half the button's rendered height, in pixels.
+ *
+ * The button is placed by its centre line, on 75% of the screen. Its top
+ * edge — which is where the logo's half of the screen ends — is that line
+ * less this. Kept as a named number because it has to track the button's
+ * padding and text size if either changes.
+ */
+const BUTTON_HALF_HEIGHT = 30
+
+/**
  * Runs before the first paint, so the screen is either there immediately
  * or never drawn at all.
  *
@@ -111,8 +121,13 @@ export function LaunchSplash() {
           // are described in terms of.
           className="fixed inset-0 z-[80] bg-canvas"
         >
-          {/* Dead centre of the screen, horizontally and vertically. */}
-          <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-8">
+          {/* Everything above the button, with the logo centred in it.
+              The height of this region *is* the button's top edge, so the
+              logo sits halfway between that and the top of the screen. */}
+          <div
+            className="absolute inset-x-0 top-0 flex items-center justify-center px-8"
+            style={{ height: `calc(75% - ${BUTTON_HALF_HEIGHT}px)` }}
+          >
             <LogoStack size={146} />
           </div>
 
