@@ -62,9 +62,22 @@ export function LogoLockup({ size = 44, className }: { size?: number; className?
  * running off to one side, and the wordmark can carry more weight than
  * the compact horizontal version allows.
  */
+/**
+ * The wordmark and the gap, as fractions of the mark's size.
+ *
+ * Derived from the proportions the stack was designed at (a 101px mark
+ * over a 1.755rem wordmark, 12px apart), so passing a different size
+ * scales the whole lockup rather than stretching one part of it.
+ */
+const WORDMARK_RATIO = 28.08 / 101
+const GAP_RATIO = 12 / 101
+
 export function LogoStack({ size = 101, className }: { size?: number; className?: string }) {
   return (
-    <span className={cn('inline-flex flex-col items-center gap-3', className)}>
+    <span
+      className={cn('inline-flex flex-col items-center', className)}
+      style={{ gap: `${size * GAP_RATIO}px` }}
+    >
       <Image
         src="/brand/mark.png"
         alt=""
@@ -74,8 +87,10 @@ export function LogoStack({ size = 101, className }: { size?: number; className?
         priority
         className="rounded-[24%] shadow-soft"
       />
-      {/* 30% up on the header lockup's 1.35rem. */}
-      <span className="text-[1.755rem] font-extrabold tracking-tight">
+      <span
+        className="font-extrabold tracking-tight"
+        style={{ fontSize: `${size * WORDMARK_RATIO}px` }}
+      >
         <span className="text-ink">Snat</span>
         <span className="text-mint-500">zee</span>
       </span>
