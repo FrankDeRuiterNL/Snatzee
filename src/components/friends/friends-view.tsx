@@ -131,6 +131,9 @@ export function FriendsView({
       }
 
       haptic(accept ? 'success' : 'light')
+      // Accepting queues a notification for the other person; nudge the
+      // server to send it while this device is still awake.
+      if (accept) pingNotificationDrain()
       toast.success(accept ? 'Jullie zijn nu vrienden 🎉' : 'Verzoek geweigerd')
       router.refresh()
     },

@@ -669,6 +669,7 @@ app eerst geïnstalleerd moet worden.
 | Wanneer | Wie krijgt hem |
 | --- | --- |
 | Iemand stuurt een vriendschapsverzoek | De ontvanger van het verzoek; de melding opent meteen het tabblad Verzoeken |
+| Iemand accepteert je vriendschapsverzoek | De verzender; de melding opent het profiel van je nieuwe vriend |
 | Iemand voegt je toe aan een groep | Het toegevoegde lid — niet jijzelf als je de groep maakt of met een code binnenkomt |
 | Iemand gaat over de hoogste score heen | De speler die de toppositie kwijtraakt |
 | Een groepslid registreert een potje | De andere leden van die groep |
@@ -1001,7 +1002,7 @@ src/
     constants.ts            centrale configuratie
     haptics.ts utils.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0017)
+supabase/migrations/        SQL migraties (0001 t/m 0018)
 docker/
   postgres/init/            rollen en rechten, draait bij eerste start
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
