@@ -1,32 +1,75 @@
 # Snatzee 🎲
 
-**Snatzee is een sociale score- en statistiekenapp voor mensen die Yahtzee spelen.**
+**Een sociale score- en statistiekenapp voor mensen die Yahtzee spelen.**
 
-Snatzee vervangt nadrukkelijk **niet** het traditionele Yahtzee-scoreblaadje. Je speelt een
-normaal potje met een fysiek scoreformulier en voert daarna alleen je **eindresultaat** in.
-Snatzee houdt vervolgens je scores, statistieken, records, achievements, vrienden en
-ranglijsten bij.
+Snatzee vervangt het papieren scoreblaadje **niet**. Je speelt een normaal potje
+met het fysieke formulier en voert daarna alleen je **eindscore** in. Snatzee
+houdt vanaf daar je records, statistieken, achievements, vrienden en ranglijsten
+bij.
 
-Mobile-first PWA, te installeren op het homescreen van iPhone en Android.
+Mobile-first PWA, te installeren op het homescreen van iPhone en Android. De
+volledige stack — database, auth, API, opslag en de app zelf — draait in Docker;
+een account bij een externe dienst is niet nodig.
 
 ---
 
 ## Inhoud
 
+- [Functionaliteit](#functionaliteit)
 - [Techniek](#techniek)
-- [Deployen met Docker](#deployen-met-docker) — de complete handleiding
-- [Dark mode](#dark-mode)
-- [Beheerders](#beheerders)
-- [Yahtzee's registreren](#yahtzees-registreren)
-- [Levels, achievements en geluid](#levels-achievements-en-geluid)
-- [Lokaal ontwikkelen](#lokaal-ontwikkelen)
-- [Alternatief: gehost Supabase](#alternatief-gehost-supabase)
-- [Demo data](#demo-data)
-- [Datamodel](#datamodel)
-- [Achievements](#achievements)
-- [Brand assets](#brand-assets)
-- [Projectstructuur](#projectstructuur)
-- [Scripts](#scripts)
+- [Snel starten](#snel-starten)
+- [Configuratie](#configuratie)
+- [Bijwerken](#bijwerken)
+- [Beheer en onderhoud](#beheer-en-onderhoud)
+- [Architectuur](#architectuur)
+- [Ontwikkelen](#ontwikkelen)
+
+---
+
+## Functionaliteit
+
+**Potjes en Yahtzee's**
+Een potje toevoegen is één sheet: eindscore via een rolpicker (0–1575, ongeldige
+combinaties zijn niet te kiezen), gewonnen ja/nee, aantal Yahtzees en optioneel
+een notitie. Een Yahtzee in de eerste worp registreer je apart, met een
+bevestiging vooraf zodat een misklik geen record vervuilt, en met een
+celebratie als het lukt.
+
+**Statistieken en ranglijsten**
+Zes ranglijsten (hoogste score, gemiddelde, potjes, wins, Yahtzee's, Yahtzee's
+in één worp), elk te bekijken wereldwijd, onder vrienden of binnen een groep.
+Daarnaast grafieken over je scoreverloop, je win-ratio en je records.
+
+**Achievements en levels**
+36 achievements in vier zeldzaamheidsklassen, en vijf spelerniveaus die
+meegroeien met het aantal gespeelde potjes. Beide worden afgeleid uit de data en
+niet gelogd: verdwijnt de onderbouwing, dan verdwijnt de achievement mee.
+
+**Vrienden**
+Zoeken op naam of username, verzoeken sturen, en een Verzoeken-tab met zowel
+ontvangen verzoeken (accepteren of weigeren) als verzonden verzoeken (intrekken).
+Speelt iemand nog geen Snatzee, dan deelt de Zoeken-tab een uitnodiging via het
+deelmenu van het toestel.
+
+**Groepen**
+Groepen met eigen ranglijsten. Uitnodigen gaat via **Uitnodigen → Kopieer ID of
+QR Code**; meedoen via **Groep joinen → QR Code scannen of Code invoeren**. De
+QR bevat een volledige link, dus ook de gewone camera-app van een telefoon kan
+hem openen.
+
+**Pushmeldingen**
+Optioneel, en alleen naar de geïnstalleerde app. Zie
+[Meldingen](#meldingen) voor wanneer er een uitgaat.
+
+**Beheer**
+Een adminconsole voor superadmins: scores en 1-worp Yahtzee's doorzoeken en
+verwijderen, alle groepen beheren, een eigen melding sturen, app-instellingen en
+rollen aanpassen en achievements van een speler resetten. Alles wat verwijdert
+of verstuurt komt in het auditlog.
+
+**PWA**
+Installeerbaar, werkt offline voor de app-shell, pull-to-refresh, veilige-zone
+support, geen dubbeltap-zoom en geen horizontaal scrollen.
 
 ---
 
@@ -40,238 +83,182 @@ Mobile-first PWA, te installeren op het homescreen van iPhone en Android.
 | Animatie | Framer Motion |
 | Iconen | Lucide |
 | Grafieken | Recharts |
-| Database | PostgreSQL via Supabase |
-| Auth | Supabase Auth (e-mail/wachtwoord, Apple, Google) |
+| Database | PostgreSQL (zelf-gehoste Supabase-stack) |
+| Auth | Supabase Auth — e-mail/wachtwoord, Apple, Google |
 | Security | Row Level Security + `SECURITY DEFINER` RPC's |
-| Hosting | Docker compose (poort **6666**) of Vercel + gehost Supabase |
+| Push | Web Push met VAPID (`web-push`, `jsqr`, `qrcode`) |
+| Hosting | Docker Compose op poort **6666**, of Vercel + gehost Supabase |
 
 ---
 
-## Deployen met Docker
+## Snel starten
 
-De hele applicatie draait in Docker: **database, authenticatie, API, opslag én de
-app zelf**. Je hebt geen account bij Supabase of een andere dienst nodig.
-
-### Wat er draait
-
-Zeven containers in één compose-stack:
-
-| Service | Image | Rol |
-| --- | --- | --- |
-| `db` | `supabase/postgres:17.6.1.136` | PostgreSQL mét de Supabase-rollen, -schema's en `auth.uid()` |
-| `db-prepare` | `supabase/postgres:17.6.1.136` | Eenmalig: zet de wachtwoorden van de servicerollen goed |
-| `auth` | `supabase/gotrue:v2.196.0` | Inloggen, registreren, Apple/Google |
-| `rest` | `postgrest/postgrest:v14.17` | De `/rest/v1` API en alle RPC's |
-| `storage` | `supabase/storage-api:v1.74.0` | Avatar-uploads |
-| `migrate` | `supabase/postgres:17.6.1.136` | Eenmalig: zet het schema klaar en stopt |
-| `app` | wordt lokaal gebouwd | De Next.js applicatie |
-| `gateway` | `nginx:1.29-alpine` | De enige gepubliceerde poort |
-
-Alles komt binnen op **poort 6666**. De app en de Supabase-API's delen één
-origin, dus er is maar één poort open en er valt geen CORS te configureren.
-
-De images en hun instellingen volgen de officiële self-hosting-compose van
-Supabase, zodat dit een opstelling volgt die breed gedraaid en getest wordt in
-plaats van een zelfgebouwd equivalent. `supabase/postgres` levert de rollen, de
-`auth`- en `storage`-schema's, de extensies en `auth.uid()` — precies de dingen
-waar alle RLS-policies op leunen.
-
-> **Waarom niet alles in één container?** De database en de app hebben een
-> verschillende levensduur. In aparte containers kun je de app herbouwen of
-> herstarten zonder de database aan te raken, blijft je data in een eigen volume
-> staan bij een upgrade, en haalt een crash van het één het ander niet onderuit.
-> Je start ze nog steeds met één commando.
-
-### Stap 1 — Repo ophalen
+Vereist: Docker met Compose v2. Verder niets — Node is alleen nodig om lokaal te
+ontwikkelen.
 
 ```bash
 git clone https://github.com/FrankDeRuiterNL/Snatzee.git
 cd Snatzee
-```
-
-### Stap 2 — Configuratie aanmaken
-
-```bash
 cp .env.example .env
 ```
 
-### Stap 3 — Geheimen genereren
-
-Dit maakt het databasewachtwoord, het JWT-secret en de twee API-sleutels aan:
+**1. Geheimen genereren**
 
 ```bash
 node scripts/generate-keys.mjs
-```
-
-Heb je geen Node op de server? Dan kan het ook via Docker:
-
-```bash
+# Geen Node op de server? Dan via Docker:
 docker run --rm -v "$PWD":/app -w /app node:22-alpine node scripts/generate-keys.mjs
 ```
 
-Plak de vier regels die je terugkrijgt in `.env`:
+Plak de vier regels (`POSTGRES_PASSWORD`, `JWT_SECRET`, `ANON_KEY`,
+`SERVICE_ROLE_KEY`) in `.env`. Wil je pushmeldingen, doe dan hetzelfde met
+`node scripts/generate-vapid-keys.mjs`.
 
-```
-POSTGRES_PASSWORD=...
-JWT_SECRET=...
-ANON_KEY=...
-SERVICE_ROLE_KEY=...
-```
+**2. Je adres invullen**
 
-Wil je pushmeldingen? Genereer dan ook een VAPID-sleutelpaar (zie
-[Pushmeldingen](#pushmeldingen)); zonder die sleutels draait de app prima, maar
-blijft de meldingen-toggle uit.
-
-### Stap 4 — Je adres invullen
-
-Zet in `.env` de `PUBLIC_URL` op het adres waarop mensen de app openen. Dit is
-het belangrijkste veld: OAuth-redirects, e-maillinks en de PWA-installatie
-hangen ervan af.
+Zet `PUBLIC_URL` op het adres waarop mensen de app openen. Dit is het
+belangrijkste veld: OAuth-redirects, e-maillinks, opgeslagen avatar-URL's en de
+PWA-installatie hangen ervan af.
 
 ```bash
-# Op je eigen netwerk
-PUBLIC_URL=http://192.168.1.50:6666
-
-# Achter een domein met HTTPS
-PUBLIC_URL=https://www.snatzee.nl
+PUBLIC_URL=http://localhost:6666        # lokaal
+PUBLIC_URL=https://www.snatzee.nl       # productie
 ```
 
-Zet daarnaast elk domein waarop de app bereikbaar is in de redirect-lijst:
-
-```bash
-ADDITIONAL_REDIRECT_URLS=https://snatzee.frankvandetechniek.nl/**,https://www.snatzee.nl/**
-```
-
-### Stap 5 — Starten
+**3. Starten**
 
 ```bash
 docker compose up -d --build
 ```
 
-De eerste keer duurt dit een paar minuten: de app wordt gebouwd, de database
-wordt aangemaakt en `migrate` zet het volledige schema klaar.
+De eerste start duurt enkele minuten: images downloaden, de app bouwen en het
+schema aanmaken. Compose start alles in de juiste volgorde, dus één commando is
+genoeg.
 
-### Stap 6 — Controleren
+**4. Controleren**
 
 ```bash
-# Alle services draaien?
-docker compose ps
-
-# Het schema is aangemaakt (deze container hoort "Exited (0)" te zijn)
-docker compose logs migrate
-
-# Reageert de app?
-curl http://localhost:6666/api/health
+docker compose ps                    # alles "running" behalve db-prepare en migrate: die horen "exited (0)"
+docker compose logs --tail=20 migrate    # eindigt op "Schema is up to date."
+curl -I http://localhost:6666/api/health # 200
 ```
 
-Verwacht antwoord:
-
-```json
-{ "status": "ok", "app": "snatzee", "time": "..." }
-```
-
-Open daarna `http://<docker-host>:6666` en maak je account aan.
+Open het adres, maak een account en je bent binnen.
 
 ---
 
-### Opstartvolgorde
+## Configuratie
 
-`docker compose up -d` start alles in de juiste volgorde; elke service wacht
-op een echte health check van de vorige:
+Alles staat in `.env`. De volledige lijst met toelichting staat in
+`.env.example`; dit zijn de velden die ertoe doen.
 
-```
-db → db-prepare → auth + rest → storage → migrate → app → gateway
-```
+| Variabele | Waarvoor |
+| --- | --- |
+| `PUBLIC_URL` | Het canonieke adres. Eén waarde, geen tweede actieve regel. |
+| `HTTP_PORT` | Gepubliceerde poort van de gateway (standaard `6666`). |
+| `POSTGRES_PASSWORD`, `JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY` | Uit `generate-keys.mjs`. |
+| `ADDITIONAL_REDIRECT_URLS` | Elk domein waarvandaan iemand mag inloggen. |
+| `MAILER_EXTERNAL_HOSTS` | Elke hostnaam die in bevestigingslinks mag staan. |
+| `MAILER_AUTOCONFIRM` | `true` zolang er geen SMTP is: accounts zijn dan meteen actief. |
+| `SMTP_*` | Mailserver voor bevestigings- en herstelmails. |
+| `GOOGLE_ENABLED`, `APPLE_ENABLED` | Zetten de provider én de knop in de app aan. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Pushmeldingen. Leeg laten schakelt push uit. |
 
-Poort 6666 gaat pas open als alles erachter antwoordt, dus je krijgt geen 502
-tijdens het opstarten. De eerste keer duurt dat een paar minuten.
+### Meerdere domeinen
 
-Eén detail dat makkelijk misgaat: PostgREST bouwt zijn schema-cache zodra het
-verbinding maakt, en dat is bij een eerste start vóórdat de migraties draaien.
-`migrate` stuurt daarom aan het eind `notify pgrst, 'reload schema'`. Zonder
-dat zou de API blijven melden dat `get_leaderboard` niet bestaat tot je `rest`
-opnieuw start.
+De app volgt de adresbalk: de browser praat met de Supabase-API's op het domein
+waar hij al is, omdat de gateway ze op dezelfde origin serveert. Extra domeinen
+vragen dus geen rebuild en geen extra variabelen — wijs ze naar deze host en zet
+ze in `ADDITIONAL_REDIRECT_URLS` en `MAILER_EXTERNAL_HOSTS`. `PUBLIC_URL` bepaalt
+welk domein in mails en gedeelde links staat.
 
-### Serveren op meerdere domeinen
-
-De app volgt de adresbalk. De gateway serveert de Supabase-API's op dezelfde
-origin als de app, dus de browser praat met het domein waarop je al zit. Een
-extra domein kost geen herbouw en geen extra variabele.
-
-Zet `PUBLIC_URL` op het domein dat je als hoofdadres wilt — dat adres komt
-terug in OAuth-callbacks, e-maillinks, opgeslagen avatar-URL's en metadata —
-en noem alle domeinen in deze twee:
-
-```bash
-PUBLIC_URL=https://www.snatzee.nl
-
-ADDITIONAL_REDIRECT_URLS=https://www.snatzee.nl/**,https://snatzee.frankvandetechniek.nl/**
-MAILER_EXTERNAL_HOSTS=www.snatzee.nl,snatzee.frankvandetechniek.nl
-```
-
-> **Eén `PUBLIC_URL` tegelijk.** Een `.env`-bestand houdt de laatste regel van
-> een sleutel aan, dus twee actieve `PUBLIC_URL`-regels betekent stilletjes dat
-> de onderste wint. Zet alternatieven met `#` uit.
-
-Wijzig je `PUBLIC_URL` later, draai dan `docker compose up -d --build`: het
-zit in de build gebakken. Avatars die al waren geüpload blijven naar het oude
-domein wijzen, dus laat dat domein bereikbaar of upload ze opnieuw.
+> Avatar-URL's worden absoluut opgeslagen. Wissel je van canoniek domein, werk
+> ze dan bij:
+> ```bash
+> docker compose exec db psql -U postgres -d postgres -c \
+>   "update public.profiles set avatar_url = replace(avatar_url,'https://oud.example','https://nieuw.example') where avatar_url like 'https://oud.example%';"
+> ```
 
 ### Achter een reverse proxy met HTTPS
 
-Voor `https://www.snatzee.nl` zet je je eigen proxy (Traefik, Caddy, nginx,
-Cloudflare Tunnel) vóór poort 6666. De gateway leest `X-Forwarded-Proto` en
-`X-Forwarded-Host`, dus de app bouwt automatisch de juiste absolute URL's — ook
-met twee domeinen tegelijk.
+De stack luistert op `HTTP_PORT` en verwacht TLS-terminatie ervoor. Geef
+`X-Forwarded-Proto` en `X-Forwarded-Host` door; zonder die headers stuurt de app
+callbacks naar een intern adres dat de browser niet kan bereiken.
 
-Voorbeeld met Caddy:
+### Apple en Google
+
+Autorisatie-URI in Google Cloud Console en return-URL in je Apple Service ID:
 
 ```
-snatzee.frankvandetechniek.nl, www.snatzee.nl {
-    reverse_proxy localhost:6666
-}
+${PUBLIC_URL}/auth/v1/callback
 ```
 
-Zet `PUBLIC_URL` daarna op het domein dat je als hoofdadres wilt gebruiken en
-neem beide domeinen op in `ADDITIONAL_REDIRECT_URLS`.
+Staat de provider op `false`, dan verdwijnt de knop ook uit de app — een knop
+die naar een doodlopend eind leidt is erger dan geen knop.
 
-### Inloggen met Apple en Google
-
-Beide staan standaard uit; inloggen met e-mail werkt direct. Aanzetten in `.env`:
+### Pushmeldingen
 
 ```bash
-GOOGLE_ENABLED=true
-GOOGLE_CLIENT_ID=...
-GOOGLE_SECRET=...
+node scripts/generate-vapid-keys.mjs
 ```
 
-Gebruik als redirect-URI bij de provider:
+Plak `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` en `VAPID_SUBJECT` in `.env` en
+bouw opnieuw. **Genereer het paar één keer**: een nieuw paar maakt elke
+bestaande subscription ongeldig.
 
+Twee dingen kunnen technisch niet, op geen enkele iOS-versie:
+
+- **Automatisch aan het homescreen toevoegen.** Apple houdt dat in het
+  deelmenu. Alleen Chromium-browsers geven een installatie-event dat een knop
+  kan afspelen; daar installeert de knop echt. Op iOS toont hij de instructie.
+- **De meldingenpopup vanzelf laten verschijnen.** Elke browser eist dat
+  `Notification.requestPermission()` uit een tik komt. Daarom staat er één knop
+  klaar op het moment dat het relevant is.
+
+iOS levert push bovendien alleen aan een app die op het homescreen staat; in een
+Safari-tab bestaat `PushManager` niet.
+
+---
+
+## Bijwerken
+
+```bash
+cd /pad/naar/Snatzee
+git pull
+
+# 1. App-image opnieuw bouwen: nieuwe dependencies en alle NEXT_PUBLIC_*
+#    waarden worden in de build gebakken.
+docker compose build app
+
+# 2. Nieuwe migraties toepassen.
+docker compose up -d --force-recreate migrate
+
+# 3. De rest doorrollen.
+docker compose up -d
 ```
-https://www.snatzee.nl/auth/v1/callback
-```
 
-Daarna `docker compose up -d` om de auth-service opnieuw te laden.
+`--force-recreate` op stap 2 is geen luxe: de migraties zijn een bind-mount, dus
+een bestand erbij verandert de containerconfiguratie niet en of Compose de stap
+uit zichzelf herhaalt hangt af van je versie. Migraties zijn idempotent, dus een
+keer te vaak draaien kan geen kwaad — een keer te weinig wel.
 
-### E-mail
+Vuistregels:
 
-Zonder SMTP-server kan er geen bevestigingsmail verstuurd worden, dus nieuwe
-accounts zijn meteen actief (`MAILER_AUTOCONFIRM=true`). Vul je de SMTP-velden
-in, zet `MAILER_AUTOCONFIRM=false` om bevestiging per e-mail af te dwingen.
+- Iets met `NEXT_PUBLIC_` gewijzigd (VAPID-publieke sleutel, OAuth-vlaggen, adres)
+  → eerst `docker compose build app`.
+- Alleen runtime-secrets gewijzigd (SMTP, `VAPID_PRIVATE_KEY`, OAuth-secrets)
+  → `docker compose up -d` volstaat.
+- Klaagt de app na een update over een functie die niet in de schema cache staat
+  → `docker compose restart rest`.
 
-Draait het alleen voor je eigen kring? Zet na aanmelden
-`DISABLE_SIGNUP=true` en start opnieuw om registratie te sluiten.
+---
 
-### Dagelijks beheer
+## Beheer en onderhoud
 
 ```bash
 # Logs volgen
 docker compose logs -f app
 docker compose logs -f auth
-
-# Bijwerken naar de laatste code
-git pull
-docker compose up -d --build
 
 # Herstarten zonder de database aan te raken
 docker compose restart app
@@ -283,91 +270,6 @@ docker compose down
 docker compose down -v
 ```
 
-> Alle migraties zijn idempotent, dus `migrate` opnieuw draaien is altijd
-> veilig. Wil je na een `git pull` zeker weten dat nieuwe migraties zijn
-> toegepast, gebruik dan de stappen onder
-> [Bijwerken naar een nieuwe versie](#bijwerken-naar-een-nieuwe-versie).
-
-### Bijwerken naar een nieuwe versie
-
-De standaardmanier om wijzigingen uit Git op de server te zetten:
-
-```bash
-cd /pad/naar/Snatzee
-git pull
-
-# 1. App-image opnieuw bouwen: nieuwe dependencies en de NEXT_PUBLIC_*
-#    waarden worden in de build gebakken.
-docker compose build app
-
-# 2. Nieuwe migraties toepassen.
-#    De migraties zijn een bind-mount: een bestand erbij verandert de
-#    container-configuratie van de migrate-service niet, dus of compose
-#    de stap uit zichzelf opnieuw draait hangt af van je compose-versie.
-#    --force-recreate haalt die twijfel weg. Migraties zijn idempotent,
-#    dus een keer te vaak draaien kan geen kwaad -- een keer te weinig
-#    wel: de app start dan tegen een schema zonder de nieuwe tabellen.
-docker compose up -d --force-recreate migrate
-
-# 3. De rest doorrollen.
-docker compose up -d
-```
-
-Controleren of het gelukt is:
-
-```bash
-# Elke migratie moet langskomen, eindigend op "Schema is up to date."
-docker compose logs --tail=40 migrate
-
-# Alles behalve db-prepare en migrate hoort "running" te zijn; die twee
-# zijn eenmalige taken en staan op "exited (0)".
-docker compose ps
-
-# Statische bestanden gaan buiten de middleware om: dit hoort 200 te geven.
-curl -I http://localhost:6666/audio/logo.mp3
-```
-
-Geeft de app na een update een foutmelding over een functie die niet in de
-schema cache staat, dan heeft PostgREST de nieuwe RPC's nog niet gezien:
-
-```bash
-docker compose restart rest
-```
-
-Alleen bij een wijziging in `.env`: waarden die met `NEXT_PUBLIC_` in de app
-terechtkomen (zoals `VAPID_PUBLIC_KEY`) zitten in de build, dus die vragen om
-`docker compose build app` voordat je herstart. De rest — SMTP, OAuth-secrets,
-`VAPID_PRIVATE_KEY` — wordt bij het starten gelezen, dus daar volstaat
-`docker compose up -d`.
-
-### Bijwerken vanaf de allereerste versie
-
-De eerste versie van deze stack draaide op een kale `postgres:16` met
-handgemaakte rollen. Die is vervangen door `supabase/postgres`, dat de rollen,
-schema's en `auth.uid()` zelf meebrengt. De datadirectory van beide is niet
-uitwisselbaar, dus een bestaand volume moet eenmalig weg:
-
-```bash
-docker compose down -v
-docker compose up -d --build
-```
-
-Had je al data? Maak eerst een dump (zie [Back-ups](#back-ups)) en zet die
-daarna terug.
-
-### Geheimen wijzigen
-
-`POSTGRES_PASSWORD` wordt alleen bij de **allereerste** start in de database
-gezet. Wijzig je het later, dan komen de services niet meer binnen. Wil je het
-toch veranderen, dan hoort daar een leeg volume bij:
-
-```bash
-docker compose down -v      # let op: wist alle data
-docker compose up -d --build
-```
-
-Maak dus liever meteen bij de eerste opzet een definitief wachtwoord.
-
 ### Back-ups
 
 Alle data staat in twee volumes: `snatzee_db-data` en `snatzee_storage-data`.
@@ -377,660 +279,206 @@ Alle data staat in twee volumes: `snatzee_db-data` en `snatzee_storage-data`.
 docker compose exec -T db pg_dump -U postgres postgres | gzip > snatzee-$(date +%F).sql.gz
 
 # Terugzetten
-gunzip -c snatzee-2026-09-18.sql.gz | docker compose exec -T db psql -U postgres postgres
+gunzip -c snatzee-2026-01-01.sql.gz | docker compose exec -T db psql -U postgres postgres
 
 # Avatars
 docker run --rm -v snatzee_storage-data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/snatzee-avatars-$(date +%F).tar.gz -C /data .
+  tar czf /backup/avatars.tar.gz -C /data .
 ```
+
+### Geheimen wijzigen
+
+`JWT_SECRET` wijzigen maakt `ANON_KEY` en `SERVICE_ROLE_KEY` ongeldig: genereer
+ze samen opnieuw met `generate-keys.mjs`, zet alle drie in `.env` en herbouw.
+Bestaande sessies worden daarmee ongeldig; wachtwoorden en data blijven.
+
+`POSTGRES_PASSWORD` wijzigen vraagt ook een herstart van `db-prepare`, dat de
+servicewachtwoorden zet.
+
+### Rollen
+
+Drie rollen: `user`, `admin` en `superadmin`. Een e-mailadres kan **vooraf**
+worden aangewezen — dus voordat het account bestaat — via `admin_allowlist`:
+bij registratie krijgt het account direct de juiste rol. Daarna kent een
+superadmin rollen toe in **Instellingen → Snatzee Admin → Beheer**.
 
 ### Problemen oplossen
 
-| Symptoom | Oorzaak en oplossing |
+| Symptoom | Oorzaak |
 | --- | --- |
-| `migrate` stopt met een timeout | `auth` of `storage` kwam niet op. `migrate` print welk onderdeel ontbreekt; check daarna `docker compose logs auth` of `docker compose logs storage`. |
-| `password authentication failed for user "supabase_storage_admin"` | De wachtwoorden van de servicerollen stonden niet goed. `db-prepare` zet ze bij elke start; komt de fout terug, dan klopt `POSTGRES_PASSWORD` niet met het bestaande volume — zie *Geheimen wijzigen*. |
-| `auth` stopt met `must be owner of function uid` | GoTrue mag zijn eigen `auth.uid()` niet vervangen. `db-prepare` draagt die functies aan GoTrue over; draai `docker compose up -d` opnieuw. |
-| `storage` blijft herstarten | Meestal een verkeerd `JWT_SECRET` in `.env`, of een volume dat bij een ander wachtwoord hoort. |
-| Inloggen lukt, maar je wordt teruggestuurd naar `/login` | Staat het domein in `ADDITIONAL_REDIRECT_URLS`? Controleer ook dat er maar één actieve `PUBLIC_URL`-regel in `.env` staat. |
-| `Could not find the function public.… in the schema cache` | PostgREST draait op een cache van vóór de migraties. `migrate` stuurt daar een reload voor; blijft het staan, dan helpt `docker compose restart rest`. |
-| OAuth eindigt op een foutpagina | Redirect-URI bij de provider moet exact `${PUBLIC_URL}/auth/v1/callback` zijn, en het domein moet in `ADDITIONAL_REDIRECT_URLS` staan. |
-| Avatars laden niet | Wijzig je `PUBLIC_URL`, herbouw dan de app: het beeld-domein wordt tijdens de build vastgelegd. |
-| Poort 6666 is bezet | Zet `HTTP_PORT=7777` in `.env` en start opnieuw. |
+| `migrate` stopt op ontbrekende `auth.users` of `storage.objects` | `auth` of `storage` is niet gezond opgekomen. Bekijk hun logs. |
+| Auth logt `must be owner of function uid` | `db-prepare` heeft niet gedraaid. `docker compose up -d --force-recreate db-prepare`. |
+| `password authentication failed for user "supabase_storage_admin"` | Idem: `db-prepare` zet die wachtwoorden. |
+| API geeft 404 op een RPC | PostgREST heeft een oude schema cache. `docker compose restart rest`. |
+| OAuth-knop ontbreekt | `GOOGLE_ENABLED` / `APPLE_ENABLED` staan op `false`, of er is niet herbouwd. |
+| Meldingen-toggle zegt "niet ondersteund" in de geïnstalleerde app | `VAPID_PUBLIC_KEY` ontbrak tijdens de build. |
+| QR scannen doet niets | De camera werkt alleen op een https-adres. |
 
 ---
 
-## Dark mode
+## Architectuur
 
-Snatzee is standaard donker. De diepte komt uit gestapelde navy-lagen in
-plaats van zwart, zodat kaarten duidelijk van de achtergrond loskomen:
+### Services
 
-| Token | Kleur | Gebruikt voor |
-| --- | --- | --- |
-| `canvas` | `#07131F` | Paginaachtergrond |
-| `canvas-soft` | `#0B1D2D` | Bottom sheets, inzinkingen |
-| `surface` | `#102638` | Kaarten |
-| `surface-elevated` | `#153044` | Hero-kaarten, dialogs, navigatie |
-| `surface-high` | `#1B3B53` | Hover, avatars |
-| `ink` / `ink-soft` / `ink-muted` | `#F4F7F9` / `#91A4B5` / `#667A8A` | Tekst |
-| `hairline` | `rgba(255,255,255,0.07)` | Randen |
+Acht containers in één compose-stack, in deze volgorde opgestart:
 
-Mint (`#24C79A`, accent `#2EE6B0`) is de primaire accentkleur; oranje, paars
-en aqua blijven gereserveerd voor achievements, records en bijzondere
-momenten. De helpers `card-surface`, `card-elevated`, `sheen` en `glow-mint`
-in `globals.css` bundelen vulling, rand en schaduw, zodat elk oppervlak
-hetzelfde leest.
-
----
-
-## Beheerders
-
-Snatzee kent drie rollen: `user`, `admin` en `superadmin`.
-
-Een adres kan **vooraf** worden aangewezen, dus voordat het account bestaat. Bij
-registratie krijgt dat account de rol automatisch; bestond het al, dan wordt het
-bij de volgende migratie bijgewerkt. `frank1.deruiter@gmail.com` staat al als
-`superadmin` in `supabase/migrations/0007_admin_roles.sql`.
-
-Zelf iemand toevoegen vóór registratie:
-
-```sql
-insert into public.admin_allowlist (email, role)
-values ('iemand@voorbeeld.nl', 'admin')
-on conflict (email) do update set role = excluded.role;
+```
+db → db-prepare → auth + rest → storage → migrate → app → gateway
 ```
 
-```bash
-docker compose exec db psql -U postgres -c "insert into public.admin_allowlist (email, role) values ('iemand@voorbeeld.nl','admin') on conflict (email) do update set role = excluded.role;"
-```
+| Service | Rol |
+| --- | --- |
+| `db` | PostgreSQL (`supabase/postgres`) met de Supabase-rollen en -schema's |
+| `db-prepare` | Zet servicewachtwoorden en -rechten goed; eenmalig per start |
+| `auth` | GoTrue: registratie, login, OAuth, mails |
+| `rest` | PostgREST: de REST-API op het schema |
+| `storage` | storage-api: avatars |
+| `migrate` | Past `supabase/migrations/*.sql` toe en herlaadt de schema cache |
+| `app` | Next.js in standalone modus |
+| `gateway` | nginx; serveert app en API's op één origin en één poort |
 
-Een superadmin kan rollen ook in de app toekennen, via **Instellingen → Beheer**.
+Die ene origin is wat meerdere domeinen mogelijk maakt: de browser hoeft nooit
+cross-origin te praten, dus er is geen ingebakken API-adres dat maar naar één
+domein kan wijzen.
 
-| | `user` | `admin` | `superadmin` |
-| --- | --- | --- | --- |
-| Eigen potjes en Yahtzee's beheren | ✓ | ✓ | ✓ |
-| Scoregrenzen en ranking-minimum aanpassen | | ✓ | ✓ |
-| Adminconsole op `/app/admin` | | | ✓ |
-| Scores en 1-worp registraties verwijderen | | | ✓ |
-| Rollen toekennen | | | ✓ |
+### Datamodel
 
-### Adminconsole
+| Tabel | Inhoud |
+| --- | --- |
+| `profiles` | Gebruiker, username, avatar, bio, rol, privacy |
+| `score_entries` | Eén rij per potje: score, gewonnen, aantal Yahtzees, notitie |
+| `yahtzee_events` | Losse Yahtzee-momenten (`FIRST_ROLL`) |
+| `friendships` | Verzoek en vriendschap in één rij, met status |
+| `groups` / `group_members` | Groepen en lidmaatschappen |
+| `achievements` / `user_achievements` | Definities en wat er is behaald |
+| `player_levels` | Drempels per niveau, aanpasbaar zonder deploy |
+| `push_subscriptions` | Eén rij per toestel, uniek op endpoint |
+| `notification_outbox` | Wachtrij met te versturen meldingen |
+| `app_settings` | Configureerbare grenzen |
+| `admin_audit_log` | Wat een superadmin verwijderde of verstuurde |
 
-Een superadmin krijgt onder **Instellingen** een extra ingang naar
-`/app/admin`, met twee tabs: **Scores** en **1-worp Yahtzee's**. Beide zijn
-doorzoekbaar op naam of username, sorteerbaar, en laden per 25 rijen bij —
-er wordt nooit een hele tabel opgehaald.
+Migraties staan in `supabase/migrations/` (0001 t/m 0018) en zijn stuk voor stuk
+idempotent: opnieuw draaien is altijd veilig.
 
-Verwijderen vraagt eerst om bevestiging en schrijft daarna een regel in
-`admin_audit_log` (wie, wat, welke gebruiker, met de waarden van de
-verwijderde rij), zodat later te achterhalen is wat er is weggehaald.
-Statistieken en ranglijsten worden live berekend, dus die kloppen direct
-weer.
+### Twee soorten Yahtzee
 
-De menu-ingang is puur gemak. De beveiliging zit in de database: elke
-admin-functie controleert `is_superadmin()` voordat er ook maar één rij
-teruggaat, en `admin_audit_log` heeft geen enkele policy, dus niemand leest
-of schrijft die tabel buiten die functies om.
-
-De rol staat in `profiles.role` en is **niet** rechtstreeks te wijzigen: een
-databasetrigger weigert elke update die de kolom aanraakt buiten
-`set_user_role()` om, dus een client kan zichzelf niet promoveren.
-
----
-
-## Groepen delen
-
-Op een groepspagina zit onder de naam de knop **Uitnodigen**, met twee opties:
-
-- **Kopieer ID** — zet de uitnodigingscode op het klembord, zoals eerder.
-- **QR Code** — toont een QR-code op het scherm, met de code er nog eens
-  uitgeschreven onder.
-
-De QR bevat een volledige link (`/app/groups?code=...`), geen kale code. Dat
-betekent dat ook de gewone camera-app van een telefoon hem kan openen: die komt
-dan in Snatzee uit met de code al ingevuld. Iemand zonder de app belandt op de
-site in plaats van naar een code te staren waar hij niets mee kan.
-
-Op de Groepen-pagina heet de knop **Groep joinen** en biedt hij dezelfde twee
-kanten:
-
-- **QR Code scannen** — opent de camera en neemt je meteen op in de groep zodra
-  de code herkend is.
-- **Code invoeren** — het invulveld zoals het was.
-
-Scannen gebruikt de `BarcodeDetector` van de browser waar die bestaat, en valt
-anders terug op jsQR. Dat laatste is wat iOS nodig heeft: Safari levert nog geen
-BarcodeDetector. De jsQR-bundel wordt pas geladen als de scanner echt geopend
-wordt.
-
-De camera werkt alleen op een **https-adres**. Op `http://localhost:6666` blijft
-scannen dus uit; de app zegt dat dan ook in plaats van een vage camerafout te
-tonen.
-
----
-
-## Yahtzee's registreren
-
-Er zijn twee soorten Yahtzee, en ze worden bewust anders vastgelegd.
-
-**Gewone Yahtzee's horen bij een potje.** Bij het toevoegen van een potje zet
-je "Yahtzee gegooid?" aan en geef je met een stepper aan hoeveel het er waren.
-Dat aantal staat op de score-entry zelf (`score_entries.yahtzee_count`), want
-je weet het pas als het potje klaar is.
-
-**Een Yahtzee in één worp is een los moment.** Die registreer je meteen via de
-knop op Home, met een bevestiging vooraf zodat een misklik geen record
-vervuilt. Deze blijven losse events (`yahtzee_events`, `event_type =
-FIRST_ROLL`).
-
-De twee tellingen zijn onafhankelijk:
+Gewone Yahtzee's horen bij een potje en staan op de score-entry zelf
+(`score_entries.yahtzee_count`) — je weet het aantal pas als het potje klaar is.
+Een Yahtzee in één worp is een los moment en blijft een eigen event. De
+tellingen zijn onafhankelijk:
 
 ```
 Yahtzee's totaal      = sum(score_entries.yahtzee_count)
 Yahtzee's in één worp = count(yahtzee_events where FIRST_ROLL)
 ```
 
-Een Yahtzee in één worp wordt dus **niet** automatisch bij het potjestotaal
-opgeteld — je geeft bij het potje zelf al op hoeveel je er gooide, dus dat zou
-dubbel tellen.
+Een 1-worp Yahtzee wordt dus niet bij het potjestotaal opgeteld; dat zou dubbel
+tellen, want bij het potje gaf je het aantal al op.
 
-> Bestaande `NORMAL`-events uit een oudere versie worden bij migratie 0009
-> verplaatst naar het potje dat er qua tijd het dichtst bij zit. Events van
-> spelers zonder potjes kunnen nergens heen en blijven staan; de view telt die
-> gewoon mee, zodat er niets verdwijnt.
+### Afgeleide statistieken en achievements
 
----
+`user_statistics` is een view die alles uitrekent wat een profiel laat zien:
+potjes, wins, gemiddelde, records, streaks, niveau en achievementcount. Niets
+daarvan wordt bijgehouden in kolommen die uit de pas kunnen lopen.
 
-## Levels, achievements en geluid
+Achievements volgen diezelfde regel. De voorwaarden staan één keer, in
+`achievement_is_earned(...)`; zowel het toekennen als het intrekken gebruikt die
+functie, zodat de twee niet kunnen gaan afwijken. Verwijdert een superadmin een
+score, dan worden de achievements die daarop steunden automatisch ingetrokken en
+noteert het auditlog welke dat waren.
 
-### Spelerniveaus
+### Meldingen
 
-Je niveau volgt uit het aantal geregistreerde potjes en staat op je profiel, je
-statistieken en naast je naam op Home.
-
-| | Niveau | Potjes |
-| --- | --- | --- |
-| 🙋🏼‍♂️ | Beginner | 0 |
-| 👨🏼‍🏭 | Recreatief Speler | 10 |
-| 🧑🏼‍🎨 | Hobby Speler | 20 |
-| 👨🏼‍💼 | Professioneel Speler | 35 |
-| 👨🏼‍✈️ | Zakelijk Speler | 50 |
-
-De drempels staan in `public.player_levels` en zijn aan te passen zonder
-deploy. `user_statistics` berekent het huidige niveau, het volgende niveau en
-hoeveel potjes daar nog voor nodig zijn.
-
-```sql
-update public.player_levels set min_games = 15 where key = 'hobby';
-```
-
-### De benoemde achievements
-
-| | Achievement | Voorwaarde |
-| --- | --- | --- |
-| 😎 | Stabiel | Scoor 200 punten of meer |
-| 👑 | High Roller | Scoor 300 punten of hoger |
-| 🧙 | The Impossible | Scoor 400 punten of hoger |
-| 🎯 | Snatzee! | Gooi een Yahtzee |
-| 💯 | Snatzee Pro! | Gooi 10 keer een Yahtzee |
-| 🤴 | Snatzee Koning! | Gooi 20 keer een Yahtzee |
-| 🔥 | Legend | Gooi een Yahtzee in één worp |
-| 💀 | Hoe dan? | Scoor minder dan 100 punten |
-
-Deze staan naast de overige achievements; in totaal zijn het er 36.
-
-### Geluid
-
-Drie momenten hebben een eigen geluid:
-
-| Bestand | Wanneer |
-| --- | --- |
-| `Snatzee Audio Logo.wav` | Bij het openen van de app |
-| `Snatzee New Score.wav` | Bij het opslaan van een nieuwe score |
-| `Snatzee Achievement.wav` | Bij het vrijspelen van een achievement |
-
-De originelen staan in `brand/audio/`. Samen zijn die ruim 1 MB aan onbewerkte
-WAV, wat veel is voor drie korte tunes op een telefoon, dus ze worden
-omgezet naar mono mp3 en ogg (samen ongeveer 90 kB):
-
-```bash
-npm run audio     # vereist ffmpeg
-```
-
-Geluid is uit te zetten via **Instellingen → Meldingen → Geluid**. Browsers
-staan geen audio toe voordat er iets is aangeraakt, dus het openingsgeluid
-probeert het direct en wacht anders kort op de eerste tik. Lukt het niet, dan
-gebeurt er simpelweg niets — geen enkele functie hangt van geluid af.
-
----
-
-## Pushmeldingen
-
-Snatzee kan Web Push versturen naar de geïnstalleerde app. Dat is optioneel:
-laat je de sleutels leeg, dan werkt de rest gewoon en meldt de instelling dat
-het toestel geen meldingen ondersteunt.
-
-### Sleutels genereren
-
-```bash
-node scripts/generate-vapid-keys.mjs
-```
-
-Of zonder Node op de server:
-
-```bash
-docker run --rm -v "$PWD":/app -w /app node:22-alpine node scripts/generate-vapid-keys.mjs
-```
-
-Plak de drie regels in `.env`:
-
-```
-VAPID_PUBLIC_KEY=...
-VAPID_PRIVATE_KEY=...
-VAPID_SUBJECT=mailto:jij@voorbeeld.nl
-```
-
-De publieke sleutel wordt in de build gebakken, dus na het wijzigen ervan is
-een `docker compose up -d --build` nodig. **Genereer het paar één keer.** Een
-nieuw paar maakt elke bestaande subscription ongeldig, en iedereen moet
-meldingen opnieuw aanzetten.
-
-### Wat er in de app gebeurt
-
-| Situatie | Wat de gebruiker ziet |
-| --- | --- |
-| Ingelogd in een browsertab | Na anderhalve seconde een kaart die vraagt de app op het beginscherm te zetten. Die verdwijnt vanzelf na één minuut en blijft daarna een week weg. |
-| Op Chromium/Android | De knop **Toevoegen** installeert de app echt, via het `beforeinstallprompt`-event van de browser. |
-| Op iOS/iPadOS | De knop toont waar de deel-knop zit en welke optie je kiest. |
-| Eerste start vanaf het beginscherm | Een kaart met de knop **Zet aan**, die de systeempopup voor meldingen opent en het toestel registreert. |
-| Instellingen → Meldingen | De toggle **Pushmeldingen** en een knop om een testmelding naar je eigen toestellen te sturen. |
-
-### Wat de platforms niet toestaan
-
-Twee dingen uit de wenslijst kunnen technisch niet, op geen enkele iOS-versie:
-
-- **Automatisch toevoegen aan het beginscherm.** Apple houdt dat bewust in het
-  deelmenu; er is geen API voor. Alleen Chromium-browsers geven een installatie-
-  event dat een knop kan afspelen, en dat gebruikt de app ook. Op iOS blijft er
-  een instructie over.
-- **De meldingenpopup automatisch laten verschijnen.** Elke browser eist dat
-  `Notification.requestPermission()` uit een tik komt. Een aanvraag zonder tik
-  wordt genegeerd, of — erger — meteen geweigerd, en een geweigerde melding is
-  daarna alleen nog via de systeeminstellingen terug te draaien. Daarom staat er
-  één knop klaar op het moment dat het relevant is, in plaats van een popup die
-  zichzelf opwerpt.
-
-Verder levert iOS push **alleen** aan een app die op het beginscherm staat. In
-een Safari-tab bestaat `PushManager` niet, dus daar meldt de instelling dat de
-app eerst geïnstalleerd moet worden.
-
-### Welke meldingen de app zelf stuurt
+De database bepaalt **wat** een melding waard is, de Next.js-server bepaalt
+**wanneer** hij uitgaat: alleen Postgres ziet elke score binnenkomen, en alleen
+de server kan een pushbericht ondertekenen. Triggers schrijven in
+`notification_outbox`, en `POST /api/push/drain` verstuurt wat klaarstaat. De
+app pingt dat na elke actie die iets in de wachtrij zet en bij elke start, dus
+er is geen aparte worker nodig.
 
 | Wanneer | Wie krijgt hem |
 | --- | --- |
-| Iemand stuurt een vriendschapsverzoek | De ontvanger van het verzoek; de melding opent meteen het tabblad Verzoeken |
-| Iemand accepteert je vriendschapsverzoek | De verzender; de melding opent het profiel van je nieuwe vriend |
-| Iemand voegt je toe aan een groep | Het toegevoegde lid — niet jijzelf als je de groep maakt of met een code binnenkomt |
+| Iemand stuurt je een vriendschapsverzoek | De ontvanger; opent het tabblad Verzoeken |
+| Iemand accepteert je verzoek | De verzender; opent het profiel van je nieuwe vriend |
+| Iemand voegt je toe aan een groep | Het toegevoegde lid, niet jijzelf |
 | Iemand gaat over de hoogste score heen | De speler die de toppositie kwijtraakt |
 | Een groepslid registreert een potje | De andere leden van die groep |
+| Een superadmin stuurt een bericht | Iedereen, of een selectie |
 
 De groepsmelding vermeldt de score, of het potje gewonnen is, hoeveel Yahtzees
-erin zaten en op welke plek de speler daarna in die groep staat — bijvoorbeeld
-*"Ann scoorde 325 punten · gewonnen · 2× Yahtzee · nu #1 van 2"*. Hij gaat één
-keer per gedeelde groep: de positie betekent alleen iets binnen een groep, dus
-wie twee groepen met de speler deelt krijgt twee verschillende feiten. Leden
-zonder meldingen aan en de speler zelf krijgen niets.
+erin zaten en de positie in die groep daarna, bijvoorbeeld *"Ann scoorde 325
+punten · gewonnen · 2× Yahtzee · nu #1 van 2"*. Hij gaat één keer per gedeelde
+groep, want een positie betekent alleen iets binnen een groep.
 
-Open vriendschapsverzoeken staan ook als rood cijfer op het tabblad Vrienden in
-de navigatie. Dat cijfer telt alleen de verzoeken die op jou wachten.
+Wie geen meldingen aan heeft krijgt geen rij in de wachtrij, dus die loopt niet
+vol met onbestelbare berichten. Endpoints die de pushdienst afkeurt worden
+opgeruimd.
 
-Onder het tabblad **Zoeken** staat onderaan een kaart om iemand uit te nodigen
-die nog geen Snatzee heeft. Die opent het deelmenu van het toestel met een
-bericht met je eigen username en het adres uit `PUBLIC_URL`; op een desktop,
-waar `navigator.share` meestal ontbreekt, gaat de tekst naar het klembord.
-
-Het tabblad **Verzoeken** toont twee lijsten: **Ontvangen**, met accepteren en
-weigeren, en **Verzonden**, met de verzoeken die jij hebt gestuurd en waarop nog
-niet gereageerd is. Die kun je daar ook weer intrekken.
-
-Die momenten worden door de database bepaald, niet door de app: triggers
-schrijven een regel in `notification_outbox`. Alleen Postgres ziet elke score
-binnenkomen, en alleen de Next.js-server kan een pushbericht ondertekenen, dus
-daar komen ze samen. De app vraagt na elke actie — en bij elke start — om de
-wachtrij te legen via `POST /api/push/drain`.
-
-Een gelijkspel neemt de koppositie niet over: wie de score als eerste haalde,
-houdt hem. Je eigen record verbeteren stuurt niemand een melding.
-
-### De adminpagina
-
-**Instellingen → Snatzee Admin**, alleen zichtbaar en bereikbaar voor een
-superadmin. Vier tabbladen:
-
-| Tab | Wat je er doet |
-| --- | --- |
-| Scores | Alle scores doorzoeken, sorteren en verwijderen |
-| 1-worp Yahtzee's | Hetzelfde voor de Yahtzees in de eerste worp |
-| Groepen | Elke groep zien en verwijderen, ook die waar je zelf niet in zit |
-| Meldingen | Een eigen pushmelding sturen (zie hieronder) |
-| Beheer | De app-instellingen, rollen toekennen en achievements resetten |
-
-Groepen zijn onder RLS alleen zichtbaar voor hun eigen leden, dus het tabblad
-**Groepen** loopt via een functie die zelf op superadmin controleert. Je kunt
-zoeken op groepsnaam, uitnodigingscode of eigenaar, sorteren op datum of
-ledenaantal, en een groep verwijderen. Dat verwijdert de groep en de
-lidmaatschappen; de scores van de leden blijven staan. Verliest iemand
-daardoor een achievement die op het aantal groepen steunde, dan wordt die
-automatisch ingetrokken. Elke verwijdering komt met naam, code en ledenaantal
-in het auditlog.
-
-Het tabblad **Beheer** bevat wat eerder als "Beheer"-kaart op de
-Instellingen-pagina stond: de minimumaantal potjes voor de gemiddelde-ranking,
-de laagst en hoogst toegestane score, en het toekennen van rollen. Daar staat
-nu ook **Achievements resetten**: dat wist de behaalde achievements van één
-speler zonder de scores aan te raken. Omdat achievements worden afgeleid uit de
-data en niet gelogd, komt alles waar de speler nog aan voldoet terug zodra er
-weer iets geregistreerd wordt — het is dus bedoeld om een foute toekenning op
-te ruimen, niet als straf. Elke reset komt in het auditlog, inclusief welke
-achievements het betrof.
-
-### Een eigen melding sturen (superadmin)
-
-**Instellingen → Snatzee Admin → Meldingen.** Alleen een superadmin ziet die
-link, de pagina stuurt iedereen zonder die rol terug naar `/app`, en
-`admin_broadcast_notification` weigert de aanvraag in de database zelf. Er is
-dus geen weg omheen: een gewone gebruiker kan het scherm niet zien en de
-onderliggende aanroep niet doen.
-
-Je vult een titel (max 80 tekens) en een tekst (max 300) in, en kiest
-**Iedereen** of **Selectie**. Bij een selectie staat elke speler in de lijst,
-maar spelers zonder meldingen aan zijn uitgegrijsd en tellen niet mee — zodat
-duidelijk is waarom iemand niets ontvangt. Elke verzending komt in het auditlog
-te staan, met titel, tekst en het aantal ontvangers.
-
-### Zelf meldingen versturen
-
-`src/lib/push-server.ts` is het verzendkanaal: `sendPushToUser(userId, payload)`
-en `sendPushToUsers(userIds, payload)`. Beide lezen de subscriptions met de
-service role — RLS verbergt ze voor iedereen behalve de eigenaar — en ruimen
-endpoints op die de pushdienst afkeurt met 404 of 410. De service worker toont
-wat binnenkomt en opent bij een tik de meegestuurde `url` in een bestaand
-venster als dat er is.
-
-De outbox is de plek om een nieuwe melding aan te haken: schrijf er vanuit een
-trigger een regel in met `queue_notification(...)` en de rest — versturen,
-opruimen van dode endpoints, het auditlog — gebeurt vanzelf.
-
----
-
-## Lokaal ontwikkelen
-
-Tegen de Docker-stack, met hot reload:
-
-```bash
-docker compose up -d db auth rest storage migrate gateway
-npm install
-npm run dev      # http://localhost:3000
-```
-
-Zet in `.env.local`:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=http://localhost:6666
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY uit .env>
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
----
-
-## Alternatief: gehost Supabase
-
-Liever geen database zelf draaien? De app werkt ook op Vercel met een
-Supabase-project.
-
-1. Maak een Supabase-project aan.
-2. Voer de migraties uit de map `supabase/migrations/` **in volgorde** uit via de
-   SQL Editor, of met `supabase db push`. Ze zijn idempotent.
-3. Zet Email, Apple en Google aan onder *Authentication → Providers*.
-4. Voeg onder *Authentication → URL Configuration* je callback toe:
-   `https://jouw-domein.nl/auth/callback`
-5. Zet in Vercel `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` en
-   `NEXT_PUBLIC_SITE_URL`.
-
-`auth.uid()` en de opslag-bucket zijn daar al aanwezig;
-`docker/postgres/supabase-compat.sql` is alleen voor de zelf-gehoste variant.
-
-### Configureerbare grenzen
-
-Instellingen staan in `public.app_settings` en zijn live aan te passen — via
-**Instellingen → Beheer** in de app, of met SQL:
-
-| Key | Standaard | Betekenis |
-| --- | --- | --- |
-| `min_score` | `0` | Laagst toegestane eindscore |
-| `max_score` | `1575` | Hoogst toegestane eindscore |
-| `min_games_for_average_ranking` | `5` | Minimum potjes voor de gemiddelde-ranglijst |
-| `low_score_threshold` | `80` | Grens voor de "Dat deed pijn"-achievement |
-
-De UI toont dit automatisch ("Minimaal 5 potjes nodig").
-
----
-
-## Demo data
-
-Voor ontwikkeling staat er een seed klaar met zes spelers (Mathijs, Pien, Frank,
-Daniel, Sophie en Joost), realistisch verdeelde scores, Yahtzee-events,
-vriendschappen en een groep.
-
-```bash
-npm run seed
-```
-
-Dit vraagt om `NEXT_PUBLIC_SUPABASE_URL` en `SUPABASE_SERVICE_ROLE_KEY` in
-`.env.local` of `.env`. Bij de Docker-stack zijn dat `PUBLIC_URL` en
-`SERVICE_ROLE_KEY`.
-
-Inloggen als demo-speler: `<username>@demo.snatzee.app` met wachtwoord
-`snatzee-demo-1234`.
-
-> De seed weigert te draaien met `NODE_ENV=production`. Demo data hoort niet in
-> productie.
-
----
-
-## Datamodel
-
-Er is **geen multiplayer-wedstrijdstructuur**. Iedere gebruiker registreert alleen zijn
-eigen potje.
-
-```
-profiles           id, username (uniek), display_name, avatar_url, bio, is_private
-score_entries      user_id, score, is_win, yahtzee_count, played_at, note
-yahtzee_events     user_id, event_type (FIRST_ROLL; NORMAL alleen historisch)
-friendships        requester_id, addressee_id, status (pending | accepted | declined)
-groups             owner_id, name, emoji, description, invite_code
-group_members      group_id, user_id, role (owner | admin | member)
-achievements       key, name, description, icon, rarity, category, is_secret, criteria
-user_achievements  user_id, achievement_id, unlocked_at, source_id
-app_settings       key, value (jsonb)
-admin_allowlist    email, role  — rollen die vooraf worden toegekend
-player_levels      key, name, emoji, min_games
-admin_audit_log    admin_user_id, action, target_user_id, entity_type, metadata
-```
-
-### Yahtzee's worden één keer opgeslagen
-
-Een Yahtzee is een losse gebeurtenis, geen veld bij een potje. Er is **één** tabel
-`yahtzee_events`. Een rij met `event_type = 'FIRST_ROLL'` telt statistisch **zowel** als een
-Yahtzee **als** als een Yahtzee-in-één-worp — er wordt dus nooit dubbel geboekt:
-
-```sql
-count(*)                                          as yahtzee_count,
-count(*) filter (where event_type = 'FIRST_ROLL') as first_roll_yahtzee_count
-```
-
-### Afgeleide statistieken
-
-Niets wordt dubbel opgeslagen op `profiles`. Alles komt uit de view `public.user_statistics`:
-
-```
-user_id, username, display_name, avatar_url,
-games_played, wins, losses, average_score, highest_score, lowest_score,
-last_played_at, yahtzee_count, first_roll_yahtzee_count, win_rate, achievement_count
-```
-
-Ranglijsten draaien via één database-functie, zodat er nooit rijen naar de client komen om
-daar een gemiddelde te berekenen:
-
-```sql
-select * from public.get_leaderboard(
-  p_metric   => 'average_score',  -- highest_score | average_score | games_played
-                                  -- wins | yahtzee_count | first_roll_yahtzee_count
-  p_scope    => 'friends',        -- global | friends | group
-  p_group_id => null,
-  p_limit    => 50
-);
-```
+Een eigen melding aanhaken doe je met `queue_notification(...)` vanuit een
+trigger; versturen, opruimen en het auditlog gaan vanzelf.
 
 ### Security
 
-Row Level Security staat aan op alle tabellen:
-
-- Je kunt **alleen je eigen** score-entries en Yahtzee-events aanmaken, wijzigen en verwijderen.
-- `user_achievements` heeft **geen** insert/update/delete policy — alleen de
-  `SECURITY DEFINER` achievement-engine schrijft erin. Een client kan zichzelf dus geen
-  achievement toekennen.
-- Publieke statistieken zijn read-only opvraagbaar via `user_statistics`; individuele
-  score-rijen van anderen zijn niet leesbaar (notities blijven privé).
-- Alle validatie (scoregrenzen, datums, usernames, groepsrechten) zit in de database, niet
-  alleen in de client.
-- `profiles.role` is niet rechtstreeks te wijzigen: een trigger weigert elke update die de
-  kolom aanraakt buiten `set_user_role()` om.
-
----
-
-## Achievements
-
-### Achievements volgen de data terug omlaag
-
-Een achievement is geen logboekregel maar een afgeleide: hij geldt zolang de
-data hem draagt. Verwijdert een superadmin een score of een 1-worp Yahtzee, dan
-worden de achievements die daarop steunden meteen weer ingetrokken, en het
-auditlog noteert welke dat waren. Hetzelfde gebeurt als een speler een groep
-verlaat of een vriendschap verdwijnt.
-
-De regels staan één keer, in `achievement_is_earned(...)`. Zowel het toekennen
-als het intrekken gebruikt die functie, zodat de twee niet uit elkaar kunnen
-lopen.
-
-
-36 achievements in vijf categorieën (scores, yahtzee, wins, games, sociaal), met rarity
-`COMMON` / `RARE` / `EPIC` / `LEGENDARY`. Vijf ervan zijn **secret** en blijven verborgen tot
-je ze vrijspeelt.
-
-Ze worden automatisch toegekend door `public.evaluate_achievements(user_id)`, die draait via
-triggers op `score_entries`, `yahtzee_events`, `friendships` en `group_members`. De
-mutatie-RPC's geven de nieuw vrijgespeelde achievements direct terug, zodat de app meteen een
-celebration kan tonen.
-
-Een nieuwe achievement toevoegen is één insert — de engine snapt het criteria-type:
-
-```sql
-insert into public.achievements (key, name, description, icon, rarity, category, criteria)
-values ('games_500', 'Onverzadigbaar', 'Speel 500 potjes', '🏅', 'LEGENDARY', 'games',
-        '{"type":"games_played","gte":500}');
-```
-
-Ondersteunde criteria-types: `games_played`, `wins`, `highest_score`, `low_score`,
-`yahtzee_count`, `first_roll_count`, `win_streak`, `score_streak`, `win_rate`,
-`games_in_day`, `distinct_days`, `yahtzee_in_day`, `night_game`, `exact_score`,
-`notes_count`, `friends_count`, `groups_count`, `comeback`.
+- **RLS op alles.** Score-entries en meldingen zijn strikt van de eigenaar;
+  profielen zijn openbaar leesbaar maar alleen door jezelf te wijzigen.
+- **Mutaties via RPC's.** Validatie staat in `SECURITY DEFINER`-functies, zodat
+  de client nooit de enige controle is.
+- **Adminfuncties controleren zelf.** `/app/admin` stuurt anderen weg, maar de
+  echte grens ligt in de database: elke adminfunctie roept `is_superadmin()`
+  aan voordat ze iets teruggeeft.
+- **Aggregaten via views.** Ranglijsten en publieke statistieken lopen via views
+  die met de rechten van de eigenaar draaien, zodat losse rijen verborgen
+  blijven.
+- **Rolwijzigingen zijn afgeschermd.** Een trigger blokkeert het aanpassen van
+  `profiles.role` buiten `set_user_role()` om.
 
 ---
 
-## Brand assets
-
-Alle app-iconen en iOS-splashscreens worden gegenereerd uit de originele artwork in `brand/`:
-
-```
-brand/icon-source.png      het logo / app-icoon
-brand/splash-source.png    het launch screen
-brand/design-guideline.png de visuele referentie
-```
+## Ontwikkelen
 
 ```bash
-npm run brand
+npm install
+cp .env.example .env.local     # vul NEXT_PUBLIC_SUPABASE_URL en _ANON_KEY
+npm run dev
 ```
 
-Dit schrijft:
+Wijs `.env.local` naar een draaiende Docker-stack (`http://localhost:6666`) of
+naar een gehost Supabase-project. Draai bij een leeg project eerst de migraties
+uit `supabase/migrations/` in volgorde.
 
-- 16 app-iconen (`apple-touch-icon` 180/167/152/120/76/60, PWA 96–1024, favicons)
-- 2 maskable iconen (content binnen de 80% safe zone)
-- 36 iOS-splashscreens — elk ondersteund device in portrait én landscape
-- 3 in-app logo-assets (volledig logo, dobbelsteen-only mark, bron)
-- `src/components/layout/apple-splash-links.tsx` met de bijbehorende `<link>` tags
+Voor **gehost Supabase** volstaan drie variabelen:
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` en
+`NEXT_PUBLIC_SITE_URL`. Laat `NEXT_PUBLIC_SUPABASE_SAME_ORIGIN` dan weg.
 
-Vervang de bronbestanden en draai `npm run brand` opnieuw om de hele set te vernieuwen. De
-artwork wordt automatisch bijgesneden op zijn eigen inhoud, dus extra witruimte rond het logo
-maakt niet uit.
+### Demo data
 
----
-
-## Projectstructuur
-
-```
-src/
-  app/
-    page.tsx                landing
-    login/ register/        auth
-    onboarding/             5-stappen onboarding
-    auth/callback/          OAuth + magic link
-    app/                    ingelogde app (protected)
-      page.tsx              home dashboard
-      rankings/ history/ achievements/
-      friends/ groups/[id]/ profile/ statistics/ settings/
-      admin/                adminconsole (alleen superadmin)
-    auth/confirm/           landingspagina voor bevestigingsmails
-    u/[username]/           publiek profiel
-    api/health/             healthcheck voor Docker
-  components/
-    ui/                     Button, Card, Input, BottomSheet, StatCard, …
-    layout/                 BottomNavigation, QuickActionsProvider, PageTransition
-    home/ score/ rankings/ achievements/ friends/ groups/ profile/ stats/
-  lib/
-    supabase/               browser-, server- en middleware-clients + queries
-    constants.ts            centrale configuratie
-    haptics.ts utils.ts
-  types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0018)
-docker/
-  postgres/init/            rollen en rechten, draait bij eerste start
-  postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
-  nginx/                    gateway die alles op poort 6666 samenbrengt
-  db-prepare.sh            zet servicewachtwoorden en -rechten goed
-  migrate.sh               zet het schema klaar zodra de services er zijn
-scripts/                    seed, brand assets en sleutelgeneratie
+```bash
+npm run seed     # alleen tegen een development-database
 ```
 
-### PWA
+Maakt een stel spelers met potjes, Yahtzees, vriendschappen en een groep, zodat
+ranglijsten en grafieken gevuld zijn.
 
-- `public/manifest.webmanifest` met standalone display, theme colors en app shortcuts
-  (Potje toevoegen, Yahtzee, 1 worp, Ranglijsten)
-- `public/sw.js` — network-first voor navigatie en data, cache-first voor statics, met een
-  offline fallback. Scores en ranglijsten worden dus nooit verouderd geserveerd.
-- `viewport-fit=cover` plus `env(safe-area-inset-*)` overal waar het telt
-- Inputs zijn minimaal 16px zodat Safari niet inzoomt; geen dubbeltap-zoom, geen
-  horizontaal scrollen, geen blauwe selectie-highlight
-- Floating bottom navigation die rekening houdt met de home indicator
-- Pull-to-refresh: sleep bovenaan omlaag om de pagina opnieuw op te halen. De app
-  heeft een eigen implementatie nodig omdat `overscroll-behavior-y: none` die van
-  de browser uitschakelt — en een geïnstalleerde app geen herlaadknop heeft.
-- Web Push via de service worker (`push`, `notificationclick`, `pushsubscriptionchange`),
-  met de installatie- en meldingenkaarten uit [Pushmeldingen](#pushmeldingen)
+### Configureerbare grenzen
 
----
+`app_settings` bevat waarden die de app leest zonder deploy, zoals het
+minimumaantal potjes voor de gemiddelde-ranking en de laagst en hoogst
+toegestane score. Aan te passen in **Snatzee Admin → Beheer**.
 
-## Scripts
+### Brand assets
+
+Iconen, splashscreens en geluiden worden gegenereerd uit de bronbestanden in
+`brand/`:
+
+```bash
+npm run brand    # 16 app-iconen, 2 maskable, 36 iOS-splashscreens, logo-assets
+npm run audio    # zet de WAV-bronnen om naar mono mp3 + ogg (vereist ffmpeg)
+```
+
+Vervang de bronbestanden en draai opnieuw om de hele set te vernieuwen; de
+artwork wordt automatisch op zijn eigen inhoud bijgesneden.
+
+### Scripts
 
 | Commando | Wat het doet |
 | --- | --- |
@@ -1039,8 +487,43 @@ scripts/                    seed, brand assets en sleutelgeneratie
 | `npm run start` | Productieserver |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript zonder emit |
-| `npm run seed` | Demo data (alleen development) |
-| `npm run brand` | Genereer alle iconen en splashscreens opnieuw |
-| `npm run audio` | Encodeer de geluiden opnieuw vanuit `brand/audio` |
-| `node scripts/generate-keys.mjs` | Genereer de geheimen voor de Docker-stack |
-| `node scripts/generate-vapid-keys.mjs` | Genereer het VAPID-sleutelpaar voor pushmeldingen |
+| `npm run seed` | Demo data |
+| `npm run brand` | Iconen en splashscreens genereren |
+| `npm run audio` | Geluiden encoderen |
+| `node scripts/generate-keys.mjs` | Geheimen voor de Docker-stack |
+| `node scripts/generate-vapid-keys.mjs` | VAPID-sleutelpaar voor pushmeldingen |
+
+### Projectstructuur
+
+```
+src/
+  app/
+    page.tsx                landing
+    login/ register/        auth
+    onboarding/             onboarding
+    auth/callback/          OAuth
+    auth/confirm/           bevestigingsmails
+    u/[username]/           publiek profiel
+    api/                    health + push (drain, broadcast, test)
+    app/                    ingelogde app
+      page.tsx              home
+      rankings/ history/ achievements/ statistics/
+      friends/ groups/[id]/ profile/ settings/
+      admin/                adminconsole (superadmin)
+  components/
+    ui/                     Button, Input, BottomSheet, Marquee, WheelPicker, …
+    layout/                 navigatie, pull-to-refresh, quick actions
+    home/ score/ rankings/ achievements/ friends/ groups/ profile/ stats/
+    admin/ pwa/
+  lib/
+    supabase/               browser-, server- en middleware-clients + queries
+    push.ts push-server.ts  Web Push, client en verzendkant
+    image.ts invite.ts pwa.ts audio.ts haptics.ts
+  types/database.ts         types die het SQL-schema spiegelen
+supabase/migrations/        SQL migraties (0001 t/m 0018)
+docker/
+  postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
+  nginx/                    gateway op één poort
+  db-prepare.sh migrate.sh
+scripts/                    seed, brand assets, sleutelgeneratie
+```
