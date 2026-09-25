@@ -8,22 +8,33 @@ import { CropFrame, type CropRect } from '@/components/score/scan/crop-frame'
 import { prepareSheet, toImageData, type PreparedSheet } from '@/lib/scoresheet/preprocess'
 import { detectGrid, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
 import { suggestSheetCrop } from '@/lib/scoresheet/locate'
+import { readCells, type SheetReading } from '@/lib/scoresheet/cells'
+import { cn } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
 
 /**
  * Photograph a paper scoresheet, crop it, and hand the result to the
  * reader.
  *
- * So far: the photo is taken, cropped, cleaned up, and the grid of boxes
- * is found on it. Nothing is read out of those boxes yet, and nothing
- * leaves the phone — the whole pipeline is local, so a scoresheet photo is
- * never uploaded anywhere.
+ * So far: the photo is taken, cropped, cleaned up, the grid of boxes is
+ * found on it, and every box is sorted into empty, crossed out or
+ * written. The numbers themselves are not read yet. Nothing leaves the
+ * phone — the whole pipeline is local, so a scoresheet photo is never
+ * uploaded anywhere.
  *
  * Showing the result is not decoration. Every later step reads this image
  * and this grid and nothing else, so when a sheet does not scan, this view
  * is the difference between "it did not work" and a screenshot that says
  * which step lost it.
  */
+
+/** What each kind of cell is outlined in. Mint for a number, tangerine
+ *  for a stroke, slate for a box nobody wrote in. */
+const CELL_COLOURS = {
+  written: '#24c79a',
+  scratched: '#ff7a3d',
+  empty: '#7d93a8',
+} as const
 
 /** Fallback crop, for a photo whose table could not be located: a margin
  *  in from the edges, since people frame loosely. */
@@ -60,6 +71,8 @@ export function ScanSheet({
   const [autoCropped, setAutoCropped] = useState(false)
   const [prepared, setPrepared] = useState<PreparedSheet | null>(null)
   const [grid, setGrid] = useState<SheetGrid | null>(null)
+  const [reading, setReading] = useState<SheetReading | null>(null)
+  const [column, setColumn] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -71,6 +84,8 @@ export function ScanSheet({
     setStep('pick')
     setPrepared(null)
     setGrid(null)
+    setReading(null)
+    setColumn(0)
     setError(null)
     setCrop(INITIAL_CROP)
     setAutoCropped(false)
@@ -142,9 +157,14 @@ export function ScanSheet({
       const source = cropToImageData(photo, crop)
       const result = prepareSheet(source)
       const lattice = detectGrid(result.mask)
+      const cells = lattice ? readCells(result.mask, lattice) : null
       setElapsed(Math.round(performance.now() - started))
       setPrepared(result)
       setGrid(lattice)
+      setReading(cells)
+      // The game people just played is the one they filled in, so the
+      // first column with anything in it is the one to offer.
+      setColumn(cells ? Math.max(0, cells.filledPerColumn.findIndex((count) => count > 0)) : 0)
       setStep('result')
       haptic('success')
     } catch {
@@ -166,19 +186,28 @@ export function ScanSheet({
     canvas.height = image.height
     context.putImageData(image, 0, 0)
 
-    if (!grid) return
+    if (!grid || !reading) return
     // Scaled with the image so the outline stays a hairline on a small
     // photo and does not disappear on a large one.
-    context.lineWidth = Math.max(2, Math.round(image.width / 400))
-    context.strokeStyle = '#2ee6b0' // mint-400
-    for (const block of grid.blocks) {
-      for (const row of block.rows) {
-        for (const cell of row) {
-          context.strokeRect(cell.x0, cell.y0, cell.x1 - cell.x0, cell.y1 - cell.y0)
-        }
+    const weight = Math.max(2, Math.round(image.width / 400))
+
+    for (const block of reading.blocks) {
+      for (const row of block) {
+        row.forEach((cell, index) => {
+          // The chosen column is drawn solid and the rest faded, so which
+          // game is about to be imported is visible at a glance.
+          context.globalAlpha = index === column ? 1 : 0.3
+          context.lineWidth = index === column ? weight * 1.5 : weight
+          context.strokeStyle = CELL_COLOURS[cell.kind]
+          // A dashed outline is the cell saying it is not sure of itself.
+          context.setLineDash(cell.uncertain ? [weight * 3, weight * 2] : [])
+          context.strokeRect(cell.box.x0, cell.box.y0, cell.box.x1 - cell.box.x0, cell.box.y1 - cell.box.y0)
+        })
       }
     }
-  }, [step, prepared, grid])
+    context.globalAlpha = 1
+    context.setLineDash([])
+  }, [step, prepared, grid, reading, column])
 
   return (
     <BottomSheet
@@ -289,10 +318,14 @@ export function ScanSheet({
               </p>
             ) : null}
 
+            {reading && grid && (
+              <ColumnPicker reading={reading} columns={grid.columns} value={column} onChange={setColumn} />
+            )}
+
             <p className="text-xs text-ink-muted">
-              Groen omlijnd is wat er als vakje is herkend. Staat elk vakje precies om één hokje,
-              dan kan de volgende stap de cijfers eruit lezen. Zo niet, maak dan een screenshot
-              hiervan. Scheefstand {prepared.skew.toFixed(2)}°, drempel {prepared.threshold}.
+              Groen is een ingevuld getal, oranje een streep (telt als 0), grijs een leeg hokje.
+              Een stippellijn betekent dat de app het niet zeker weet. Scheefstand{' '}
+              {prepared.skew.toFixed(2)}°, drempel {prepared.threshold}.
             </p>
           </div>
         )}
@@ -325,6 +358,68 @@ export function ScanSheet({
         />
       </div>
     </BottomSheet>
+  )
+}
+
+/**
+ * Which game on the sheet to import.
+ *
+ * A sheet holds up to six games side by side and a score belongs to one
+ * of them, so the choice cannot be skipped. Columns nobody wrote in are
+ * shown but not selectable: seeing all six makes it obvious which one is
+ * being picked, and an empty one has nothing to import.
+ */
+function ColumnPicker({
+  reading,
+  columns,
+  value,
+  onChange,
+}: {
+  reading: SheetReading
+  columns: number
+  value: number
+  onChange: (column: number) => void
+}) {
+  const filled = reading.filledPerColumn[value] ?? 0
+  const unsure = reading.uncertainPerColumn[value] ?? 0
+
+  return (
+    <div>
+      <p className="mb-2 text-sm font-semibold text-ink-soft">Welk spel wil je overnemen?</p>
+      <div className="grid grid-cols-6 gap-1.5">
+        {Array.from({ length: columns }, (_, index) => {
+          const count = reading.filledPerColumn[index] ?? 0
+          const selected = index === value
+          return (
+            <button
+              key={index}
+              type="button"
+              disabled={count === 0}
+              aria-pressed={selected}
+              onClick={() => onChange(index)}
+              className={cn(
+                'press flex min-h-14 flex-col items-center justify-center rounded-2xl text-xs font-semibold ring-1',
+                selected
+                  ? 'bg-mint-500 text-navy-950 ring-mint-500'
+                  : count === 0
+                    ? 'bg-canvas text-ink-muted ring-hairline opacity-50'
+                    : 'bg-surface text-ink ring-hairline',
+              )}
+            >
+              <span>{index + 1}e</span>
+              <span className="tabular text-[0.65rem] font-normal opacity-80">
+                {count === 0 ? 'leeg' : count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-2 text-xs text-ink-muted">
+        {filled === 0
+          ? 'Er is nog geen ingevuld spel gevonden op dit blad.'
+          : `${filled} ingevulde hokjes${unsure > 0 ? `, waarvan ${unsure} om te controleren` : ''}.`}
+      </p>
+    </div>
   )
 }
 
