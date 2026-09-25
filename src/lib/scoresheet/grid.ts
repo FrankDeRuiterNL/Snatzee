@@ -36,6 +36,13 @@ export interface CellBox {
 export interface SheetGrid {
   /** Game columns, left to right. */
   columns: number
+  /**
+   * How many rows were actually found in each block, before the known
+   * shape filled in the rest. Equal to 9 and 10 when the image gave up
+   * the whole grid by itself; lower when rows had to be inferred, which
+   * is worth saying out loud rather than hiding.
+   */
+  rowsFound: number[]
   /** Row blocks, top to bottom: the upper half, then the lower half. */
   blocks: GridBlock[]
   /** Every cell that was actually found, for the debug overlay. */
@@ -47,7 +54,19 @@ export interface GridBlock {
   rows: CellBox[][]
 }
 
-/** The shape a Yahtzee sheet has: 9 rows above, 10 below. */
+/**
+ * The shape every Yahtzee sheet has: nine rows above, ten below.
+ *
+ * Not a guess about these particular sheets — it is what the game is.
+ * Six number rows, a subtotal, the bonus and the upper total make nine;
+ * seven combinations and three totals make ten. Every printed variant
+ * lays that out differently, but none of them has a different count.
+ *
+ * So it is used as knowledge rather than as a check: a row that was
+ * missed because a fold or a shadow broke its boxes is put back, and an
+ * eleventh row that came from a sliver of margin is dropped. Only the
+ * number of games is discovered from the image.
+ */
 export const EXPECTED_ROWS = [9, 10] as const
 
 /* Size filter for a candidate cell, as a fraction of the whole image.
@@ -76,6 +95,74 @@ const LINE_STRENGTH = 0.4
 const MIN_LINE_EXTENT = 0.55
 /** A gap wider than this many row pitches separates the two blocks. */
 const BLOCK_GAP_PITCHES = 1.6
+
+/**
+ * How much of a rectangle is paper rather than ink.
+ *
+ * The measure that says whether a line of the lattice is really a line of
+ * cells: a row or column that lands on the sheet's black panel is almost
+ * all ink, one that lands on the boxes is almost all paper, and no
+ * threshold on counts of components can tell those apart as directly.
+ */
+function paperFraction(mask: BinaryImage, cells: CellBox[]): number {
+  let paper = 0
+  let total = 0
+  for (const cell of cells) {
+    const x0 = Math.max(0, cell.x0)
+    const y0 = Math.max(0, cell.y0)
+    const x1 = Math.min(mask.width - 1, cell.x1)
+    const y1 = Math.min(mask.height - 1, cell.y1)
+    for (let y = y0; y <= y1; y += 1) {
+      const row = y * mask.width
+      for (let x = x0; x <= x1; x += 1) {
+        total += 1
+        if (mask.data[row + x] === 0) paper += 1
+      }
+    }
+  }
+  return total > 0 ? paper / total : 0
+}
+
+/**
+ * The evenly spaced ladder of `count` rows that best explains what was
+ * found.
+ *
+ * Rows on a sheet are printed at one pitch, so their positions are an
+ * arithmetic progression and two rows define it. Every pair of found
+ * rows is tried as those two — for each pair, at every pair of indices it
+ * could occupy — and the progression that lands closest to the most
+ * found rows wins. That fills a gap where a row was missed and ignores a
+ * row that was never really there, without either being a special case.
+ */
+function fitLadder(found: number[], count: number, score: (rungs: number[]) => number): number[] | null {
+  if (found.length < 2 || count < 2) return null
+
+  // The pitch is the typical step between rows that were found. A median
+  // rather than a mean, so one missing row in the middle — which shows up
+  // as a double-sized step — does not stretch it.
+  const steps: number[] = []
+  for (let i = 1; i < found.length; i += 1) steps.push(found[i]! - found[i - 1]!)
+  const pitch = median(steps)
+  if (!(pitch > 0)) return null
+
+  // Where the rows that were found sit within a ladder of `count` rungs
+  // is not determined by them: eight rows out of nine could be the top
+  // eight or the bottom eight. So every placement is tried and the image
+  // decides, by which one lays its cells on paper rather than on the
+  // panel between them.
+  const span = Math.round((found[found.length - 1]! - found[0]!) / pitch)
+  const slack = Math.max(0, count - 1 - span)
+
+  let best: { rungs: number[]; score: number } | null = null
+  for (let offset = 0; offset <= slack; offset += 1) {
+    const start = found[0]! - pitch * offset
+    const rungs = Array.from({ length: count }, (_, index) => start + pitch * index)
+    const value = score(rungs)
+    if (!best || value > best.score) best = { rungs, score: value }
+  }
+
+  return best?.rungs ?? null
+}
 
 interface Component {
   x0: number
@@ -299,6 +386,39 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
     if (rowCentres[i]! - rowCentres[i - 1]! > pitch * BLOCK_GAP_PITCHES) blockStarts.push(i)
   }
 
+  /*
+   * A sheet has exactly two blocks, so anything else is a split in the
+   * wrong place rather than a different sheet. One block means the band
+   * between the halves was not wide enough to notice, and it is cut at
+   * its widest gap; more than two means a gap inside a half was mistaken
+   * for the band, and the narrowest of them is stitched back up.
+   */
+  while (blockStarts.length > EXPECTED_ROWS.length) {
+    let narrowest = 1
+    let narrowestGap = Infinity
+    for (let i = 1; i < blockStarts.length; i += 1) {
+      const index = blockStarts[i]!
+      const gap = rowCentres[index]! - rowCentres[index - 1]!
+      if (gap < narrowestGap) {
+        narrowestGap = gap
+        narrowest = i
+      }
+    }
+    blockStarts.splice(narrowest, 1)
+  }
+  if (blockStarts.length === 1 && rowCentres.length >= 4) {
+    let widest = 1
+    let widestGap = -Infinity
+    for (let i = 1; i < rowCentres.length; i += 1) {
+      const gap = rowCentres[i]! - rowCentres[i - 1]!
+      if (gap > widestGap) {
+        widestGap = gap
+        widest = i
+      }
+    }
+    blockStarts.push(widest)
+  }
+
   /**
    * The lattice gives every cell the same rectangle, which is only
    * approximately true: a photo taken slightly off square makes the far
@@ -336,10 +456,61 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
     }
   }
 
+  const rowsFound: number[] = []
   const blocks: GridBlock[] = blockStarts.map((start, index) => {
     const end = blockStarts[index + 1] ?? rowExtents.length
+    const slice = rowExtents.slice(start, end)
+    rowsFound.push(slice.length)
+
+    // The rows this block should have, put on the ladder the found ones
+    // describe. Their height is the typical height here, since a row that
+    // had to be inferred has no boxes of its own to measure.
+    const wanted = EXPECTED_ROWS[index] ?? slice.length
+    const centres = slice.map((row) => (row.lo + row.hi) / 2)
+    const height = median(slice.map((row) => row.hi - row.lo)) || cellHeight
+    const ladder = fitLadder(centres, wanted, (rungs) =>
+      paperFraction(
+        mask,
+        rungs.flatMap((centre) =>
+          columnExtents.map((column) => ({
+            x0: Math.round(column.lo),
+            y0: Math.round(centre - height / 2),
+            x1: Math.round(column.hi),
+            y1: Math.round(centre + height / 2),
+          })),
+        ),
+      ),
+    )
+
+    /*
+     * The ladder decides how many rows there are and where a missing one
+     * belongs. It does not decide where the others are: a sheet
+     * photographed at an angle has rows that are not evenly spaced on the
+     * image, and a row that was measured off its own boxes is more
+     * accurate than one placed by arithmetic. So each rung takes the
+     * measured row nearest it, and only a rung with nothing near it is
+     * given the ladder's own position.
+     */
+    const rows = ladder
+      ? ladder.map((centre) => {
+          let nearest = -1
+          let distance = Infinity
+          slice.forEach((row, i) => {
+            const delta = Math.abs((row.lo + row.hi) / 2 - centre)
+            if (delta < distance) {
+              distance = delta
+              nearest = i
+            }
+          })
+          const measured = slice[nearest]
+          return measured && distance <= height * LINE_TOLERANCE
+            ? measured
+            : { lo: centre - height / 2, hi: centre + height / 2 }
+        })
+      : slice
+
     return {
-      rows: rowExtents.slice(start, end).map((row) =>
+      rows: rows.map((row) =>
         columnExtents.map((column) =>
           snap({
             x0: Math.round(column.lo),
@@ -354,16 +525,31 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
 
   return {
     columns: columnExtents.length,
+    rowsFound,
     blocks,
     found: candidates.map((c) => ({ x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1 })),
   }
 }
 
-/** Whether the grid has the shape a Yahtzee sheet has. Reported rather
- *  than enforced: an odd sheet should be explained, not silently read. */
+/**
+ * Whether the grid came out of the image whole.
+ *
+ * The rows themselves are always 9 and 10 now, so this asks the question
+ * that is still open: did the image actually show them? A sheet where
+ * several rows had to be inferred is one to say something about, because
+ * the inferred ones are where a misreading would hide.
+ */
 export function matchesExpectedShape(grid: SheetGrid): boolean {
   return (
     grid.blocks.length === EXPECTED_ROWS.length &&
-    grid.blocks.every((block, index) => block.rows.length === EXPECTED_ROWS[index])
+    grid.rowsFound.every((found, index) => found >= (EXPECTED_ROWS[index] ?? 0) - 1)
+  )
+}
+
+/** How many rows had to be filled in from the known shape. */
+export function inferredRows(grid: SheetGrid): number {
+  return grid.rowsFound.reduce(
+    (total, found, index) => total + Math.max(0, (EXPECTED_ROWS[index] ?? found) - found),
+    0,
   )
 }

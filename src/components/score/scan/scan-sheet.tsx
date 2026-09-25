@@ -6,7 +6,7 @@ import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { CropFrame, type CropRect } from '@/components/score/scan/crop-frame'
 import { prepareSheet, toImageData, type PreparedSheet } from '@/lib/scoresheet/preprocess'
-import { detectGrid, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
+import { detectGrid, inferredRows, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
 import { suggestSheetCrop } from '@/lib/scoresheet/locate'
 import { readCells, type SheetReading } from '@/lib/scoresheet/cells'
 import { readColumn, type ColumnReading } from '@/lib/scoresheet/read'
@@ -160,7 +160,32 @@ export function ScanSheet({
 
     try {
       const started = performance.now()
-      const source = cropToImageData(photo, crop)
+
+      /*
+       * Tightened to the table before anything is read, however the photo
+       * was cropped.
+       *
+       * The pipeline works at a fixed size, so every pixel of that budget
+       * spent on the sheet's heading, its printed labels or the table it
+       * was lying on is a pixel not spent on the boxes. On a photo framed
+       * around the whole sheet that costs about a third of the width the
+       * digits get, and the difference is visible in what comes out.
+       *
+       * Only the table is read, so nothing is lost by this, and a crop
+       * that is already tight is left alone.
+       */
+      const framed = cropToImageData(photo, crop)
+      const table = suggestSheetCrop(framed)
+      const source =
+        table && table.width * table.height < 0.85
+          ? cropToImageData(photo, {
+              x: crop.x + table.x * crop.width,
+              y: crop.y + table.y * crop.height,
+              width: table.width * crop.width,
+              height: table.height * crop.height,
+            })
+          : framed
+
       const result = prepareSheet(source)
       const lattice = detectGrid(result.mask)
       const cells = lattice ? readCells(result.mask, lattice) : null
@@ -319,7 +344,7 @@ export function ScanSheet({
               <Stat label="Kolommen" value={grid ? String(grid.columns) : '—'} />
               <Stat
                 label="Rijen"
-                value={grid ? grid.blocks.map((block) => block.rows.length).join(' + ') : '—'}
+                value={grid ? grid.rowsFound.join(' + ') : '—'}
               />
               <Stat label="Verwerkt in" value={`${elapsed} ms`} />
             </dl>
@@ -331,8 +356,9 @@ export function ScanSheet({
               </p>
             ) : !matchesExpectedShape(grid) ? (
               <p role="alert" className="rounded-2xl bg-tangerine-500/15 px-4 py-3 text-sm text-tangerine-300">
-                Het raster wijkt af van een normaal scoreblad (9 rijen boven, 10 onder). Controleer
-                of het hele blad binnen het kader viel.
+                {inferredRows(grid) === 1
+                  ? 'Eén rij was niet te vinden op de foto en is aangevuld. Controleer of het hele blad binnen het kader viel.'
+                  : `${inferredRows(grid)} rijen waren niet te vinden op de foto en zijn aangevuld. Controleer of het hele blad binnen het kader viel.`}
               </p>
             ) : null}
 
