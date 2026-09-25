@@ -173,6 +173,7 @@ export default async function PublicProfilePage({
                               // Public profiles show the result, not the
                               // per-game detail or the private note.
                               yahtzee_count: 0,
+                              sheet: null,
                               updated_at: score.created_at,
                             }}
                             index={index}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Camera, Images, Loader2, RotateCcw, ScanLine } from 'lucide-react'
+import { AlertTriangle, Camera, Check, Images, Loader2, Maximize2, RotateCcw, ScanLine } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { CropFrame, type CropRect } from '@/components/score/scan/crop-frame'
@@ -10,7 +10,15 @@ import { detectGrid, inferredRows, matchesExpectedShape, type SheetGrid } from '
 import { suggestSheetCrop } from '@/lib/scoresheet/locate'
 import { readCells, type SheetReading } from '@/lib/scoresheet/cells'
 import { readColumn, type ColumnReading } from '@/lib/scoresheet/read'
-import { ScanReview, type ReviewResult } from '@/components/score/scan/review'
+import { SheetForm } from '@/components/score/sheet-form'
+import { sheetTotals, TOPSCORE_ROW } from '@/lib/scoresheet/sheet'
+
+/** A checked game, on its way to the form that saves it. */
+export interface ReviewResult {
+  total: number
+  yahtzee: boolean
+  entries: number[]
+}
 import { cn } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
 
@@ -79,8 +87,20 @@ export function ScanSheet({
   const [reading, setReading] = useState<SheetReading | null>(null)
   const [column, setColumn] = useState(0)
 
-  const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [zoomed, setZoomed] = useState(false)
+  /*
+   * Corrections, kept beside the reading rather than replacing it.
+   *
+   * They belong to the game they were made on, so they carry their
+   * column with them: picking another game shows that game's reading,
+   * and coming back shows these corrections again.
+   */
+  const [edited, setEdited] = useState<{
+    column: number
+    entries: number[]
+    unsure: number[]
+  } | null>(null)
 
   const cameraRef = useRef<HTMLInputElement>(null)
   const libraryRef = useRef<HTMLInputElement>(null)
@@ -95,6 +115,8 @@ export function ScanSheet({
     setError(null)
     setCrop(INITIAL_CROP)
     setAutoCropped(false)
+    setZoomed(false)
+    setEdited(null)
     setPhoto((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
       return null
@@ -159,7 +181,6 @@ export function ScanSheet({
     await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
 
     try {
-      const started = performance.now()
 
       /*
        * Tightened to the table before anything is read, however the photo
@@ -189,7 +210,6 @@ export function ScanSheet({
       const result = prepareSheet(source)
       const lattice = detectGrid(result.mask)
       const cells = lattice ? readCells(result.mask, lattice) : null
-      setElapsed(Math.round(performance.now() - started))
       setPrepared(result)
       setGrid(lattice)
       setReading(cells)
@@ -215,6 +235,16 @@ export function ScanSheet({
     if (!upper || !lower) return null
     return readColumn(prepared.mask, [upper, lower])
   }, [step, prepared, reading, column])
+
+  /**
+   * What the checking screen shows: the reading, with any corrections
+   * made to this game laid over it.
+   */
+  const checked = useMemo(() => {
+    if (!solved) return null
+    if (edited && edited.column === column) return edited
+    return { column, entries: solved.entries, unsure: solved.unsure }
+  }, [solved, edited, column])
 
   // Drawing in an effect rather than during the render: the canvas only
   // exists once the result step has rendered it.
@@ -259,9 +289,10 @@ export function ScanSheet({
         if (!next) reset()
         onOpenChange(next)
       }}
-      // The crop frame is dragged with the same finger that would
-      // otherwise swipe the sheet away.
-      swipeToClose={step !== 'crop'}
+      // Never swiped away: the crop frame is dragged with the same
+      // finger that would otherwise dismiss it, and the checking step is
+      // long enough to scroll.
+      swipeToClose={false}
       title="Scoreblad scannen"
       description="Maak een foto van je scoreblad en snijd hem bij tot alleen het blad."
       footer={
@@ -270,10 +301,22 @@ export function ScanSheet({
             <ScanLine className="size-5" aria-hidden />
             Scoreblad lezen
           </Button>
-        ) : step === 'result' ? (
-          <Button full size="lg" variant="soft" onClick={reset}>
-            <RotateCcw className="size-5" aria-hidden />
-            Nieuwe foto
+        ) : step === 'result' && checked ? (
+          <Button
+            full
+            size="lg"
+            onClick={() => {
+              onResult?.({
+                total: sheetTotals(checked.entries).total,
+                yahtzee: (checked.entries[TOPSCORE_ROW] ?? 0) > 0,
+                entries: checked.entries,
+              })
+              reset()
+              onOpenChange(false)
+            }}
+          >
+            <Check className="size-5" aria-hidden />
+            Deze score overnemen
           </Button>
         ) : undefined
       }
@@ -335,19 +378,36 @@ export function ScanSheet({
 
         {step === 'result' && prepared && (
           <div className="space-y-3">
-            <canvas
-              ref={canvasRef}
-              className="w-full rounded-2xl bg-white"
-              aria-label="Verwerkt scoreblad"
-            />
-            <dl className="grid grid-cols-3 gap-2 text-center">
-              <Stat label="Kolommen" value={grid ? String(grid.columns) : '—'} />
-              <Stat
-                label="Rijen"
-                value={grid ? grid.rowsFound.join(' + ') : '—'}
+            {/*
+              Small by default: it is what the app saw, not what the
+              player came for, and the values below it are. One tap makes
+              it full width for when a number needs checking against the
+              paper.
+            */}
+            <button
+              type="button"
+              onClick={() => setZoomed((previous) => !previous)}
+              aria-expanded={zoomed}
+              className="press flex w-full items-center gap-3 rounded-2xl bg-surface p-2 text-left ring-1 ring-hairline"
+            >
+              <canvas
+                ref={canvasRef}
+                className={cn(
+                  'rounded-xl bg-white transition-[width]',
+                  zoomed ? 'w-full' : 'h-20 w-16 object-cover',
+                )}
+                aria-label="Verwerkt scoreblad"
               />
-              <Stat label="Verwerkt in" value={`${elapsed} ms`} />
-            </dl>
+              {!zoomed && (
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">Gelezen scoreblad</span>
+                  <span className="block text-xs text-ink-muted">
+                    Tik om groot te bekijken
+                  </span>
+                </span>
+              )}
+              {!zoomed && <Maximize2 className="size-4 shrink-0 text-ink-muted" aria-hidden />}
+            </button>
 
             {!grid ? (
               <p role="alert" className="rounded-2xl bg-rose-ember-500/15 px-4 py-3 text-sm text-rose-ember-300">
@@ -366,26 +426,48 @@ export function ScanSheet({
               <ColumnPicker reading={reading} columns={grid.columns} value={column} onChange={setColumn} />
             )}
 
-            {solved && (
-              <ScanReview
-                // Remounted per game, so the edits belong to the game on
-                // screen rather than being carried over to the next.
-                key={column}
-                reading={solved}
-                onConfirm={(result) => {
-                  onResult?.(result)
-                  reset()
-                  onOpenChange(false)
-                }}
-              />
+            {checked && (
+              <>
+                {checked.unsure.length > 0 && (
+                  <p className="flex items-start gap-2 rounded-2xl bg-tangerine-500/15 px-4 py-3 text-sm text-tangerine-300">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>
+                      {checked.unsure.length === 1
+                        ? 'Eén vakje is lastig te lezen — controleer het even.'
+                        : `${checked.unsure.length} vakjes zijn lastig te lezen — controleer ze even.`}
+                    </span>
+                  </p>
+                )}
+
+                <SheetForm
+                  value={checked.entries}
+                  flagged={checked.unsure}
+                  onChange={(entries, row) =>
+                    setEdited({
+                      column,
+                      entries,
+                      // A box the player has just set is no longer one to
+                      // check.
+                      unsure: checked.unsure.filter((index) => index !== row),
+                    })
+                  }
+                />
+              </>
             )}
 
-            <p className="text-xs text-ink-muted">
-              De waarden hierboven zijn gelezen van het blad — controleer ze en pas aan waar nodig.
-              Groen is een ingevuld getal, oranje een streep (telt als 0), grijs een leeg hokje.
-              Een stippellijn betekent dat de app het niet zeker weet. Scheefstand{' '}
-              {prepared.skew.toFixed(2)}°, drempel {prepared.threshold}.
-            </p>
+            {/* Outside the reading: a photo that produced nothing
+                readable is exactly when this is needed. */}
+            <Button full variant="soft" onClick={reset}>
+              <RotateCcw className="size-5" aria-hidden />
+              Nieuwe foto
+            </Button>
+
+            {zoomed && (
+              <p className="text-xs text-ink-muted">
+                Groen is een ingevuld getal, oranje een streep (telt als 0), grijs een leeg hokje.
+                Een stippellijn betekent dat de app het niet zeker weet.
+              </p>
+            )}
           </div>
         )}
 
@@ -478,15 +560,6 @@ function ColumnPicker({
           ? 'Er is nog geen ingevuld spel gevonden op dit blad.'
           : `${filled} ingevulde hokjes${unsure > 0 ? `, waarvan ${unsure} om te controleren` : ''}.`}
       </p>
-    </div>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-surface px-2 py-3 ring-1 ring-hairline">
-      <dt className="text-[0.7rem] uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="tabular mt-0.5 text-sm font-bold text-white">{value}</dd>
     </div>
   )
 }

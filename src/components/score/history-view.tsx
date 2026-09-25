@@ -10,6 +10,8 @@ import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SheetBreakdown } from '@/components/score/sheet-breakdown'
+import { isValidSheet } from '@/lib/scoresheet/sheet'
 import { Segmented } from '@/components/ui/segmented'
 import { useQuickActions } from '@/components/layout/quick-actions-provider'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -257,6 +259,8 @@ export function HistoryView({
                 {detail.is_win ? '🏆 Gewonnen' : '🎲 Niet gewonnen'}
               </p>
             </motion.div>
+
+            {isValidSheet(detail.sheet) && <SheetBreakdown entries={detail.sheet} />}
 
             {detail.note && (
               <div className="rounded-2xl bg-surface p-4 ring-1 ring-hairline">

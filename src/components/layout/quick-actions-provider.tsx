@@ -42,15 +42,7 @@ export function useQuickActions() {
  * Owns the two global "register something" flows so they can be triggered
  * from the bottom nav, the home dashboard and the history page alike.
  */
-export function QuickActionsProvider({
-  children,
-  scanEnabled = false,
-}: {
-  children: ReactNode
-  /** Whether the scoresheet scanner is offered — an admin setting while
-   *  the reader is being tuned. */
-  scanEnabled?: boolean
-}) {
+export function QuickActionsProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -190,17 +182,17 @@ export function QuickActionsProvider({
         }}
         entry={editing}
         onSaved={handleSaved}
-        onScan={scanEnabled ? openScanner : undefined}
+        onScan={openScanner}
         prefill={scanned}
       />
 
-      {scanEnabled && (
-        <ScanSheet
-          open={scanOpen}
-          onOpenChange={closeScanner}
-          onResult={(result) => setScanned({ score: result.total, yahtzee: result.yahtzee })}
-        />
-      )}
+      <ScanSheet
+        open={scanOpen}
+        onOpenChange={closeScanner}
+        onResult={(result) =>
+          setScanned({ score: result.total, yahtzee: result.yahtzee, entries: result.entries })
+        }
+      />
 
       <FirstRollDialog
         open={firstRollOpen}

@@ -43,8 +43,6 @@ export function AdminPanel({
   const [launchSplash, setLaunchSplash] = useState(() => settings.launch_splash === 1)
   const [splashBusy, setSplashBusy] = useState(false)
 
-  const [scan, setScan] = useState(() => settings.scoresheet_scan === 1)
-  const [scanBusy, setScanBusy] = useState(false)
 
   const [targetUser, setTargetUser] = useState('')
   const [targetRole, setTargetRole] = useState<AppRole>('admin')
@@ -166,7 +164,7 @@ export function AdminPanel({
           </div>
         ))}
 
-        <div className="space-y-5 border-t border-white/10 pt-5">
+        <div className="border-t border-white/10 pt-5">
           <ToggleRow
             label="Startscherm bij openen"
             description="Toont bij het openen een tik-scherm, zodat het openingsgeluid meteen speelt in plaats van bij de eerste aanraking. Verschijnt alleen wanneer het geluid niet vanzelf mag spelen."
@@ -176,19 +174,6 @@ export function AdminPanel({
               void toggleFlag('launch_splash', next, setLaunchSplash, setSplashBusy, {
                 on: 'Startscherm staat aan',
                 off: 'Startscherm staat uit',
-              })
-            }
-          />
-
-          <ToggleRow
-            label="Scoreblad scannen"
-            description="Zet in 'Potje toevoegen' de optie aan om een foto van het papieren scoreblad te maken en de scores automatisch te laten lezen. Nog in ontwikkeling."
-            checked={scan}
-            disabled={scanBusy}
-            onCheckedChange={(next) =>
-              void toggleFlag('scoresheet_scan', next, setScan, setScanBusy, {
-                on: 'Scoreblad scannen staat aan',
-                off: 'Scoreblad scannen staat uit',
               })
             }
           />

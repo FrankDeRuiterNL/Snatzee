@@ -39,6 +39,13 @@ export interface ScoreEntry {
   yahtzee_count: number
   played_at: string
   note: string | null
+  /**
+   * The thirteen boxes of the scoresheet, in sheet order, when the game
+   * was entered per row or read from a photo. Null for a score that was
+   * only ever a number. The five totals are not stored: they follow from
+   * these, and storing arithmetic is storing something that can drift.
+   */
+  sheet: number[] | null
   created_at: string
   updated_at: string
 }

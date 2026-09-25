@@ -24,41 +24,16 @@ import type { CellBox } from '@/lib/scoresheet/grid'
 import type { CellReading } from '@/lib/scoresheet/cells'
 import { classifyDigit, type DigitWeights } from '@/lib/scoresheet/digits/model'
 import { digitWeights } from '@/lib/scoresheet/digits'
-
-/** The upper half's bonus, and the subtotal that earns it. */
-export const UPPER_BONUS = 35
-export const BONUS_FROM = 63
-
-const step = (from: number, to: number, by: number) => {
-  const out: number[] = []
-  for (let value = from; value <= to; value += by) out.push(value)
-  return out
-}
-/** 0, then any total five dice can make. */
-const ANY_THROW = [0, ...step(5, 30, 1)]
+import { BONUS_FROM, SHEET_ROWS, TOPSCORE_ROW, UPPER_BONUS, UPPER_ROWS } from '@/lib/scoresheet/sheet'
 
 /**
- * What each row may hold, in sheet order: six upper entries, then the
- * seven lower ones. The totals are not here because they are not read —
- * they are what the entries add up to.
+ * What each row may hold, taken from the sheet's own rules rather than
+ * restated here: the reader, the form and the database all decide what a
+ * box can contain from the same list.
  */
-export const ROW_VALUES: number[][] = [
-  step(0, 5, 1), // enen
-  step(0, 10, 2), // tweeën
-  step(0, 15, 3), // drieën
-  step(0, 20, 4), // vieren
-  step(0, 25, 5), // vijven
-  step(0, 30, 6), // zessen
-  ANY_THROW, // three of a kind
-  ANY_THROW, // carré
-  [0, 25], // full house
-  [0, 30], // kleine straat
-  [0, 40], // grote straat
-  [0, 50], // topscore
-  ANY_THROW, // chance
-]
+export const ROW_VALUES: number[][] = SHEET_ROWS.map((row) => row.values)
 
-const UPPER_ENTRIES = 6
+const UPPER_ENTRIES = UPPER_ROWS
 const LOWER_ENTRIES = 7
 /** Row indices within each block that hold a total rather than an entry. */
 const UPPER_SUBTOTAL_ROW = 6
@@ -478,8 +453,8 @@ export function readColumn(
     subtotal: best.upper,
     bonus,
     entries,
-    // The topscore row is the twelfth entry; 50 means a Yahtzee.
-    yahtzee: (entries[11] ?? 0) >= 50,
+    // The topscore row is only ever 0 or 50, so anything in it is one.
+    yahtzee: (entries[TOPSCORE_ROW] ?? 0) > 0,
     unsure,
     reconciles,
   }

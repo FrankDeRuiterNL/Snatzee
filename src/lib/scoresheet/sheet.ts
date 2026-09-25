@@ -1,0 +1,92 @@
+/**
+ * A Yahtzee sheet's own rules, in one place.
+ *
+ * What each row may hold and how the totals follow from the entries is
+ * the same knowledge in four places: the form people fill in by hand, the
+ * screen where a photographed sheet is checked, the reader that decides
+ * between two possible digits, and the database that stores the result.
+ * Keeping one copy of it is the difference between those four agreeing
+ * and those four drifting.
+ *
+ * The totals are never stored and never entered. They are arithmetic, and
+ * arithmetic that is written down is arithmetic that can disagree with
+ * what it was derived from.
+ */
+
+const step = (from: number, to: number, by: number) => {
+  const values: number[] = []
+  for (let value = from; value <= to; value += by) values.push(value)
+  return values
+}
+
+/** Zero, or anything five dice can add up to. */
+const ANY_THROW = [0, ...step(5, 30, 1)]
+
+export interface SheetRow {
+  label: string
+  /** What the row counts, for the hint under the label. */
+  hint: string
+  /** Every value the row may hold, in order. */
+  values: number[]
+}
+
+/** The thirteen rows people fill in, in sheet order. */
+export const SHEET_ROWS: SheetRow[] = [
+  { label: 'Enen', hint: 'Tel alle enen', values: step(0, 5, 1) },
+  { label: 'Tweeën', hint: 'Tel alle tweeën', values: step(0, 10, 2) },
+  { label: 'Drieën', hint: 'Tel alle drieën', values: step(0, 15, 3) },
+  { label: 'Vieren', hint: 'Tel alle vieren', values: step(0, 20, 4) },
+  { label: 'Vijven', hint: 'Tel alle vijven', values: step(0, 25, 5) },
+  { label: 'Zessen', hint: 'Tel alle zessen', values: step(0, 30, 6) },
+  { label: 'Three of a kind', hint: '3 dezelfde · totaal van 5 stenen', values: ANY_THROW },
+  { label: 'Carré', hint: '4 dezelfde · totaal van 5 stenen', values: ANY_THROW },
+  { label: 'Full house', hint: '3 + 2 dezelfde · 25 punten', values: [0, 25] },
+  { label: 'Kleine straat', hint: '4 opeenvolgende · 30 punten', values: [0, 30] },
+  { label: 'Grote straat', hint: '5 opeenvolgende · 40 punten', values: [0, 40] },
+  { label: 'Topscore', hint: '5 dezelfde · 50 punten', values: [0, 50] },
+  { label: 'Chance', hint: 'Vrije keus · totaal van 5 stenen', values: ANY_THROW },
+]
+
+/** How many of the rows belong to the sheet's upper half. */
+export const UPPER_ROWS = 6
+/** The bonus, and the subtotal that earns it. */
+export const UPPER_BONUS = 35
+export const BONUS_FROM = 63
+/** Index of the row that means a Yahtzee was thrown. */
+export const TOPSCORE_ROW = 11
+
+/** A blank sheet: thirteen zeroes, which is also a legal one. */
+export const emptySheet = () => new Array<number>(SHEET_ROWS.length).fill(0)
+
+export interface SheetTotals {
+  /** The six upper rows added up. */
+  subtotal: number
+  /** 35 from 63 up, nothing below it. */
+  bonus: number
+  /** Subtotal plus bonus — the sheet's "totaal van de bovenste helft". */
+  upper: number
+  /** The seven lower rows added up. */
+  lower: number
+  /** What the player scored. */
+  total: number
+}
+
+/** The five totals a sheet works out to. */
+export function sheetTotals(entries: number[]): SheetTotals {
+  const subtotal = entries.slice(0, UPPER_ROWS).reduce((sum, value) => sum + value, 0)
+  const bonus = subtotal >= BONUS_FROM ? UPPER_BONUS : 0
+  const lower = entries.slice(UPPER_ROWS).reduce((sum, value) => sum + value, 0)
+  return { subtotal, bonus, upper: subtotal + bonus, lower, total: subtotal + bonus + lower }
+}
+
+/** Whether every value is one its row allows — the same question the
+ *  database asks before storing a sheet. */
+export function isValidSheet(entries: unknown): entries is number[] {
+  return (
+    Array.isArray(entries) &&
+    entries.length === SHEET_ROWS.length &&
+    entries.every(
+      (value, row) => typeof value === 'number' && SHEET_ROWS[row]!.values.includes(value),
+    )
+  )
+}

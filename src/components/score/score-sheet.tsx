@@ -3,6 +3,14 @@
 import { useId, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, Dice5, ScanLine, Trophy } from 'lucide-react'
+import { Segmented } from '@/components/ui/segmented'
+import { SheetForm } from '@/components/score/sheet-form'
+import {
+  emptySheet,
+  isValidSheet,
+  sheetTotals,
+  TOPSCORE_ROW,
+} from '@/lib/scoresheet/sheet'
 import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Stepper } from '@/components/ui/stepper'
@@ -16,10 +24,12 @@ import { haptic } from '@/lib/haptics'
 import type { RecordScoreResult, ScoreEntry } from '@/types/database'
 import { pingNotificationDrain } from '@/lib/push'
 
-/** A score read off a photographed scoresheet, waiting to be saved. */
+/** A game read off a photographed scoresheet, waiting to be saved. */
 export interface ScorePrefill {
   score: number
   yahtzee: boolean
+  /** The thirteen boxes behind that score. */
+  entries: number[]
 }
 
 export interface ScoreSheetResult {
@@ -55,6 +65,10 @@ export function ScoreSheet({
     <BottomSheet
       open={open}
       onOpenChange={saving ? () => {} : onOpenChange}
+      // Swiping down does not close this one: the sheet is long enough
+      // to scroll, and losing a half-filled game to a scroll that started
+      // at the wrong pixel is worse than one extra tap on the cross.
+      swipeToClose={false}
       title={isEdit ? 'Potje bewerken' : 'Potje toevoegen'}
       description={
         isEdit
@@ -112,6 +126,24 @@ function ScoreForm({
   const dateId = useId()
   const noteId = useId()
 
+  /*
+   * Two ways to enter a game, and the sheet is the source of truth in
+   * one of them.
+   *
+   * Most of the time a player knows their final score and wants it in
+   * five seconds, so that stays the default. Filling the sheet in per
+   * row is for when the paper is in front of you — or when a photo of it
+   * has just been read — and then the score is not typed at all: it is
+   * what the rows add up to, with the bonus applied the way the sheet
+   * applies it.
+   */
+  const startSheet = entry?.sheet ?? prefill?.entries ?? null
+  const [sheet, setSheet] = useState<number[]>(() =>
+    isValidSheet(startSheet) ? [...startSheet] : emptySheet(),
+  )
+  const [perRow, setPerRow] = useState(() => isValidSheet(startSheet))
+  const sheetScore = sheetTotals(sheet).total
+
   const [score, setScore] = useState(entry?.score ?? prefill?.score ?? 0)
   const [isWin, setIsWin] = useState(entry?.is_win ?? false)
   const [threwYahtzee, setThrewYahtzee] = useState(
@@ -128,13 +160,13 @@ function ScoreForm({
     event.preventDefault()
     if (saving) return
 
-    // The wheel cannot leave this range, but the value still goes through the
-    // same check the database applies.
-    if (!Number.isFinite(score) || score < SCORE_MIN || score > SCORE_MAX) {
+    // Whichever way the game was entered, the value still goes through
+    // the same check the database applies.
+    const parsed = perRow ? sheetScore : score
+    if (!Number.isFinite(parsed) || parsed < SCORE_MIN || parsed > SCORE_MAX) {
       setError(`Score moet tussen ${SCORE_MIN} en ${SCORE_MAX} liggen`)
       return
     }
-    const parsed = score
 
     onSavingChange(true)
     setError(null)
@@ -143,6 +175,9 @@ function ScoreForm({
     // The stepper keeps its value while the toggle is off, so the count only
     // counts when the player actually says they threw one.
     const yahtzees = threwYahtzee ? yahtzeeCount : 0
+    // The sheet only travels with the score when it is the sheet that
+    // produced it; a score typed on the wheel has no boxes behind it.
+    const rows = perRow ? sheet : null
 
     const { data, error: rpcError } = isEdit
       ? await supabase.rpc('update_score_entry', {
@@ -152,6 +187,11 @@ function ScoreForm({
           p_played_at: fromDateInputValue(playedAt),
           p_note: note.trim() || null,
           p_yahtzee_count: yahtzees,
+          p_sheet: rows,
+          // A game that had a sheet and is now saved from the wheel
+          // loses it: a stored sheet that does not add up to the stored
+          // score would make the history tell two different stories.
+          p_clear_sheet: rows === null,
         })
       : await supabase.rpc('record_score_entry', {
           p_score: parsed,
@@ -159,6 +199,7 @@ function ScoreForm({
           p_played_at: fromDateInputValue(playedAt),
           p_note: note.trim() || null,
           p_yahtzee_count: yahtzees,
+          p_sheet: rows,
         })
 
     onSavingChange(false)
@@ -207,6 +248,18 @@ function ScoreForm({
       )}
 
       <div>
+        <div className="mb-3">
+          <Segmented
+            value={perRow ? 'sheet' : 'total'}
+            onChange={(next) => setPerRow(next === 'sheet')}
+            options={[
+              { key: 'total' as const, label: 'Eindscore' },
+              { key: 'sheet' as const, label: 'Per onderdeel' },
+            ]}
+            ariaLabel="Hoe wil je invullen?"
+          />
+        </div>
+
         <div className="mb-2 flex items-baseline justify-between">
           <Label htmlFor={scoreId} className="mb-0">
             Eindscore
@@ -216,15 +269,32 @@ function ScoreForm({
             aria-live="polite"
             className="tabular text-2xl font-black tracking-tight text-mint-400"
           >
-            {score}
+            {perRow ? sheetScore : score}
           </output>
         </div>
 
-        <ScoreWheel value={score} onChange={setScore} />
-
-        <p className="mt-2 text-center text-xs text-ink-muted">
-          Scroll om je score te kiezen · {SCORE_MIN}–{SCORE_MAX} punten
-        </p>
+        {perRow ? (
+          <SheetForm
+            value={sheet}
+            onChange={(next) => {
+              setSheet(next)
+              // The wheel keeps up, so switching back shows the score the
+              // sheet worked out rather than an older one.
+              setScore(sheetTotals(next).total)
+              if ((next[TOPSCORE_ROW] ?? 0) > 0 && !threwYahtzee) {
+                setThrewYahtzee(true)
+                setYahtzeeCount((count) => Math.max(count, 1))
+              }
+            }}
+          />
+        ) : (
+          <>
+            <ScoreWheel value={score} onChange={setScore} />
+            <p className="mt-2 text-center text-xs text-ink-muted">
+              Scroll om je score te kiezen · {SCORE_MIN}–{SCORE_MAX} punten
+            </p>
+          </>
+        )}
         <FieldError>{error}</FieldError>
       </div>
 
