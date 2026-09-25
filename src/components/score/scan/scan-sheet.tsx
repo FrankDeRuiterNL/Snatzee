@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { CropFrame, type CropRect } from '@/components/score/scan/crop-frame'
 import { prepareSheet, toImageData, type PreparedSheet } from '@/lib/scoresheet/preprocess'
 import { detectGrid, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
+import { suggestSheetCrop } from '@/lib/scoresheet/locate'
 import { haptic } from '@/lib/haptics'
 
 /**
@@ -24,10 +25,20 @@ import { haptic } from '@/lib/haptics'
  * which step lost it.
  */
 
-/** Starting crop: a margin in from the edges, since people frame loosely. */
+/** Fallback crop, for a photo whose table could not be located: a margin
+ *  in from the edges, since people frame loosely. */
 const INITIAL_CROP: CropRect = { x: 0.06, y: 0.06, width: 0.88, height: 0.88 }
 
-type Step = 'pick' | 'crop' | 'working' | 'result'
+/**
+ * Resolution the photo is handed to the locator at.
+ *
+ * The locator works at 900px internally, so anything much above this is
+ * decoded and thrown away — and a full 12-megapixel frame is 48MB of
+ * canvas that some phones simply refuse to give back.
+ */
+const LOCATE_SOURCE_SIZE = 1400
+
+type Step = 'pick' | 'locating' | 'crop' | 'working' | 'result'
 
 interface Photo {
   url: string
@@ -46,6 +57,7 @@ export function ScanSheet({
   const [step, setStep] = useState<Step>('pick')
   const [photo, setPhoto] = useState<Photo | null>(null)
   const [crop, setCrop] = useState<CropRect>(INITIAL_CROP)
+  const [autoCropped, setAutoCropped] = useState(false)
   const [prepared, setPrepared] = useState<PreparedSheet | null>(null)
   const [grid, setGrid] = useState<SheetGrid | null>(null)
   const [elapsed, setElapsed] = useState(0)
@@ -61,6 +73,7 @@ export function ScanSheet({
     setGrid(null)
     setError(null)
     setCrop(INITIAL_CROP)
+    setAutoCropped(false)
     setPhoto((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
       return null
@@ -89,11 +102,28 @@ export function ScanSheet({
       return
     }
 
+    const photo: Photo = { url: URL.createObjectURL(file), bitmap, width, height }
     setPhoto((previous) => {
       if (previous) URL.revokeObjectURL(previous.url)
-      return { url: URL.createObjectURL(file), bitmap, width, height }
+      return photo
     })
     setCrop(INITIAL_CROP)
+    setAutoCropped(false)
+    setStep('locating')
+
+    // Let the step render before the locator takes the thread.
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+
+    let proposal: CropRect | null = null
+    try {
+      proposal = suggestSheetCrop(photoToImageData(photo, LOCATE_SOURCE_SIZE))
+    } catch {
+      // A canvas that would not give its pixels back is not worth an
+      // error message: the crop simply starts where it always did.
+    }
+
+    if (proposal) setCrop(proposal)
+    setAutoCropped(proposal !== null)
     setStep('crop')
   }
 
@@ -187,7 +217,8 @@ export function ScanSheet({
           <div className="space-y-3">
             <p className="text-sm text-ink-muted">
               Leg het blad plat neer, zorg voor gelijkmatig licht en houd de camera er recht
-              boven. De foto blijft op je telefoon — er wordt niets geüpload.
+              boven. Het kader wordt daarna vanzelf om de scoretabel gelegd. De foto blijft op je
+              telefoon — er wordt niets geüpload.
             </p>
             <Button full size="lg" onClick={() => cameraRef.current?.click()}>
               <Camera className="size-5" aria-hidden />
@@ -209,9 +240,18 @@ export function ScanSheet({
               onChange={setCrop}
             />
             <p className="text-center text-xs text-ink-muted">
-              Sleep de hoeken tot alleen het scoreblad binnen het kader valt.
+              {autoCropped
+                ? 'Het kader ligt om de scoretabel. Klopt het niet, sleep dan de hoeken bij.'
+                : 'De tabel is niet gevonden — sleep de hoeken tot alleen de scoretabel binnen het kader valt, zonder de omschrijvingen links.'}
             </p>
           </>
+        )}
+
+        {step === 'locating' && (
+          <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-ink-muted">
+            <Loader2 className="size-7 animate-spin text-mint-400" aria-hidden />
+            <p className="text-sm">Scoretabel zoeken…</p>
+          </div>
         )}
 
         {step === 'working' && (
@@ -319,6 +359,22 @@ async function decode(file: File): Promise<ImageBitmap | HTMLImageElement> {
   } finally {
     URL.revokeObjectURL(url)
   }
+}
+
+/** The whole photo, no larger than `maxSide`, for the locator. */
+function photoToImageData(photo: Photo, maxSide: number): ImageData {
+  const scale = Math.min(1, maxSide / Math.max(photo.width, photo.height))
+  const width = Math.max(1, Math.round(photo.width * scale))
+  const height = Math.max(1, Math.round(photo.height * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) throw new Error('no-canvas')
+
+  context.drawImage(photo.bitmap, 0, 0, width, height)
+  return context.getImageData(0, 0, width, height)
 }
 
 /** The cropped region, at its own pixel size — the pipeline does its own

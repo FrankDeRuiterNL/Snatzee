@@ -71,6 +71,9 @@ const LINE_TOLERANCE = 0.35
 const LINE_SEPARATION = 0.7
 /** A line must be this strong relative to the strongest one found. */
 const LINE_STRENGTH = 0.4
+/** And this tall, or wide, relative to the typical line: anything
+ *  thinner is a sliver of margin rather than a row of cells. */
+const MIN_LINE_EXTENT = 0.55
 /** A gap wider than this many row pitches separates the two blocks. */
 const BLOCK_GAP_PITCHES = 1.6
 
@@ -262,22 +265,38 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
       : { lo: position - size / 2, hi: position + size / 2 }
   }
 
-  const columnExtents = columns.map((x) =>
-    extentAt(x, cellWidth, (c) => ({ lo: c.x0, hi: c.x1, at: (c.x0 + c.x1) / 2 })),
+  /*
+   * A line whose boxes are a fraction of a cell tall is not a row of
+   * cells. Cropping tightly to the table leaves a sliver of the sheet's
+   * white margin above the panel, and a sliver is exactly what that looks
+   * like from a projection: many boxes, all at one y, none of them a
+   * cell. Comparing each line's own extent against the typical one throws
+   * those out without a fixed pixel size anywhere.
+   */
+  const keepFull = <T extends { lo: number; hi: number }>(extents: T[]) => {
+    const sizes = extents.map((e) => e.hi - e.lo)
+    const typical = median(sizes)
+    return extents.filter((e) => e.hi - e.lo >= typical * MIN_LINE_EXTENT)
+  }
+
+  const columnExtents = keepFull(
+    columns.map((x) => extentAt(x, cellWidth, (c) => ({ lo: c.x0, hi: c.x1, at: (c.x0 + c.x1) / 2 }))),
   )
-  const rowExtents = rows.map((y) =>
-    extentAt(y, cellHeight, (c) => ({ lo: c.y0, hi: c.y1, at: (c.y0 + c.y1) / 2 })),
+  const rowExtents = keepFull(
+    rows.map((y) => extentAt(y, cellHeight, (c) => ({ lo: c.y0, hi: c.y1, at: (c.y0 + c.y1) / 2 }))),
   )
+  if (rowExtents.length < 6 || columnExtents.length < 1) return null
 
   // Split into blocks where the vertical gap jumps — on this sheet, the
   // band between the upper and the lower half.
+  const rowCentres = rowExtents.map((row) => (row.lo + row.hi) / 2)
   const gaps: number[] = []
-  for (let i = 1; i < rows.length; i += 1) gaps.push(rows[i]! - rows[i - 1]!)
+  for (let i = 1; i < rowCentres.length; i += 1) gaps.push(rowCentres[i]! - rowCentres[i - 1]!)
   const pitch = median(gaps)
 
   const blockStarts = [0]
-  for (let i = 1; i < rows.length; i += 1) {
-    if (rows[i]! - rows[i - 1]! > pitch * BLOCK_GAP_PITCHES) blockStarts.push(i)
+  for (let i = 1; i < rowCentres.length; i += 1) {
+    if (rowCentres[i]! - rowCentres[i - 1]! > pitch * BLOCK_GAP_PITCHES) blockStarts.push(i)
   }
 
   /**
@@ -318,7 +337,7 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
   }
 
   const blocks: GridBlock[] = blockStarts.map((start, index) => {
-    const end = blockStarts[index + 1] ?? rows.length
+    const end = blockStarts[index + 1] ?? rowExtents.length
     return {
       rows: rowExtents.slice(start, end).map((row) =>
         columnExtents.map((column) =>
@@ -334,7 +353,7 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
   })
 
   return {
-    columns: columns.length,
+    columns: columnExtents.length,
     blocks,
     found: candidates.map((c) => ({ x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1 })),
   }
