@@ -3,7 +3,6 @@
 import { useId, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, Dice5, ScanLine, Trophy } from 'lucide-react'
-import { Segmented } from '@/components/ui/segmented'
 import { SheetForm } from '@/components/score/sheet-form'
 import {
   emptySheet,
@@ -73,7 +72,7 @@ export function ScoreSheet({
       description={
         isEdit
           ? 'Pas je geregistreerde resultaat aan.'
-          : 'Vul je eindresultaat in — klaar in 5 seconden.'
+          : 'Vul je blad in of maak er een foto van — de eindscore rekent zichzelf uit.'
       }
       footer={
         <Button type="submit" form="score-form" full size="lg" loading={saving} disabled={saving}>
@@ -127,21 +126,22 @@ function ScoreForm({
   const noteId = useId()
 
   /*
-   * Two ways to enter a game, and the sheet is the source of truth in
-   * one of them.
+   * A game is entered box by box, and the score is never typed: it is
+   * what the boxes add up to, with the bonus applied the way the sheet
+   * applies it. That holds whether the boxes were filled in by hand or
+   * read off a photograph.
    *
-   * Most of the time a player knows their final score and wants it in
-   * five seconds, so that stays the default. Filling the sheet in per
-   * row is for when the paper is in front of you — or when a photo of it
-   * has just been read — and then the score is not typed at all: it is
-   * what the rows add up to, with the bonus applied the way the sheet
-   * applies it.
+   * The one exception is editing a game from before this existed, which
+   * was only ever saved as a number. There is no sheet to show for it,
+   * so it keeps the wheel it was entered on — inventing thirteen boxes
+   * for it would be making up a game that was never recorded.
    */
   const startSheet = entry?.sheet ?? prefill?.entries ?? null
   const [sheet, setSheet] = useState<number[]>(() =>
     isValidSheet(startSheet) ? [...startSheet] : emptySheet(),
   )
-  const [perRow, setPerRow] = useState(() => isValidSheet(startSheet))
+  const scoreOnly = isEdit && !isValidSheet(entry?.sheet)
+  const perRow = !scoreOnly
   const sheetScore = sheetTotals(sheet).total
 
   const [score, setScore] = useState(entry?.score ?? prefill?.score ?? 0)
@@ -248,18 +248,6 @@ function ScoreForm({
       )}
 
       <div>
-        <div className="mb-3">
-          <Segmented
-            value={perRow ? 'sheet' : 'total'}
-            onChange={(next) => setPerRow(next === 'sheet')}
-            options={[
-              { key: 'total' as const, label: 'Eindscore' },
-              { key: 'sheet' as const, label: 'Per onderdeel' },
-            ]}
-            ariaLabel="Hoe wil je invullen?"
-          />
-        </div>
-
         <div className="mb-2 flex items-baseline justify-between">
           <Label htmlFor={scoreId} className="mb-0">
             Eindscore
@@ -278,8 +266,6 @@ function ScoreForm({
             value={sheet}
             onChange={(next) => {
               setSheet(next)
-              // The wheel keeps up, so switching back shows the score the
-              // sheet worked out rather than an older one.
               setScore(sheetTotals(next).total)
               if ((next[TOPSCORE_ROW] ?? 0) > 0 && !threwYahtzee) {
                 setThrewYahtzee(true)
@@ -291,7 +277,8 @@ function ScoreForm({
           <>
             <ScoreWheel value={score} onChange={setScore} />
             <p className="mt-2 text-center text-xs text-ink-muted">
-              Scroll om je score te kiezen · {SCORE_MIN}–{SCORE_MAX} punten
+              Dit potje is destijds als eindscore opgeslagen, zonder de losse vakjes ·{' '}
+              {SCORE_MIN}–{SCORE_MAX} punten
             </p>
           </>
         )}
