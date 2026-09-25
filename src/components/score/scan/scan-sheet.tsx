@@ -6,21 +6,22 @@ import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { CropFrame, type CropRect } from '@/components/score/scan/crop-frame'
 import { prepareSheet, toImageData, type PreparedSheet } from '@/lib/scoresheet/preprocess'
+import { detectGrid, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
 import { haptic } from '@/lib/haptics'
 
 /**
  * Photograph a paper scoresheet, crop it, and hand the result to the
  * reader.
  *
- * This is step one of that: the photo is taken, cropped and cleaned up,
- * and the cleaned-up version is shown. Nothing is read yet and nothing
+ * So far: the photo is taken, cropped, cleaned up, and the grid of boxes
+ * is found on it. Nothing is read out of those boxes yet, and nothing
  * leaves the phone — the whole pipeline is local, so a scoresheet photo is
  * never uploaded anywhere.
  *
- * Showing the processed image is not decoration. Every later step — the
- * grid, the cells, the digits — reads this image and nothing else, so when
- * a sheet does not scan, this view is the difference between "it did not
- * work" and a screenshot that says which step lost it.
+ * Showing the result is not decoration. Every later step reads this image
+ * and this grid and nothing else, so when a sheet does not scan, this view
+ * is the difference between "it did not work" and a screenshot that says
+ * which step lost it.
  */
 
 /** Starting crop: a margin in from the edges, since people frame loosely. */
@@ -46,6 +47,7 @@ export function ScanSheet({
   const [photo, setPhoto] = useState<Photo | null>(null)
   const [crop, setCrop] = useState<CropRect>(INITIAL_CROP)
   const [prepared, setPrepared] = useState<PreparedSheet | null>(null)
+  const [grid, setGrid] = useState<SheetGrid | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,6 +58,7 @@ export function ScanSheet({
   const reset = useCallback(() => {
     setStep('pick')
     setPrepared(null)
+    setGrid(null)
     setError(null)
     setCrop(INITIAL_CROP)
     setPhoto((previous) => {
@@ -108,8 +111,10 @@ export function ScanSheet({
       const started = performance.now()
       const source = cropToImageData(photo, crop)
       const result = prepareSheet(source)
+      const lattice = detectGrid(result.mask)
       setElapsed(Math.round(performance.now() - started))
       setPrepared(result)
+      setGrid(lattice)
       setStep('result')
       haptic('success')
     } catch {
@@ -130,7 +135,20 @@ export function ScanSheet({
     canvas.width = image.width
     canvas.height = image.height
     context.putImageData(image, 0, 0)
-  }, [step, prepared])
+
+    if (!grid) return
+    // Scaled with the image so the outline stays a hairline on a small
+    // photo and does not disappear on a large one.
+    context.lineWidth = Math.max(2, Math.round(image.width / 400))
+    context.strokeStyle = '#2ee6b0' // mint-400
+    for (const block of grid.blocks) {
+      for (const row of block.rows) {
+        for (const cell of row) {
+          context.strokeRect(cell.x0, cell.y0, cell.x1 - cell.x0, cell.y1 - cell.y0)
+        }
+      }
+    }
+  }, [step, prepared, grid])
 
   return (
     <BottomSheet
@@ -211,14 +229,30 @@ export function ScanSheet({
               aria-label="Verwerkt scoreblad"
             />
             <dl className="grid grid-cols-3 gap-2 text-center">
-              <Stat label="Scheefstand" value={`${prepared.skew.toFixed(2)}°`} />
-              <Stat label="Drempel" value={String(prepared.threshold)} />
+              <Stat label="Kolommen" value={grid ? String(grid.columns) : '—'} />
+              <Stat
+                label="Rijen"
+                value={grid ? grid.blocks.map((block) => block.rows.length).join(' + ') : '—'}
+              />
               <Stat label="Verwerkt in" value={`${elapsed} ms`} />
             </dl>
+
+            {!grid ? (
+              <p role="alert" className="rounded-2xl bg-rose-ember-500/15 px-4 py-3 text-sm text-rose-ember-300">
+                Geen raster gevonden. Snijd de foto strakker bij tot alleen het blad, of maak een
+                nieuwe foto met gelijkmatiger licht.
+              </p>
+            ) : !matchesExpectedShape(grid) ? (
+              <p role="alert" className="rounded-2xl bg-tangerine-500/15 px-4 py-3 text-sm text-tangerine-300">
+                Het raster wijkt af van een normaal scoreblad (9 rijen boven, 10 onder). Controleer
+                of het hele blad binnen het kader viel.
+              </p>
+            ) : null}
+
             <p className="text-xs text-ink-muted">
-              Zo ziet het blad eruit voordat de vakjes worden gelezen. Staan de lijnen recht en
-              zijn de cijfers leesbaar, dan kan de volgende stap ermee verder. Zo niet, maak dan
-              een screenshot hiervan.
+              Groen omlijnd is wat er als vakje is herkend. Staat elk vakje precies om één hokje,
+              dan kan de volgende stap de cijfers eruit lezen. Zo niet, maak dan een screenshot
+              hiervan. Scheefstand {prepared.skew.toFixed(2)}°, drempel {prepared.threshold}.
             </p>
           </div>
         )}
