@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Camera, Images, Loader2, RotateCcw, ScanLine } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,8 @@ import { prepareSheet, toImageData, type PreparedSheet } from '@/lib/scoresheet/
 import { detectGrid, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
 import { suggestSheetCrop } from '@/lib/scoresheet/locate'
 import { readCells, type SheetReading } from '@/lib/scoresheet/cells'
+import { readColumn, type ColumnReading } from '@/lib/scoresheet/read'
+import { ScanReview, type ReviewResult } from '@/components/score/scan/review'
 import { cn } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
 
@@ -61,9 +63,12 @@ interface Photo {
 export function ScanSheet({
   open,
   onOpenChange,
+  onResult,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Hands the checked score to the form that saves it. */
+  onResult?: (result: ReviewResult) => void
 }) {
   const [step, setStep] = useState<Step>('pick')
   const [photo, setPhoto] = useState<Photo | null>(null)
@@ -73,6 +78,7 @@ export function ScanSheet({
   const [grid, setGrid] = useState<SheetGrid | null>(null)
   const [reading, setReading] = useState<SheetReading | null>(null)
   const [column, setColumn] = useState(0)
+
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -172,6 +178,18 @@ export function ScanSheet({
       setStep('crop')
     }
   }
+
+  // Reading the chosen game is a derivation of the mask and the column,
+  // so it is memoised rather than stored: picking another game recomputes
+  // it, and picking the same one again costs nothing. A fifth of a second
+  // of arithmetic, which is why it is not redone on every render.
+  const solved = useMemo<ColumnReading | null>(() => {
+    if (step !== 'result' || !prepared || !reading) return null
+    const upper = reading.blocks[0]?.map((row) => row[column]!)
+    const lower = reading.blocks[1]?.map((row) => row[column]!)
+    if (!upper || !lower) return null
+    return readColumn(prepared.mask, [upper, lower])
+  }, [step, prepared, reading, column])
 
   // Drawing in an effect rather than during the render: the canvas only
   // exists once the result step has rendered it.
@@ -322,7 +340,22 @@ export function ScanSheet({
               <ColumnPicker reading={reading} columns={grid.columns} value={column} onChange={setColumn} />
             )}
 
+            {solved && (
+              <ScanReview
+                // Remounted per game, so the edits belong to the game on
+                // screen rather than being carried over to the next.
+                key={column}
+                reading={solved}
+                onConfirm={(result) => {
+                  onResult?.(result)
+                  reset()
+                  onOpenChange(false)
+                }}
+              />
+            )}
+
             <p className="text-xs text-ink-muted">
+              De waarden hierboven zijn gelezen van het blad — controleer ze en pas aan waar nodig.
               Groen is een ingevuld getal, oranje een streep (telt als 0), grijs een leeg hokje.
               Een stippellijn betekent dat de app het niet zeker weet. Scheefstand{' '}
               {prepared.skew.toFixed(2)}°, drempel {prepared.threshold}.

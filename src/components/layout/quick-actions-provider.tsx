@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { ScoreSheet, type ScoreSheetResult } from '@/components/score/score-sheet'
+import { ScoreSheet, type ScorePrefill, type ScoreSheetResult } from '@/components/score/score-sheet'
 import { CelebrationOverlay, type Celebration } from '@/components/score/celebration-overlay'
 import { AchievementUnlockSheet } from '@/components/achievements/achievement-unlock-sheet'
 import { FirstRollDialog } from '@/components/score/first-roll-dialog'
@@ -63,6 +63,7 @@ export function QuickActionsProvider({
   const [unlockQueue, setUnlockQueue] = useState<UnlockedAchievement[]>([])
   const [yahtzeePending, setYahtzeePending] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
+  const [scanned, setScanned] = useState<ScorePrefill | null>(null)
   // Seeded from the shortcut so the home-screen "1 worp" action opens the
   // confirmation on first render rather than from an effect.
   const [firstRollOpen, setFirstRollOpen] = useState(
@@ -80,6 +81,7 @@ export function QuickActionsProvider({
   // rather than stacking behind it, and comes back when the scan is done —
   // which is where the scanned scores will land.
   const openScanner = useCallback(() => {
+    setScanned(null)
     setSheetOpen(false)
     setScanOpen(true)
   }, [])
@@ -179,13 +181,26 @@ export function QuickActionsProvider({
 
       <ScoreSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open)
+          // The scanned values belong to the sheet that was open; closing
+          // it without saving throws them away rather than leaving them
+          // to reappear next time.
+          if (!open) setScanned(null)
+        }}
         entry={editing}
         onSaved={handleSaved}
         onScan={scanEnabled ? openScanner : undefined}
+        prefill={scanned}
       />
 
-      {scanEnabled && <ScanSheet open={scanOpen} onOpenChange={closeScanner} />}
+      {scanEnabled && (
+        <ScanSheet
+          open={scanOpen}
+          onOpenChange={closeScanner}
+          onResult={(result) => setScanned({ score: result.total, yahtzee: result.yahtzee })}
+        />
+      )}
 
       <FirstRollDialog
         open={firstRollOpen}

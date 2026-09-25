@@ -16,6 +16,12 @@ import { haptic } from '@/lib/haptics'
 import type { RecordScoreResult, ScoreEntry } from '@/types/database'
 import { pingNotificationDrain } from '@/lib/push'
 
+/** A score read off a photographed scoresheet, waiting to be saved. */
+export interface ScorePrefill {
+  score: number
+  yahtzee: boolean
+}
+
 export interface ScoreSheetResult {
   entry: ScoreEntry
   unlocked: RecordScoreResult['unlocked']
@@ -29,11 +35,14 @@ export function ScoreSheet({
   entry,
   onSaved,
   onScan,
+  prefill,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   entry?: ScoreEntry | null
   onSaved: (result: ScoreSheetResult) => void
+  /** Filled in from a scanned sheet; the player still submits it. */
+  prefill?: ScorePrefill | null
   /** Opens the scoresheet scanner. Absent when the setting is off, which
    *  is what keeps the whole feature out of the app while it is being
    *  tuned. Never offered when editing: the potje already exists. */
@@ -65,7 +74,10 @@ export function ScoreSheet({
       */}
       {open && (
         <ScoreForm
-          key={entry?.id ?? 'new'}
+          // A fresh scan remounts the form, so its values replace whatever
+          // was typed before rather than being merged with it.
+          key={entry?.id ?? (prefill ? `scan-${prefill.score}-${prefill.yahtzee}` : 'new')}
+          prefill={prefill ?? null}
           entry={entry ?? null}
           saving={saving}
           onSavingChange={setSaving}
@@ -86,8 +98,10 @@ function ScoreForm({
   onSavingChange,
   onDone,
   onScan,
+  prefill,
 }: {
   entry: ScoreEntry | null
+  prefill: ScorePrefill | null
   saving: boolean
   onSavingChange: (saving: boolean) => void
   onDone: (result: ScoreSheetResult) => void
@@ -98,9 +112,11 @@ function ScoreForm({
   const dateId = useId()
   const noteId = useId()
 
-  const [score, setScore] = useState(entry?.score ?? 0)
+  const [score, setScore] = useState(entry?.score ?? prefill?.score ?? 0)
   const [isWin, setIsWin] = useState(entry?.is_win ?? false)
-  const [threwYahtzee, setThrewYahtzee] = useState((entry?.yahtzee_count ?? 0) > 0)
+  const [threwYahtzee, setThrewYahtzee] = useState(
+    entry ? (entry.yahtzee_count ?? 0) > 0 : Boolean(prefill?.yahtzee),
+  )
   const [yahtzeeCount, setYahtzeeCount] = useState(Math.max(entry?.yahtzee_count ?? 0, 1))
   const [playedAt, setPlayedAt] = useState(() =>
     entry ? toDateInputValue(new Date(entry.played_at)) : toDateInputValue(),
@@ -166,6 +182,12 @@ function ScoreForm({
 
   return (
     <form id="score-form" onSubmit={handleSubmit} className="space-y-6 pb-2">
+      {prefill && (
+        <p className="rounded-2xl bg-mint-500/10 px-4 py-3 text-sm text-mint-300">
+          Overgenomen van je scoreblad. Controleer de score en sla hem op.
+        </p>
+      )}
+
       {onScan && (
         <button
           type="button"
