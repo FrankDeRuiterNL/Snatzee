@@ -43,6 +43,9 @@ export function AdminPanel({
   const [launchSplash, setLaunchSplash] = useState(() => settings.launch_splash === 1)
   const [splashBusy, setSplashBusy] = useState(false)
 
+  const [scan, setScan] = useState(() => settings.scoresheet_scan === 1)
+  const [scanBusy, setScanBusy] = useState(false)
+
   const [targetUser, setTargetUser] = useState('')
   const [targetRole, setTargetRole] = useState<AppRole>('admin')
   const [assigning, setAssigning] = useState(false)
@@ -69,26 +72,34 @@ export function AdminPanel({
     router.refresh()
   }
 
-  async function toggleLaunchSplash(next: boolean) {
-    if (splashBusy) return
-    setSplashBusy(true)
-    setLaunchSplash(next)
+  /**
+   * Both switches below write a 0/1 flag through the same RPC, so they
+   * share one function rather than two that drift apart. The switch moves
+   * first and is put back if the write fails, so it never shows a state
+   * the database is not in.
+   */
+  async function toggleFlag(
+    key: string,
+    next: boolean,
+    apply: (value: boolean) => void,
+    setBusy: (busy: boolean) => void,
+    labels: { on: string; off: string },
+  ) {
+    setBusy(true)
+    apply(next)
 
     const supabase = getSupabaseBrowserClient()
-    const { error } = await supabase.rpc('update_app_setting', {
-      p_key: 'launch_splash',
-      p_value: next ? 1 : 0,
-    })
-    setSplashBusy(false)
+    const { error } = await supabase.rpc('update_app_setting', { p_key: key, p_value: next ? 1 : 0 })
+    setBusy(false)
 
     if (error) {
-      setLaunchSplash(!next)
+      apply(!next)
       toast.error('Opslaan is niet gelukt', { description: error.message })
       return
     }
 
     haptic('success')
-    toast.success(next ? 'Startscherm staat aan' : 'Startscherm staat uit')
+    toast.success(next ? labels.on : labels.off)
     router.refresh()
   }
 
@@ -155,13 +166,31 @@ export function AdminPanel({
           </div>
         ))}
 
-        <div className="border-t border-white/10 pt-5">
+        <div className="space-y-5 border-t border-white/10 pt-5">
           <ToggleRow
             label="Startscherm bij openen"
             description="Toont bij het openen een tik-scherm, zodat het openingsgeluid meteen speelt in plaats van bij de eerste aanraking. Verschijnt alleen wanneer het geluid niet vanzelf mag spelen."
             checked={launchSplash}
             disabled={splashBusy}
-            onCheckedChange={toggleLaunchSplash}
+            onCheckedChange={(next) =>
+              void toggleFlag('launch_splash', next, setLaunchSplash, setSplashBusy, {
+                on: 'Startscherm staat aan',
+                off: 'Startscherm staat uit',
+              })
+            }
+          />
+
+          <ToggleRow
+            label="Scoreblad scannen"
+            description="Zet in 'Potje toevoegen' de optie aan om een foto van het papieren scoreblad te maken en de scores automatisch te laten lezen. Nog in ontwikkeling."
+            checked={scan}
+            disabled={scanBusy}
+            onCheckedChange={(next) =>
+              void toggleFlag('scoresheet_scan', next, setScan, setScanBusy, {
+                on: 'Scoreblad scannen staat aan',
+                off: 'Scoreblad scannen staat uit',
+              })
+            }
           />
         </div>
 

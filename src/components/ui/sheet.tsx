@@ -19,6 +19,7 @@ export function BottomSheet({
   footer,
   className,
   showClose = true,
+  swipeToClose = true,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -28,6 +29,14 @@ export function BottomSheet({
   footer?: React.ReactNode
   className?: string
   showClose?: boolean
+  /**
+   * Whether dragging the sheet downwards closes it.
+   *
+   * Off for sheets whose content is itself dragged — the crop frame in the
+   * scanner — where the same finger movement would otherwise pull the
+   * whole sheet along with the thing being dragged.
+   */
+  swipeToClose?: boolean
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -50,7 +59,7 @@ export function BottomSheet({
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 32, stiffness: 340 }}
-                drag="y"
+                drag={swipeToClose ? 'y' : false}
                 dragConstraints={{ top: 0, bottom: 0 }}
                 dragElastic={{ top: 0, bottom: 0.4 }}
                 onDragEnd={(_, info) => {

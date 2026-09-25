@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Dice5, Trophy } from 'lucide-react'
+import { Check, Dice5, ScanLine, Trophy } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Stepper } from '@/components/ui/stepper'
@@ -28,11 +28,16 @@ export function ScoreSheet({
   onOpenChange,
   entry,
   onSaved,
+  onScan,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   entry?: ScoreEntry | null
   onSaved: (result: ScoreSheetResult) => void
+  /** Opens the scoresheet scanner. Absent when the setting is off, which
+   *  is what keeps the whole feature out of the app while it is being
+   *  tuned. Never offered when editing: the potje already exists. */
+  onScan?: () => void
 }) {
   const isEdit = Boolean(entry)
   const [saving, setSaving] = useState(false)
@@ -64,6 +69,7 @@ export function ScoreSheet({
           entry={entry ?? null}
           saving={saving}
           onSavingChange={setSaving}
+          onScan={isEdit ? undefined : onScan}
           onDone={(result) => {
             onOpenChange(false)
             onSaved(result)
@@ -79,11 +85,13 @@ function ScoreForm({
   saving,
   onSavingChange,
   onDone,
+  onScan,
 }: {
   entry: ScoreEntry | null
   saving: boolean
   onSavingChange: (saving: boolean) => void
   onDone: (result: ScoreSheetResult) => void
+  onScan?: () => void
 }) {
   const isEdit = entry !== null
   const scoreId = useId()
@@ -158,6 +166,24 @@ function ScoreForm({
 
   return (
     <form id="score-form" onSubmit={handleSubmit} className="space-y-6 pb-2">
+      {onScan && (
+        <button
+          type="button"
+          onClick={onScan}
+          className="press flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-left ring-1 ring-hairline"
+        >
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-mint-500/15 text-mint-400">
+            <ScanLine className="size-5" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[0.95rem] font-semibold text-ink">Scoreblad scannen</span>
+            <span className="block text-xs text-ink-muted">
+              Maak een foto van je papieren blad in plaats van zelf in te vullen.
+            </span>
+          </span>
+        </button>
+      )}
+
       <div>
         <div className="mb-2 flex items-baseline justify-between">
           <Label htmlFor={scoreId} className="mb-0">

@@ -26,6 +26,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getAppSettings(),
   ])
   const splashEnabled = appSettings.launch_splash === 1
+  // Off by default: the reader is still being tuned against real sheets.
+  const scanEnabled = appSettings.scoresheet_scan === 1
 
   return (
     <Suspense fallback={null}>
@@ -37,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <LaunchSplash />
         </>
       )}
-      <QuickActionsProvider>
+      <QuickActionsProvider scanEnabled={scanEnabled}>
         {/* Centred mobile-width column: a phone app on a phone, a focused
             card on a desktop screen. */}
         <div className="mx-auto min-h-dvh w-full max-w-[34rem]">

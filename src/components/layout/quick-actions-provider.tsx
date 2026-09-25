@@ -16,6 +16,7 @@ import { ScoreSheet, type ScoreSheetResult } from '@/components/score/score-shee
 import { CelebrationOverlay, type Celebration } from '@/components/score/celebration-overlay'
 import { AchievementUnlockSheet } from '@/components/achievements/achievement-unlock-sheet'
 import { FirstRollDialog } from '@/components/score/first-roll-dialog'
+import { ScanSheet } from '@/components/score/scan/scan-sheet'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { haptic } from '@/lib/haptics'
 import { playSound } from '@/lib/audio'
@@ -41,7 +42,15 @@ export function useQuickActions() {
  * Owns the two global "register something" flows so they can be triggered
  * from the bottom nav, the home dashboard and the history page alike.
  */
-export function QuickActionsProvider({ children }: { children: ReactNode }) {
+export function QuickActionsProvider({
+  children,
+  scanEnabled = false,
+}: {
+  children: ReactNode
+  /** Whether the scoresheet scanner is offered — an admin setting while
+   *  the reader is being tuned. */
+  scanEnabled?: boolean
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -53,6 +62,7 @@ export function QuickActionsProvider({ children }: { children: ReactNode }) {
   const [celebration, setCelebration] = useState<Celebration | null>(null)
   const [unlockQueue, setUnlockQueue] = useState<UnlockedAchievement[]>([])
   const [yahtzeePending, setYahtzeePending] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
   // Seeded from the shortcut so the home-screen "1 worp" action opens the
   // confirmation on first render rather than from an effect.
   const [firstRollOpen, setFirstRollOpen] = useState(
@@ -64,6 +74,19 @@ export function QuickActionsProvider({ children }: { children: ReactNode }) {
   const openScoreSheet = useCallback((entry?: ScoreEntry | null) => {
     setEditing(entry ?? null)
     setSheetOpen(true)
+  }, [])
+
+  // The scanner takes the whole screen, so the score sheet steps aside
+  // rather than stacking behind it, and comes back when the scan is done —
+  // which is where the scanned scores will land.
+  const openScanner = useCallback(() => {
+    setSheetOpen(false)
+    setScanOpen(true)
+  }, [])
+
+  const closeScanner = useCallback((open: boolean) => {
+    setScanOpen(open)
+    if (!open) setSheetOpen(true)
   }, [])
 
   const queueUnlocks = useCallback((unlocked: UnlockedAchievement[]) => {
@@ -159,7 +182,10 @@ export function QuickActionsProvider({ children }: { children: ReactNode }) {
         onOpenChange={setSheetOpen}
         entry={editing}
         onSaved={handleSaved}
+        onScan={scanEnabled ? openScanner : undefined}
       />
+
+      {scanEnabled && <ScanSheet open={scanOpen} onOpenChange={closeScanner} />}
 
       <FirstRollDialog
         open={firstRollOpen}
