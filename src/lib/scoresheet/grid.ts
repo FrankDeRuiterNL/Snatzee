@@ -96,6 +96,14 @@ const MIN_LINE_EXTENT = 0.55
 /** A gap wider than this many row pitches separates the two blocks. */
 const BLOCK_GAP_PITCHES = 1.6
 
+/** No scoresheet prints more games than this side by side. */
+const MAX_COLUMNS = 6
+/** A column of cells is mostly paper inside the boxes... */
+const COLUMN_MIN_PAPER = 0.6
+/** ...and mostly ink in the gutters between them, which is what tells
+ *  the printed table apart from the white label column beside it. */
+const COLUMN_MIN_GUTTER_INK = 0.5
+
 /**
  * How much of a rectangle is paper rather than ink.
  *
@@ -249,7 +257,11 @@ function median(values: number[]): number {
  * chains the two columns into one. Peak picking cannot chain, because a
  * line is only ever a local maximum with its neighbourhood suppressed.
  */
-function findLines(centres: number[], cellSize: number): { at: number; count: number }[] {
+function findLines(
+  centres: number[],
+  cellSize: number,
+  strength = LINE_STRENGTH,
+): { at: number; count: number }[] {
   if (centres.length === 0) return []
 
   const tolerance = cellSize * LINE_TOLERANCE
@@ -281,7 +293,7 @@ function findLines(centres: number[], cellSize: number): { at: number; count: nu
 
   const strongest = Math.max(...lines.map((line) => line.count))
   return lines
-    .filter((line) => line.count >= strongest * LINE_STRENGTH)
+    .filter((line) => line.count >= strongest * strength)
     .sort((a, b) => a.at - b.at)
 }
 
@@ -317,9 +329,49 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
 
   const centre = (c: Component) => ({ x: (c.x0 + c.x1) / 2, y: (c.y0 + c.y1) / 2 })
 
-  // A column is a stack of boxes at one x.
-  const columnLines = findLines(candidates.map((c) => centre(c).x), cellWidth)
-  if (columnLines.length < 1) return null
+  /*
+   * A column is a stack of boxes at one x — but not every column has as
+   * many boxes as the rest. Writing breaks boxes: a digit touching two
+   * borders splits one, a stroke across an empty box splits it
+   * diagonally. So the game column that was actually played has the
+   * fewest clean boxes of all, and judging columns by how many boxes
+   * they have drops exactly the one that matters.
+   *
+   * The strong columns are therefore only a seed. They fix the spacing,
+   * and any weaker line that lands on that spacing is a column too,
+   * however few boxes survived in it.
+   */
+  const allColumnLines = findLines(candidates.map((c) => centre(c).x), cellWidth, 0)
+  const strongColumns = allColumnLines.filter(
+    (line) => line.count >= Math.max(...allColumnLines.map((l) => l.count)) * LINE_STRENGTH,
+  )
+  if (strongColumns.length < 1) return null
+
+  const columnLines = (() => {
+    if (strongColumns.length < 2) return strongColumns
+    const steps: number[] = []
+    for (let i = 1; i < strongColumns.length; i += 1) {
+      steps.push(strongColumns[i]!.at - strongColumns[i - 1]!.at)
+    }
+    const pitch = median(steps)
+    if (!(pitch > 0)) return strongColumns
+
+    const anchor = strongColumns[0]!.at
+    const onTheLadder = allColumnLines.filter((line) => {
+      const rung = Math.round((line.at - anchor) / pitch)
+      return Math.abs(line.at - (anchor + rung * pitch)) <= cellWidth * LINE_TOLERANCE
+    })
+    if (onTheLadder.length < strongColumns.length) return strongColumns
+
+    // No sheet prints more than six games, so anything beyond that is a
+    // line the spacing happened to fit — the sheet's own ruling, or a
+    // fold. The ones with the fewest boxes behind them go first.
+    if (onTheLadder.length > MAX_COLUMNS) {
+      const ranked = [...onTheLadder].sort((a, b) => b.count - a.count).slice(0, MAX_COLUMNS)
+      return ranked.sort((a, b) => a.at - b.at)
+    }
+    return onTheLadder
+  })()
 
   // Only boxes that sit in one of those columns get a say in where the
   // rows are. This is what keeps the sheet's own printing out of the
@@ -366,7 +418,7 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
     return extents.filter((e) => e.hi - e.lo >= typical * MIN_LINE_EXTENT)
   }
 
-  const columnExtents = keepFull(
+  const columnExtents: { lo: number; hi: number }[] = keepFull(
     columns.map((x) => extentAt(x, cellWidth, (c) => ({ lo: c.x0, hi: c.x1, at: (c.x0 + c.x1) / 2 }))),
   )
   const rowExtents = keepFull(
@@ -376,6 +428,77 @@ export function detectGrid(mask: BinaryImage): SheetGrid | null {
 
   // Split into blocks where the vertical gap jumps — on this sheet, the
   // band between the upper and the lower half.
+  /*
+   * The column people wrote in is the one most likely to be missing.
+   *
+   * A column is found from the boxes that were detected in it, and
+   * writing breaks boxes: a digit touching two borders splits one, a
+   * stroke across an empty box splits it diagonally. So the game column
+   * that was actually played can end up with too few clean boxes to
+   * register, while five empty ones beside it register perfectly — and
+   * the one column that matters is the one that disappears.
+   *
+   * Columns are evenly spaced, so the fix is the same as for the rows:
+   * step outwards by the pitch and ask the image whether there is a
+   * column of cells there. "Paper inside the boxes" alone is not enough,
+   * because the sheet's printed label column beside the table is white
+   * too; a column of cells also has the black panel between its boxes,
+   * and that is what separates the two.
+   */
+  const columnPitch = (() => {
+    const steps: number[] = []
+    for (let i = 1; i < columnExtents.length; i += 1) {
+      steps.push(
+        (columnExtents[i]!.lo + columnExtents[i]!.hi) / 2 -
+          (columnExtents[i - 1]!.lo + columnExtents[i - 1]!.hi) / 2,
+      )
+    }
+    return median(steps)
+  })()
+
+  if (columnPitch > 0 && rowExtents.length >= 4) {
+    const columnWidth = median(columnExtents.map((column) => column.hi - column.lo))
+
+    /** Whether a strip of the image holds this block's column of boxes. */
+    const looksLikeCells = (lo: number, hi: number) => {
+      if (lo < 0 || hi >= mask.width) return false
+      const cells = rowExtents.map((row) => ({
+        x0: Math.round(lo),
+        y0: Math.round(row.lo),
+        x1: Math.round(hi),
+        y1: Math.round(row.hi),
+      }))
+      if (paperFraction(mask, cells) < COLUMN_MIN_PAPER) return false
+
+      // The bands between consecutive rows, which on the table are the
+      // panel and on the label column are more paper.
+      const gutters: CellBox[] = []
+      for (let i = 1; i < rowExtents.length; i += 1) {
+        const top = Math.round(rowExtents[i - 1]!.hi)
+        const bottom = Math.round(rowExtents[i]!.lo)
+        if (bottom - top < 2) continue
+        gutters.push({ x0: Math.round(lo), y0: top, x1: Math.round(hi), y1: bottom })
+      }
+      if (gutters.length === 0) return false
+      return 1 - paperFraction(mask, gutters) >= COLUMN_MIN_GUTTER_INK
+    }
+
+    // Outwards from each end, one pitch at a time, while the image keeps
+    // saying yes and the sheet could still hold another game.
+    while (columnExtents.length < MAX_COLUMNS) {
+      const first = columnExtents[0]!
+      const lo = first.lo - columnPitch
+      if (!looksLikeCells(lo, lo + columnWidth)) break
+      columnExtents.unshift({ lo, hi: lo + columnWidth })
+    }
+    while (columnExtents.length < MAX_COLUMNS) {
+      const last = columnExtents[columnExtents.length - 1]!
+      const lo = last.lo + columnPitch
+      if (!looksLikeCells(lo, lo + columnWidth)) break
+      columnExtents.push({ lo, hi: lo + columnWidth })
+    }
+  }
+
   const rowCentres = rowExtents.map((row) => (row.lo + row.hi) / 2)
   const gaps: number[] = []
   for (let i = 1; i < rowCentres.length; i += 1) gaps.push(rowCentres[i]! - rowCentres[i - 1]!)
