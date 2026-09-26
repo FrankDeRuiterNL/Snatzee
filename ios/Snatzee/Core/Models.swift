@@ -40,6 +40,7 @@ struct HomeSummary: Decodable, Equatable {
     let achievementCount: Int
     let averageThisMonth: Double?
     let averageLastMonth: Double?
+    let averageLast10: Double?
     let pendingFriendRequests: Int
     let gamesToday: Int
     let currentWinStreak: Int
@@ -51,6 +52,7 @@ struct UserStatistics: Decodable, Equatable {
     let wins: Int
     let averageScore: Double?
     let highestScore: Int?
+    let lowestScore: Int?
     let yahtzeeCount: Int
     let firstRollYahtzeeCount: Int
     let winRate: Double?

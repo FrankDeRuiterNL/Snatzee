@@ -16,7 +16,7 @@ struct MainTabView: View {
             ForEach(AppTab.allCases) { tab in
                 // Every tab stays alive (and keeps its scroll position),
                 // like switching tabs in a native tab bar.
-                NavigationStack { screen(for: tab) }
+                NavigationStack { screen(for: tab).appRoutes(profile: profile) }
                     .opacity(selection == tab ? 1 : 0)
                     .allowsHitTesting(selection == tab)
             }
@@ -73,6 +73,8 @@ struct MainTabView: View {
                 onOpenProfile: { selection = .profile },
                 onOpenSettings: { showingSettings = true }
             )
+        case .rankings:
+            RankingsView()
         default:
             PlaceholderScreen(tab: tab)
         }

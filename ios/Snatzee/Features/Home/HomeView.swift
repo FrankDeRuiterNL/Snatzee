@@ -150,6 +150,11 @@ struct HomeView: View {
     }
 
     private var achievementsRow: some View {
+        NavigationLink(value: AppRoute.achievements) { achievementsRowContent }
+            .buttonStyle(.pressable)
+    }
+
+    private var achievementsRowContent: some View {
         HStack(spacing: 16) {
             LucideIcon("award", size: 20)
                 .foregroundStyle(Theme.mint400)
@@ -302,10 +307,23 @@ struct RecentScoresSection: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Laatste potjes")
-                        .font(.jakarta(TextSize.lg, .extrabold))
-                        .trackingTight(TextSize.lg)
-                        .foregroundStyle(Theme.ink)
+                    HStack {
+                        Text("Laatste potjes")
+                            .font(.jakarta(TextSize.lg, .extrabold))
+                            .trackingTight(TextSize.lg)
+                            .foregroundStyle(Theme.ink)
+                        Spacer()
+                        NavigationLink(value: AppRoute.history(.all)) {
+                            HStack(spacing: 2) {
+                                Text("Alles")
+                                LucideIcon("chevron-right", size: 16)
+                            }
+                            .font(.jakarta(TextSize.sm, .semibold))
+                            .foregroundStyle(Theme.inkMuted)
+                            .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.pressable)
+                    }
                     VStack(alignment: .leading, spacing: 16) {
                         ForEach(groups, id: \.day) { group in
                             VStack(alignment: .leading, spacing: 8) {

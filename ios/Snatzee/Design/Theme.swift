@@ -25,6 +25,7 @@ enum Theme {
     // MARK: Brand scales
     static let navy950 = Color(hex: 0x04131F)
     static let navy900 = Color(hex: 0x071E33)
+    static let navy300 = Color(hex: 0x7D93A8)
 
     static let mint300 = Color(hex: 0x6FDFBD)
     static let mint400 = Color(hex: 0x2EE6B0)

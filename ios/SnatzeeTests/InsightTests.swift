@@ -9,7 +9,7 @@ final class InsightTests: XCTestCase {
         HomeSummary(
             gamesPlayed: games, wins: 0, winRate: 0, averageScore: nil, highestScore: nil, lowestScore: nil,
             yahtzeeCount: 0, firstRollYahtzeeCount: 0, achievementCount: 0,
-            averageThisMonth: thisMonth, averageLastMonth: lastMonth,
+            averageThisMonth: thisMonth, averageLastMonth: lastMonth, averageLast10: nil,
             pendingFriendRequests: 0, gamesToday: today, currentWinStreak: streak
         )
     }

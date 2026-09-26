@@ -30,25 +30,12 @@ final class HomeModel {
             async let stats = API.rows(UserStatistics.self) {
                 $0.from("user_statistics").select().eq("user_id", value: id).limit(1)
             }
-            async let catalogue = API.rows(Achievement.self) {
-                $0.from("achievements").select().order("sort_order")
-            }
-            async let unlocks = API.rows(UserAchievementRow.self) {
-                $0.from("user_achievements").select("achievement_id, unlocked_at").eq("user_id", value: id)
-            }
+            async let achievements = AchievementStore.load(userId: userId)
 
-            let unlockedAt = Dictionary(
-                try await unlocks.map { ($0.achievementId, $0.unlockedAt) },
-                uniquingKeysWith: { first, _ in first }
-            )
             self.summary = try await summary
             self.recent = try await recent
             self.stats = try await stats.first
-            self.achievements = try await catalogue.map { achievement in
-                var merged = achievement
-                merged.unlockedAt = unlockedAt[achievement.id]
-                return merged
-            }
+            self.achievements = try await achievements
             loadError = nil
         } catch {
             loadError = API.translate(error).localizedDescription
