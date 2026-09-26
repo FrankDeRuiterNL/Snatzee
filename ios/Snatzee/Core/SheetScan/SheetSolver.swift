@@ -149,6 +149,12 @@ enum SheetSolver {
 
         // Flag what the chosen value does not rest on firmly: nothing read
         // there, or the box's own best reading said something else.
+        // In a half with an unreadable box the totals no longer check the
+        // others — two wrong boxes can add up to the right sum — so an
+        // unsure reading there is worth a look too.
+        let open = { (rows: Range<Int>) in rows.contains { (readings[.entry($0)] ?? []).isEmpty && inked.contains(.entry($0)) } }
+        let upperOpen = open(0..<ScoreSheet.upperRows)
+        let lowerOpen = open(ScoreSheet.upperRows..<ScoreSheet.rows.count)
         var flagged = Set<Int>()
         for index in entries.indices {
             let rowReadings = readings[.entry(index)] ?? []
@@ -162,7 +168,9 @@ enum SheetSolver {
                 }
             }()
             let unreadable = rowReadings.isEmpty && inked.contains(.entry(index))
-            if unreadable || !agreesWithOwn || (own?.confidence ?? 1) < 0.35 { flagged.insert(index) }
+            let halfOpen = index < ScoreSheet.upperRows ? upperOpen : lowerOpen
+            let doubt: Float = halfOpen ? 0.6 : 0.35
+            if unreadable || !agreesWithOwn || (own?.confidence ?? 1) < doubt { flagged.insert(index) }
         }
 
         let totals = ScoreSheet.totals(entries, yahtzees: extra > 0 ? extra + 1 : 0)
