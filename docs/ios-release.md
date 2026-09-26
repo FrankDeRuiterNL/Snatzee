@@ -48,9 +48,9 @@ open Snatzee.xcodeproj
    ontbreekt" instead of the app.
 2. Top bar: scheme **Snatzee**, destination **Any iOS Device (arm64)**.
 3. **Product → Archive**. The Organizer opens when it is done.
-4. **Distribute App → App Store Connect → Distribute**. Leave "Manage
-   Version and Build Number" on: Xcode then raises the build number for
-   every upload, so you never need to edit it yourself.
+4. **Distribute App → App Store Connect → Distribute**. Turn **off**
+   "Manage Version and Build Number": the build number comes from
+   `ios/project.yml`, where every new version raises it (see `CLAUDE.md`).
 5. Wait for the e-mail "has completed processing" (5–30 minutes).
 
 About push: `Snatzee.entitlements` says `aps-environment: development` —
@@ -225,7 +225,8 @@ version" if you want to pick the moment it goes live.
 - Every change to the app raises `MARKETING_VERSION` in `ios/project.yml`
   by Semantic Versioning (patch for fixes, minor for features, major for
   breaking changes; see `CLAUDE.md`) and gets a line in `ios/CHANGELOG.md`.
-  Archive and upload that version; build numbers are handled by Xcode.
+  The build number (`CURRENT_PROJECT_VERSION`) goes up with every version
+  too, by a random 6–23. Archive and upload that version.
 - Old app versions and a changed server: when a server change breaks
   older builds, raise `min_ios_build` in `app_settings` to the lowest build
   that still works. Older apps then show a "Tijd voor een update" screen with a

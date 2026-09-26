@@ -12,5 +12,9 @@ Every change to the iOS app (`ios/`) raises `MARKETING_VERSION` in
 
 Raise it once per change set (commit or merge to `main`), not per file, and
 add a line for the new version to `ios/CHANGELOG.md`. Changes outside
-`ios/` (website, server) do not touch the iOS version. The build number
-(`CURRENT_PROJECT_VERSION`) is left alone: Xcode raises it on upload.
+`ios/` (website, server) do not touch the iOS version.
+
+Every new version also raises the build number (`CURRENT_PROJECT_VERSION`
+in `ios/project.yml`) by a random whole number from 6 to 23 (inclusive),
+e.g. `shuf -i 6-23 -n 1`. The build number only ever goes up; mention the
+new build number in the changelog entry next to the version.
