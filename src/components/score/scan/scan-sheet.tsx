@@ -80,6 +80,15 @@ export function ScanSheet({
 }) {
   const [step, setStep] = useState<Step>('pick')
   const [photo, setPhoto] = useState<Photo | null>(null)
+  // The photo that is currently held, for releasing it. Kept outside the
+  // state updater: updaters must stay pure, and one scheduled while
+  // unmounting is never run at all.
+  const heldPhoto = useRef<Photo | null>(null)
+  const replacePhoto = useCallback((next: Photo | null) => {
+    if (heldPhoto.current && heldPhoto.current !== next) releasePhoto(heldPhoto.current)
+    heldPhoto.current = next
+    setPhoto(next)
+  }, [])
   const [crop, setCrop] = useState<CropRect>(INITIAL_CROP)
   const [autoCropped, setAutoCropped] = useState(false)
   const [prepared, setPrepared] = useState<PreparedSheet | null>(null)
@@ -117,14 +126,18 @@ export function ScanSheet({
     setAutoCropped(false)
     setZoomed(false)
     setEdited(null)
-    setPhoto((previous) => {
-      if (previous) URL.revokeObjectURL(previous.url)
-      return null
-    })
-  }, [])
+    replacePhoto(null)
+  }, [replacePhoto])
 
-  // The object URL outlives the component unless it is handed back.
-  useEffect(() => () => setPhoto((p) => (p && URL.revokeObjectURL(p.url), null)), [])
+  // The object URL and the decoded bitmap outlive the component unless
+  // they are handed back — and a decoded camera photo is tens of MB.
+  useEffect(
+    () => () => {
+      if (heldPhoto.current) releasePhoto(heldPhoto.current)
+      heldPhoto.current = null
+    },
+    [],
+  )
 
   async function handleFile(file: File | undefined) {
     if (!file) return
@@ -146,10 +159,7 @@ export function ScanSheet({
     }
 
     const photo: Photo = { url: URL.createObjectURL(file), bitmap, width, height }
-    setPhoto((previous) => {
-      if (previous) URL.revokeObjectURL(previous.url)
-      return photo
-    })
+    replacePhoto(photo)
     setCrop(INITIAL_CROP)
     setAutoCropped(false)
     setStep('locating')
@@ -585,6 +595,15 @@ async function decode(file: File): Promise<ImageBitmap | HTMLImageElement> {
     })
   } finally {
     URL.revokeObjectURL(url)
+  }
+}
+
+/** Hands back what a photo holds: its object URL and, for an
+ *  ImageBitmap, the decoded pixels. */
+function releasePhoto(photo: Photo) {
+  URL.revokeObjectURL(photo.url)
+  if (typeof ImageBitmap !== 'undefined' && photo.bitmap instanceof ImageBitmap) {
+    photo.bitmap.close()
   }
 }
 

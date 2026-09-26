@@ -226,6 +226,18 @@ export function SettingsView({
     setDeleting(true)
 
     const supabase = getSupabaseBrowserClient()
+
+    // Avatars live in storage, outside what deleting the account cascades
+    // to. Removed first, while there is still a session allowed to do it;
+    // best effort, because a leftover file must not block the deletion.
+    try {
+      const bucket = supabase.storage.from('avatars')
+      const { data: files } = await bucket.list(profile.id, { limit: 1000 })
+      if (files?.length) await bucket.remove(files.map((file: { name: string }) => `${profile.id}/${file.name}`))
+    } catch {
+      // Carry on with the account itself.
+    }
+
     const { error: rpcError } = await supabase.rpc('delete_own_account')
 
     if (rpcError) {

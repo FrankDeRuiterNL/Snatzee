@@ -51,7 +51,9 @@ export async function getProfileByUsername(username: string): Promise<Profile | 
   const { data } = await supabase
     .from('profiles')
     .select('*')
-    .ilike('username', username)
+    // Usernames are stored lowercase. Not ilike: `_` is a wildcard there,
+    // and underscores are allowed in usernames.
+    .eq('username', username.toLowerCase())
     .maybeSingle()
   return (data as Profile | null) ?? null
 }

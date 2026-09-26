@@ -6,8 +6,18 @@
 # GoTrue and storage-api have already created the tables this schema
 # attaches its foreign keys and policies to.
 #
-# Safe to run repeatedly: every migration is idempotent, so it runs on
-# each `docker compose up` and picks up new migrations after a git pull.
+# Safe to run repeatedly: each migration file is recorded in
+# snatzee_meta.schema_migrations once it has been applied, and is skipped
+# from then on. Re-running old files on every boot used to undo changes
+# made since (0008 reset the admin-tuned low-score threshold, for one).
+#
+# A database that predates the tracking table has every file applied
+# once more on its first boot with this script, exactly as before, and
+# is tracked from then on.
+#
+# To force a file to run again:
+#   docker compose exec db psql -U postgres -c \
+#     "delete from snatzee_meta.schema_migrations where filename = '0022_hardening_and_fixes.sql'"
 # =====================================================================
 set -euo pipefail
 
@@ -57,11 +67,32 @@ echo "Applying Supabase compatibility helpers..."
                    where n.nspname = 'auth' and p.proname = 'uid'" | grep -q 1 \
   || fail "auth.uid() is still missing — RLS cannot work without it"
 
+echo "Preparing the migration ledger..."
+# Its own schema, so PostgREST never exposes it.
+"${PSQL[@]}" -c "
+  create schema if not exists snatzee_meta;
+  revoke all on schema snatzee_meta from public;
+  create table if not exists snatzee_meta.schema_migrations (
+    filename   text primary key,
+    applied_at timestamptz not null default now()
+  );
+" || fail "could not create snatzee_meta.schema_migrations"
+
 echo "Applying Snatzee migrations..."
+applied=0
 for file in /migrations/*.sql; do
-  echo "  -> $(basename "$file")"
-  "${PSQL[@]}" -f "$file" || fail "$(basename "$file") failed"
+  name="$(basename "$file")"
+  done_already="$("${PSQL[@]}" -tAc "select 1 from snatzee_meta.schema_migrations where filename = '$name'")"
+  if [ "$done_already" = "1" ]; then
+    continue
+  fi
+  echo "  -> $name"
+  "${PSQL[@]}" -f "$file" || fail "$name failed"
+  "${PSQL[@]}" -c "insert into snatzee_meta.schema_migrations (filename) values ('$name') on conflict do nothing" \
+    || fail "could not record $name as applied"
+  applied=$((applied + 1))
 done
+echo "  $applied new migration(s) applied."
 
 # PostgREST builds its schema cache when it connects, which happens before
 # these migrations run on a first boot. Without this it would keep serving a

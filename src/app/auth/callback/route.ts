@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { siteOrigin } from '@/lib/site-url'
+import { safeNextPath } from '@/lib/utils'
 
 /** OAuth + magic-link landing point: exchanges the code for a session. */
 export async function GET(request: NextRequest) {
@@ -42,6 +43,6 @@ export async function GET(request: NextRequest) {
   }
 
   // Only allow same-origin relative redirects.
-  const target = next && next.startsWith('/') && !next.startsWith('//') ? next : '/app'
+  const target = safeNextPath(next) ?? '/app'
   return NextResponse.redirect(`${origin}${target}`)
 }

@@ -54,6 +54,8 @@ export const UPPER_BONUS = 35
 export const BONUS_FROM = 63
 /** Index of the row that means a Yahtzee was thrown. */
 export const TOPSCORE_ROW = 11
+/** Every Yahtzee after the first, with the Yahtzee box scored at 50. */
+export const YAHTZEE_BONUS = 100
 
 /** A blank sheet: thirteen zeroes, which is also a legal one. */
 export const emptySheet = () => new Array<number>(SHEET_ROWS.length).fill(0)
@@ -67,16 +69,38 @@ export interface SheetTotals {
   upper: number
   /** The seven lower rows added up. */
   lower: number
+  /** 100 for every Yahtzee after the first — only when the Yahtzee box
+   *  itself holds 50, the way the rules award it. */
+  yahtzeeBonus: number
   /** What the player scored. */
   total: number
 }
 
-/** The five totals a sheet works out to. */
-export function sheetTotals(entries: number[]): SheetTotals {
+/** The Yahtzee bonus a sheet earns, given how many Yahtzees were thrown. */
+export function yahtzeeBonus(entries: number[], yahtzees: number) {
+  if ((entries[TOPSCORE_ROW] ?? 0) !== 50) return 0
+  return Math.max(0, Math.floor(yahtzees) - 1) * YAHTZEE_BONUS
+}
+
+/**
+ * The totals a sheet works out to.
+ *
+ * `yahtzees` is the number of Yahtzees thrown in the game, which is not
+ * one of the thirteen boxes; leave it out to get the sheet on its own.
+ */
+export function sheetTotals(entries: number[], yahtzees = 0): SheetTotals {
   const subtotal = entries.slice(0, UPPER_ROWS).reduce((sum, value) => sum + value, 0)
   const bonus = subtotal >= BONUS_FROM ? UPPER_BONUS : 0
   const lower = entries.slice(UPPER_ROWS).reduce((sum, value) => sum + value, 0)
-  return { subtotal, bonus, upper: subtotal + bonus, lower, total: subtotal + bonus + lower }
+  const extra = yahtzeeBonus(entries, yahtzees)
+  return {
+    subtotal,
+    bonus,
+    upper: subtotal + bonus,
+    lower,
+    yahtzeeBonus: extra,
+    total: subtotal + bonus + lower + extra,
+  }
 }
 
 /** Whether every value is one its row allows — the same question the

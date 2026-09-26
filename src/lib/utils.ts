@@ -33,27 +33,61 @@ export function formatDelta(value: number | null | undefined, decimals = 0) {
   return `${sign}${formatNumber(value, decimals)}`
 }
 
+/**
+ * Dates are shown in Dutch time wherever they are rendered.
+ *
+ * Pages are rendered on the server too, which runs in UTC: a game played
+ * at half past midnight showed up under the previous day, and the same
+ * page could render differently on the server and in the browser.
+ */
+export const APP_TIME_ZONE = 'Europe/Amsterdam'
+
+const dayPartsFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: APP_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+/** Calendar day in the app's time zone, as a day number for subtraction. */
+function dayNumber(date: Date) {
+  const parts = Object.fromEntries(
+    dayPartsFormat.formatToParts(date).map((part) => [part.type, part.value]),
+  )
+  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) / 86_400_000
+}
+
+function yearOf(date: Date) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIME_ZONE, year: 'numeric' }).format(date)
+}
+
 /** "Vandaag" / "Gisteren" / "17 september" */
 export function formatPlayedAt(iso: string) {
   const date = new Date(iso)
   const today = new Date()
-  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-  const diffDays = Math.round((startOf(today) - startOf(date)) / 86_400_000)
+  const diffDays = dayNumber(today) - dayNumber(date)
 
   if (diffDays === 0) return 'Vandaag'
   if (diffDays === 1) return 'Gisteren'
   if (diffDays < 7 && diffDays > 0) {
-    return new Intl.DateTimeFormat('nl-NL', { weekday: 'long' }).format(date)
+    return new Intl.DateTimeFormat('nl-NL', { weekday: 'long', timeZone: APP_TIME_ZONE }).format(
+      date,
+    )
   }
   return new Intl.DateTimeFormat('nl-NL', {
     day: 'numeric',
     month: 'long',
-    year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric',
+    year: yearOf(date) === yearOf(today) ? undefined : 'numeric',
+    timeZone: APP_TIME_ZONE,
   }).format(date)
 }
 
 export function formatTime(iso: string) {
-  return new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('nl-NL', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: APP_TIME_ZONE,
+  }).format(new Date(iso))
 }
 
 /** `YYYY-MM-DD` in local time, for date inputs. */
@@ -73,6 +107,20 @@ export function fromDateInputValue(value: string) {
   const [year, month, day] = value.split('-').map(Number)
   if (!year || !month || !day) return new Date().toISOString()
   return new Date(year, month - 1, day, 12, 0, 0).toISOString()
+}
+
+/**
+ * A same-site path to continue to after signing in, or null.
+ *
+ * `next` comes from the query string, so anything that is not a plain
+ * path on this site — an absolute URL, a protocol-relative `//host`, a
+ * `/\host` that browsers read the same way — is dropped rather than
+ * followed.
+ */
+export function safeNextPath(next: string | null | undefined): string | null {
+  if (!next || !next.startsWith('/')) return null
+  if (next.startsWith('//') || next.startsWith('/\\')) return null
+  return next
 }
 
 export function pluralize(count: number, one: string, many: string) {

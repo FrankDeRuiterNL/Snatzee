@@ -4,6 +4,7 @@ import {
   SHEET_ROWS,
   UPPER_BONUS,
   UPPER_ROWS,
+  YAHTZEE_BONUS,
   sheetTotals,
 } from '@/lib/scoresheet/sheet'
 
@@ -15,8 +16,19 @@ import {
  * out the same way — just without anything to tap. A game that was only
  * ever a number has none of this, and is not given an empty table.
  */
-export function SheetBreakdown({ entries }: { entries: number[] }) {
-  const totals = sheetTotals(entries)
+export function SheetBreakdown({
+  entries,
+  yahtzees = 0,
+  score,
+}: {
+  entries: number[]
+  yahtzees?: number
+  /** The stored score. Games saved before the Yahtzee bonus was counted
+   *  add up without it, and are shown the way they were saved. */
+  score?: number
+}) {
+  const withBonus = sheetTotals(entries, yahtzees)
+  const totals = score === undefined || withBonus.total === score ? withBonus : sheetTotals(entries)
 
   return (
     <div className="overflow-hidden rounded-2xl bg-surface ring-1 ring-hairline">
@@ -40,6 +52,14 @@ export function SheetBreakdown({ entries }: { entries: number[] }) {
           <Line key={row.label} label={row.label} value={entries[UPPER_ROWS + index] ?? 0} />
         ))}
         <Line label="Totaal onderste helft" value={totals.lower} muted />
+        {totals.yahtzeeBonus > 0 && (
+          <Line
+            label="Yahtzee-bonus"
+            hint={`${YAHTZEE_BONUS} per extra Yahtzee`}
+            value={totals.yahtzeeBonus}
+            muted
+          />
+        )}
         <Line label="Totaal bovenste helft" value={totals.upper} muted />
         <Line label="Totaal generaal" value={totals.total} muted strong />
       </dl>

@@ -112,12 +112,21 @@ export function PwaPrompts() {
     // queued while the app was closed goes out straight afterwards.
     void refreshPushSubscription().then(pingNotificationDrain)
 
+    // The service worker says so when the push service rotates the
+    // endpoint while the app is open; re-register without waiting for the
+    // next launch.
+    const onWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'PUSH_SUBSCRIPTION_CHANGED') void refreshPushSubscription()
+    }
+    navigator.serviceWorker?.addEventListener('message', onWorkerMessage)
+
     const appear = window.setTimeout(decide, APPEAR_DELAY_MS)
     // Chromium may deliver `beforeinstallprompt` after the card was decided;
     // re-deciding upgrades the iOS-style hint into a real install button.
     const unsubscribe = subscribeToInstallState(decide)
 
     return () => {
+      navigator.serviceWorker?.removeEventListener('message', onWorkerMessage)
       window.clearTimeout(appear)
       unsubscribe()
     }

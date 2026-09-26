@@ -239,8 +239,9 @@ docker compose up -d
 
 `--force-recreate` op stap 2 is geen luxe: de migraties zijn een bind-mount, dus
 een bestand erbij verandert de containerconfiguratie niet en of Compose de stap
-uit zichzelf herhaalt hangt af van je versie. Migraties zijn idempotent, dus een
-keer te vaak draaien kan geen kwaad — een keer te weinig wel.
+uit zichzelf herhaalt hangt af van je versie. Elke migratie draait maar één keer:
+`migrate.sh` houdt in `snatzee_meta.schema_migrations` bij welke bestanden al zijn
+toegepast en slaat die voortaan over, dus een keer te vaak starten kan geen kwaad.
 
 Vuistregels:
 
@@ -357,8 +358,16 @@ domein kan wijzen.
 | `app_settings` | Configureerbare grenzen |
 | `admin_audit_log` | Wat een superadmin verwijderde of verstuurde |
 
-Migraties staan in `supabase/migrations/` (0001 t/m 0018) en zijn stuk voor stuk
-idempotent: opnieuw draaien is altijd veilig.
+Migraties staan in `supabase/migrations/` (0001 t/m 0022). Elk bestand draait één
+keer; `snatzee_meta.schema_migrations` houdt bij welke al zijn toegepast. Een
+bestaande migratie aanpassen heeft dus geen effect meer op een draaiende
+installatie — schrijf een nieuwe. Een bestand toch opnieuw laten draaien:
+
+```bash
+docker compose exec db psql -U postgres -c \
+  "delete from snatzee_meta.schema_migrations where filename = '0022_hardening_and_fixes.sql'"
+docker compose up -d --force-recreate migrate
+```
 
 ### Twee soorten Yahtzee
 
@@ -532,7 +541,7 @@ src/
     push.ts push-server.ts  Web Push, client en verzendkant
     image.ts invite.ts pwa.ts audio.ts haptics.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0019)
+supabase/migrations/        SQL migraties (0001 t/m 0022)
 docker/
   postgres/supabase-compat.sql  auth.uid() c.s. voor de zelf-gehoste stack
   nginx/                    gateway op één poort

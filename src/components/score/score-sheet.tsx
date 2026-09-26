@@ -89,7 +89,7 @@ export function ScoreSheet({
         <ScoreForm
           // A fresh scan remounts the form, so its values replace whatever
           // was typed before rather than being merged with it.
-          key={entry?.id ?? (prefill ? `scan-${prefill.score}-${prefill.yahtzee}` : 'new')}
+          key={entry?.id ?? (prefill ? `scan-${prefill.entries.join('-')}` : 'new')}
           prefill={prefill ?? null}
           entry={entry ?? null}
           saving={saving}
@@ -142,7 +142,6 @@ function ScoreForm({
   )
   const scoreOnly = isEdit && !isValidSheet(entry?.sheet)
   const perRow = !scoreOnly
-  const sheetScore = sheetTotals(sheet).total
 
   const [score, setScore] = useState(entry?.score ?? prefill?.score ?? 0)
   const [isWin, setIsWin] = useState(entry?.is_win ?? false)
@@ -150,9 +149,16 @@ function ScoreForm({
     entry ? (entry.yahtzee_count ?? 0) > 0 : Boolean(prefill?.yahtzee),
   )
   const [yahtzeeCount, setYahtzeeCount] = useState(Math.max(entry?.yahtzee_count ?? 0, 1))
-  const [playedAt, setPlayedAt] = useState(() =>
-    entry ? toDateInputValue(new Date(entry.played_at)) : toDateInputValue(),
-  )
+  // The stepper keeps its value while the toggle is off, so the count only
+  // counts when the player actually says they threw one.
+  const yahtzees = threwYahtzee ? yahtzeeCount : 0
+  // Every Yahtzee after the first earns its bonus, so the count is part
+  // of the score, not just a statistic next to it.
+  const sheetTotalsNow = sheetTotals(sheet, yahtzees)
+  const sheetScore = sheetTotalsNow.total
+
+  const initialDate = entry ? toDateInputValue(new Date(entry.played_at)) : toDateInputValue()
+  const [playedAt, setPlayedAt] = useState(initialDate)
   const [note, setNote] = useState(entry?.note ?? '')
   const [error, setError] = useState<string | null>(null)
 
@@ -171,10 +177,6 @@ function ScoreForm({
     onSavingChange(true)
     setError(null)
     const supabase = getSupabaseBrowserClient()
-
-    // The stepper keeps its value while the toggle is off, so the count only
-    // counts when the player actually says they threw one.
-    const yahtzees = threwYahtzee ? yahtzeeCount : 0
     // The sheet only travels with the score when it is the sheet that
     // produced it; a score typed on the wheel has no boxes behind it.
     const rows = perRow ? sheet : null
@@ -184,7 +186,9 @@ function ScoreForm({
           p_id: entry.id,
           p_score: parsed,
           p_is_win: isWin,
-          p_played_at: fromDateInputValue(playedAt),
+          // An untouched date keeps the game's own time, so fixing a note
+          // does not move the game to noon (or to right now).
+          p_played_at: playedAt === initialDate ? entry.played_at : fromDateInputValue(playedAt),
           p_note: note.trim() || null,
           p_yahtzee_count: yahtzees,
           p_sheet: rows,
@@ -264,9 +268,10 @@ function ScoreForm({
         {perRow ? (
           <SheetForm
             value={sheet}
+            yahtzees={yahtzees}
             onChange={(next) => {
               setSheet(next)
-              setScore(sheetTotals(next).total)
+              setScore(sheetTotals(next, yahtzees).total)
               if ((next[TOPSCORE_ROW] ?? 0) > 0 && !threwYahtzee) {
                 setThrewYahtzee(true)
                 setYahtzeeCount((count) => Math.max(count, 1))
@@ -341,6 +346,16 @@ function ScoreForm({
                   min={1}
                   max={30}
                 />
+                {perRow && sheetTotalsNow.yahtzeeBonus > 0 && (
+                  <p className="mt-2 text-xs text-mint-300">
+                    +{sheetTotalsNow.yahtzeeBonus} Yahtzee-bonus in je eindscore
+                  </p>
+                )}
+                {perRow && yahtzeeCount > 1 && (sheet[TOPSCORE_ROW] ?? 0) !== 50 && (
+                  <p className="mt-2 text-xs text-ink-muted">
+                    Geen Yahtzee-bonus: die telt alleen als je Topscore-vak 50 punten heeft.
+                  </p>
+                )}
               </div>
             </motion.div>
           )}

@@ -260,7 +260,13 @@ export function HistoryView({
               </p>
             </motion.div>
 
-            {isValidSheet(detail.sheet) && <SheetBreakdown entries={detail.sheet} />}
+            {isValidSheet(detail.sheet) && (
+              <SheetBreakdown
+                entries={detail.sheet}
+                yahtzees={detail.yahtzee_count}
+                score={detail.score}
+              />
+            )}
 
             {detail.note && (
               <div className="rounded-2xl bg-surface p-4 ring-1 ring-hairline">

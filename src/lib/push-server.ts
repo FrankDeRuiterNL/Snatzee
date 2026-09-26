@@ -12,9 +12,8 @@ import { SUPABASE_SERVER_URL } from '@/lib/supabase/env'
  * the sender acts on someone else's behalf — RLS would (correctly) hide them
  * from any user-scoped client.
  *
- * Nothing here is wired to an event yet: this is the transport, ready for
- * whichever notifications the app decides to send (a friend request, a
- * beaten record, a new number one).
+ * What gets sent is decided by database triggers that fill the
+ * notification outbox; drainNotifications() below is what delivers it.
  */
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
@@ -124,10 +123,19 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
 interface OutboxRow {
   id: string
   user_id: string
+  kind: string
   title: string
   body: string
   url: string
   data: Record<string, unknown> | null
+}
+
+function notificationTag(row: OutboxRow) {
+  const kind = row.kind.toLowerCase()
+  // Admin messages are each their own news; never let one replace another.
+  if (row.kind === 'ADMIN_BROADCAST') return `snatzee-${kind}-${row.id.slice(0, 8)}`
+  const groupId = typeof row.data?.group_id === 'string' ? row.data.group_id : null
+  return groupId ? `snatzee-${kind}-${groupId.slice(0, 8)}` : `snatzee-${kind}`
 }
 
 /**
@@ -158,9 +166,10 @@ export async function drainNotifications(limit = 50) {
           title: row.title,
           body: row.body,
           url: row.url,
-          // Per person and per kind, so a second friend request replaces
-          // the first on the lock screen instead of stacking.
-          tag: `snatzee-${row.id.slice(0, 8)}`,
+          // Per kind (and per group for group scores), so a second friend
+          // request replaces the first on the lock screen instead of
+          // stacking. Tags are per device, so this is already per person.
+          tag: notificationTag(row),
           data: row.data ?? {},
         })
 

@@ -7,6 +7,7 @@ import {
   SHEET_ROWS,
   UPPER_BONUS,
   UPPER_ROWS,
+  YAHTZEE_BONUS,
   sheetTotals,
 } from '@/lib/scoresheet/sheet'
 
@@ -32,8 +33,12 @@ export function SheetForm({
   value,
   onChange,
   flagged,
+  yahtzees = 0,
 }: {
   value: number[]
+  /** Yahtzees thrown this game, for the bonus on every one after the
+   *  first. Not a box on the sheet, so it comes from outside. */
+  yahtzees?: number
   /**
    * The new sheet, and which row was changed to get there.
    *
@@ -47,7 +52,7 @@ export function SheetForm({
    *  path. Empty when a game is being typed in. */
   flagged?: number[]
 }) {
-  const totals = sheetTotals(value)
+  const totals = sheetTotals(value, yahtzees)
 
   function change(row: number, next: number) {
     haptic('light')
@@ -89,6 +94,13 @@ export function SheetForm({
           />
         ))}
         <Computed label="Totaal onderste helft" value={totals.lower} />
+        {totals.yahtzeeBonus > 0 && (
+          <Computed
+            label="Yahtzee-bonus"
+            hint={`${YAHTZEE_BONUS} per extra Yahtzee`}
+            value={totals.yahtzeeBonus}
+          />
+        )}
         <Computed label="Totaal bovenste helft" value={totals.upper} />
         <Computed label="Totaal generaal" value={totals.total} strong />
       </Block>

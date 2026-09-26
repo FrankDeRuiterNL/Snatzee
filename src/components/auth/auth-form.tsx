@@ -8,6 +8,7 @@ import { MailCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FieldError, Input, Label } from '@/components/ui/input'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { safeNextPath } from '@/lib/utils'
 
 export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: string }) {
   const router = useRouter()
@@ -84,7 +85,7 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
       return
     }
 
-    router.replace(next ?? '/app')
+    router.replace(safeNextPath(next) ?? '/app')
     router.refresh()
   }
 

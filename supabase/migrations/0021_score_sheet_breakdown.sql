@@ -88,7 +88,11 @@ alter table public.score_entries
   drop constraint if exists score_entries_sheet_matches_score;
 alter table public.score_entries
   add constraint score_entries_sheet_matches_score
-  check (sheet is null or public.sheet_total(sheet) = score);
+  check (sheet is null or public.sheet_total(sheet) = score)
+  -- Not re-checked against existing rows: 0022 replaces this with a
+  -- version that also accepts the Yahtzee bonus, and games saved since
+  -- would fail this older form if the file is ever applied again.
+  not valid;
 
 -- ---------------------------------------------------------------------
 -- De RPC's nemen het blad mee. De oude aanroep zonder blad blijft

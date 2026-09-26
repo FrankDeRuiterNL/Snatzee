@@ -1,7 +1,9 @@
 import type { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-export async function middleware(request: NextRequest) {
+/** Next 16 name for what was middleware: refreshes the session cookie and
+ *  keeps signed-out visitors out of the app. */
+export async function proxy(request: NextRequest) {
   return updateSession(request)
 }
 

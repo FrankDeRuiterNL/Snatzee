@@ -62,10 +62,10 @@ export const viewport: Viewport = {
   themeColor: '#07131F',
   width: 'device-width',
   initialScale: 1,
-  // Locks out the double-tap/pinch zoom that makes a PWA feel like a website,
-  // while the 16px input rule keeps text readable without it.
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom stays available: locking it out fails people who need it
+  // (WCAG 1.4.4). Double-tap zoom, the part that makes a PWA feel like a
+  // website, is already off through `touch-action: manipulation` in
+  // globals.css, and the 16px input rule stops iOS zooming into fields.
   viewportFit: 'cover',
 }
 
