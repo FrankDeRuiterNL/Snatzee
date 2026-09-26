@@ -222,8 +222,10 @@ version" if you want to pick the moment it goes live.
 
 ## 8. Later versions
 
-- New features: raise `MARKETING_VERSION` in `ios/project.yml` (1.0.0 →
-  1.1.0) and archive again. Build numbers are handled by Xcode.
+- Every change to the app raises `MARKETING_VERSION` in `ios/project.yml`
+  by Semantic Versioning (patch for fixes, minor for features, major for
+  breaking changes; see `CLAUDE.md`) and gets a line in `ios/CHANGELOG.md`.
+  Archive and upload that version; build numbers are handled by Xcode.
 - Old app versions and a changed server: when a server change breaks
   older builds, raise `min_ios_build` in `app_settings` to the lowest build
   that still works. Older apps then show a "Tijd voor een update" screen with a
