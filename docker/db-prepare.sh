@@ -100,4 +100,29 @@ begin
 end $$;
 SQL
 
+echo "Letting storage act as the API roles..."
+"${PSQL[@]}" <<'SQL'
+-- storage-api connects as supabase_storage_admin and runs every request
+-- under SET ROLE anon / authenticated / service_role, so RLS on
+-- storage.objects applies to the caller. Without membership in those
+-- roles, every upload and every public file read fails with
+-- "permission denied to set role" — which shows up in the app as broken
+-- avatars. The image does not grant this on every setup, so it is made
+-- sure of here, on each start.
+do $$
+declare
+  r text;
+begin
+  if not exists (select 1 from pg_roles where rolname = 'supabase_storage_admin') then
+    return;
+  end if;
+  foreach r in array array['anon', 'authenticated', 'service_role'] loop
+    if exists (select 1 from pg_roles where rolname = r)
+       and not pg_has_role('supabase_storage_admin', r, 'SET') then
+      execute format('grant %I to supabase_storage_admin', r);
+    end if;
+  end loop;
+end $$;
+SQL
+
 echo "Database is ready for the Supabase services."
