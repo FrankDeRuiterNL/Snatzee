@@ -98,10 +98,14 @@ enum SheetSolver {
     /// How much the totals the player wrote may pull the answer.
     private static let totalWeight: Double = 2.5
 
-    static func solve(_ readings: [SheetLine: [CellReading]]) -> Result {
+    /// - Parameter inked: rows where something is written that could not
+    ///   be read. Those are open: any value the box may hold, decided by
+    ///   the totals, and always flagged.
+    static func solve(_ readings: [SheetLine: [CellReading]], inked: Set<SheetLine> = []) -> Result {
         // Per box, a score for every value it may hold.
         let entryScores: [[Int: Double]] = (0..<ScoreSheet.rows.count).map { index in
-            scores(for: ScoreSheet.rows[index].values, readings: readings[.entry(index)] ?? [])
+            scores(for: ScoreSheet.rows[index].values, readings: readings[.entry(index)] ?? [],
+                   unreadable: inked.contains(.entry(index)))
         }
 
         // Upper half: best score per subtotal, and how to get there.
@@ -113,7 +117,7 @@ enum SheetSolver {
             let bonus = subtotal >= ScoreSheet.bonusFrom ? ScoreSheet.upperBonus : 0
             let upperTotal = subtotal + bonus
             let upperAgreement = agreement(readings[.upperSubtotal], subtotal)
-                + agreement(readings[.bonus], bonus, emptyMeans: 0)
+                + agreement(readings[.bonus], bonus, emptyMeans: inked.contains(.bonus) ? nil : 0)
                 + agreement(readings[.upperTotal], upperTotal)
             for (lowerSum, lowerScore) in lower.best {
                 let lowerAgreement = agreement(readings[.lowerTotal], lowerSum)
@@ -157,7 +161,8 @@ enum SheetSolver {
                 case .stroke: return value == 0
                 }
             }()
-            if !agreesWithOwn || (own?.confidence ?? 1) < 0.35 { flagged.insert(index) }
+            let unreadable = rowReadings.isEmpty && inked.contains(.entry(index))
+            if unreadable || !agreesWithOwn || (own?.confidence ?? 1) < 0.35 { flagged.insert(index) }
         }
 
         let totals = ScoreSheet.totals(entries, yahtzees: extra > 0 ? extra + 1 : 0)
@@ -172,9 +177,15 @@ enum SheetSolver {
     // MARK: Scores
 
     /// A box's evidence for each value it may hold.
-    static func scores(for allowed: [Int], readings: [CellReading]) -> [Int: Double] {
+    static func scores(for allowed: [Int], readings: [CellReading], unreadable: Bool = false) -> [Int: Double] {
         var result: [Int: Double] = [:]
         for value in allowed { result[value] = unseen }
+        if readings.isEmpty && unreadable {
+            // Written in, but not legible: every value is as likely, and
+            // the totals choose.
+            for value in allowed { result[value] = log(0.3) }
+            return result
+        }
         if readings.isEmpty {
             // Nothing legible: most often an empty or struck-out box.
             result[0] = log(0.5)

@@ -20,6 +20,8 @@ enum SheetScanner {
         let layout: SheetLayout
         /// Per game number, what was read in each row.
         let columns: [Int: [SheetLine: [CellReading]]]
+        /// Per game number, rows with writing in them that could not be read.
+        let inked: [Int: Set<SheetLine>]
         /// Game numbers with anything written in them, in order.
         let filledColumns: [Int]
     }
@@ -59,54 +61,144 @@ enum SheetScanner {
         }
 
         var columns: [Int: [SheetLine: [CellReading]]] = [:]
+        var inked: [Int: Set<SheetLine>] = [:]
         for column in layout.columns {
-            columns[column.number] = try readColumn(column, of: page, layout: layout)
+            let read = try readColumn(column, of: page, layout: layout)
+            columns[column.number] = read.readings
+            inked[column.number] = read.unreadable
         }
 
         let filled = layout.columns.map(\.number).filter { number in
             let rows = columns[number] ?? [:]
-            let entries = rows.filter { if case .entry = $0.key { return !$0.value.isEmpty }; return false }
-            return entries.count >= 3
+            let read = rows.filter { if case .entry = $0.key { return !$0.value.isEmpty }; return false }.count
+            let unread = (inked[number] ?? []).filter { if case .entry = $0 { return true }; return false }.count
+            return read + unread >= 3
         }
         guard !filled.isEmpty else { throw ScanError.empty }
-        return Scan(layout: layout, columns: columns, filledColumns: filled)
+        return Scan(layout: layout, columns: columns, inked: inked, filledColumns: filled)
     }
 
     static func solve(_ scan: Scan, column: Int) -> SheetSolver.Result {
-        SheetSolver.solve(scan.columns[column] ?? [:])
+        SheetSolver.solve(scan.columns[column] ?? [:], inked: scan.inked[column] ?? [])
+    }
+
+    /// One column's strip, read on its own and sorted into rows; then a
+    /// closer look at every box with writing in it that was not read.
+    private static func readColumn(_ column: SheetLayout.Column, of page: CGImage, layout: SheetLayout) throws
+        -> (readings: [SheetLine: [CellReading]], unreadable: Set<SheetLine>) {
+        var readings = try readStrip(column, of: page, layout: layout)
+        var unreadable = Set<SheetLine>()
+        for row in layout.rows where (readings[row.line] ?? []).isEmpty {
+            let cell = cellRect(column: column, row: row, layout: layout)
+            guard hasInk(in: cell, of: page) else { continue }
+            let second = try readCell(cell, of: page)
+            if second.isEmpty {
+                unreadable.insert(row.line)
+            } else {
+                readings[row.line] = second
+            }
+        }
+        return (readings, unreadable)
+    }
+
+    /// One box, in page coordinates: a little inside its column and row so
+    /// the printed borders stay out.
+    private static func cellRect(column: SheetLayout.Column, row: SheetLayout.Row, layout: SheetLayout) -> CGRect {
+        CGRect(x: column.centerX - column.width * 0.44, y: row.midY - layout.rowHeight * 0.42,
+               width: column.width * 0.88, height: layout.rowHeight * 0.84)
+    }
+
+    private static func pixelRect(_ rect: CGRect, in image: CGImage) -> CGRect {
+        let width = CGFloat(image.width), height = CGFloat(image.height)
+        return CGRect(x: rect.minX * width, y: rect.minY * height, width: rect.width * width, height: rect.height * height)
+            .integral
+            .intersection(CGRect(x: 0, y: 0, width: width, height: height))
+    }
+
+    /// Whether anything is written in a box: dark marks on the paper at
+    /// its centre, where the printed edges do not reach.
+    static func hasInk(in cell: CGRect, of page: CGImage) -> Bool {
+        let centre = cell.insetBy(dx: cell.width * 0.2, dy: cell.height * 0.2)
+        guard let crop = page.cropping(to: pixelRect(centre, in: page)) else { return false }
+        let width = 48, height = 24
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        guard let context = CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: width, space: CGColorSpaceCreateDeviceGray(),
+                                      bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return false }
+        context.interpolationQuality = .medium
+        context.draw(crop, in: CGRect(x: 0, y: 0, width: width, height: height))
+        // The paper is the brighter half; ink is what is much darker.
+        let sorted = pixels.sorted()
+        let paper = Double(sorted[sorted.count * 3 / 4])
+        guard paper > 90 else { return false } // not a white box at all
+        let threshold = paper * 0.6
+        let dark = pixels.filter { Double($0) < threshold }.count
+        return Double(dark) / Double(pixels.count) > 0.015
+    }
+
+    /// A second look at one box: cut out, enlarged, on a white margin, read
+    /// by both of Vision's recognisers. Single digits standing alone are
+    /// what the whole-strip reading misses most.
+    private static func readCell(_ cell: CGRect, of page: CGImage) throws -> [CellReading] {
+        guard let crop = page.cropping(to: pixelRect(cell, in: page)) else { return [] }
+        let scale: CGFloat = max(1, 96 / CGFloat(max(crop.height, 1)))
+        let inner = CIImage(cgImage: crop).transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let margin = inner.extent.height * 0.6
+        let canvas = CGRect(x: 0, y: 0, width: inner.extent.width + margin * 2, height: inner.extent.height + margin * 2)
+        let composed = inner
+            .transformed(by: CGAffineTransform(translationX: margin - inner.extent.minX, y: margin - inner.extent.minY))
+            .composited(over: CIImage(color: .white).cropped(to: canvas))
+        guard let image = CIContext().createCGImage(composed, from: canvas) else { return [] }
+
+        var candidates: [OCRLine.Candidate] = []
+        for level in [VNRequestTextRecognitionLevel.accurate, .fast] {
+            let lines = try recognize(image, level: level)
+            // Joined left to right, the way it was written.
+            let ordered = lines.sorted { $0.box.minX < $1.box.minX }
+            if ordered.count > 1 {
+                let joined = ordered.compactMap { $0.candidates.first?.text }.joined()
+                let confidence = ordered.compactMap { $0.candidates.first?.confidence }.min() ?? 0
+                candidates.append(.init(text: joined, confidence: confidence))
+            }
+            candidates += ordered.flatMap(\.candidates)
+        }
+        return CellParser.readings(from: candidates)
     }
 
     /// One column's strip, read on its own and sorted into rows.
-    private static func readColumn(_ column: SheetLayout.Column, of page: CGImage, layout: SheetLayout) throws -> [SheetLine: [CellReading]] {
+    private static func readStrip(_ column: SheetLayout.Column, of page: CGImage, layout: SheetLayout) throws -> [SheetLine: [CellReading]] {
         let strip = layout.strip(for: column)
         let width = CGFloat(page.width), height = CGFloat(page.height)
         let pixels = CGRect(x: strip.minX * width, y: strip.minY * height,
                             width: strip.width * width, height: strip.height * height).integral
         guard let crop = page.cropping(to: pixels) else { return [:] }
 
-        var byRow: [SheetLine: [(x: CGFloat, candidates: [OCRLine.Candidate])]] = [:]
+        // Grouped per printed row, not per kind of box: "Totaal van de
+        // bovenste helft" is printed twice, and those are two readings of
+        // the same number, not one long one.
+        var byRow: [CGFloat: (line: SheetLine, pieces: [(x: CGFloat, candidates: [OCRLine.Candidate])])] = [:]
         for line in try recognize(crop) {
             // Back to page coordinates.
             let midY = strip.minY + line.box.midY * strip.height
             let midX = strip.minX + line.box.midX * strip.width
             guard let row = layout.row(atY: midY) else { continue }
-            byRow[row.line, default: []].append((midX, line.candidates))
+            byRow[row.midY, default: (row.line, [])].pieces.append((midX, line.candidates))
         }
 
         var readings: [SheetLine: [CellReading]] = [:]
-        for (line, pieces) in byRow {
-            let ordered = pieces.sorted { $0.x < $1.x }
-            if ordered.count == 1 {
-                readings[line] = CellParser.readings(from: ordered[0].candidates)
-            } else {
+        for (_, row) in byRow {
+            let ordered = row.pieces.sorted { $0.x < $1.x }
+            var candidates: [OCRLine.Candidate] = []
+            if ordered.count > 1 {
                 // Split over two readings ("2" "0"): join the best guesses,
                 // and keep each piece's own alternatives too.
                 let joined = ordered.compactMap { $0.candidates.first?.text }.joined()
                 let confidence = ordered.compactMap { $0.candidates.first?.confidence }.min() ?? 0
-                var candidates = [OCRLine.Candidate(text: joined, confidence: confidence)]
-                candidates += ordered.flatMap(\.candidates)
-                readings[line] = CellParser.readings(from: candidates)
+                candidates.append(OCRLine.Candidate(text: joined, confidence: confidence))
             }
+            candidates += ordered.flatMap(\.candidates)
+            let parsed = CellParser.readings(from: candidates)
+            readings[row.line] = ((readings[row.line] ?? []) + parsed).sorted { $0.confidence > $1.confidence }
         }
         return readings
     }
@@ -114,9 +206,9 @@ enum SheetScanner {
     // MARK: Vision
 
     /// All text on an image, in page coordinates (0…1, top left).
-    static func recognize(_ image: CGImage) throws -> [OCRLine] {
+    static func recognize(_ image: CGImage, level: VNRequestTextRecognitionLevel = .accurate) throws -> [OCRLine] {
         let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
+        request.recognitionLevel = level
         // Scores are numbers, not words: correcting them towards a
         // dictionary only does harm.
         request.usesLanguageCorrection = false
