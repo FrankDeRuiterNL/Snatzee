@@ -65,7 +65,16 @@ enum API {
     }
 
     /// Turns a PostgREST error into the message the database raised.
-    static func translate(_ error: Error) -> Error {
+    /// The request never reached the server: no connection, or it dropped.
+    static func isOffline(_ error: Error) -> Bool {
+        if let error = error as? URLError {
+            return [.notConnectedToInternet, .networkConnectionLost, .timedOut,
+                    .cannotConnectToHost, .cannotFindHost, .dataNotAllowed].contains(error.code)
+        }
+        return (error as? APIError)?.hint?.hasPrefix("offline_") == true
+    }
+
+        static func translate(_ error: Error) -> Error {
         if let error = error as? APIError { return error }
         if let error = error as? PostgrestError {
             return APIError(message: error.message, hint: error.hint)

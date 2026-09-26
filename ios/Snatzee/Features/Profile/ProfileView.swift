@@ -17,8 +17,7 @@ struct ProfileView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                HStack {
-                    Spacer()
+                PageHeader(title: "Profiel", subtitle: "Je cijfers, level en achievements.", trailing: AnyView(
                     NavigationLink(value: AppRoute.settings) {
                         LucideIcon("settings", size: 20)
                             .foregroundStyle(Theme.inkSoft)
@@ -29,9 +28,9 @@ struct ProfileView: View {
                     }
                     .buttonStyle(.pressable)
                     .accessibilityLabel("Instellingen")
-                }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, 12)
+                ))
+                // Same gap below the title as on Ranking and Vrienden.
+                .padding(.bottom, -8)
 
                 ProfileHeaderCard(
                     displayName: profile.displayName,

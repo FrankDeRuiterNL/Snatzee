@@ -3,7 +3,7 @@ import Foundation
 // Rows and RPC results, mirroring src/types/database.ts. Decoded with
 // API.decoder (snake_case keys → camelCase properties).
 
-struct Profile: Decodable, Identifiable, Equatable {
+struct Profile: Codable, Identifiable, Equatable {
     let id: UUID
     let username: String
     let displayName: String

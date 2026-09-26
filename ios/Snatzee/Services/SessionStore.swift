@@ -30,6 +30,8 @@ final class SessionStore {
     }
 
     private var listener: Task<Void, Never>?
+    /// True while `state` holds the offline copy of the profile.
+    private var loadedFromCache = false
 
     func start() {
         guard listener == nil else { return }
@@ -51,10 +53,24 @@ final class SessionStore {
     /// Re-reads the profile, e.g. after onboarding or a profile edit.
     func reloadProfile() async {
         guard let client = SupabaseService.client else { return }
-        await apply(try? await client.auth.session)
+        do {
+            await apply(try await client.auth.session)
+        } catch let error where API.isOffline(error) {
+            // Keep what is shown; the next reconnect tries again.
+        } catch {
+            await apply(nil)
+        }
+    }
+
+    /// The profile came from the copy on this phone (offline at launch):
+    /// read it from the server now that there is a connection again.
+    func reloadIfOffline() async {
+        guard loadedFromCache else { return }
+        await reloadProfile()
     }
 
     func signOut() async {
+        ProfileCache.clear()
         await PushManager.shared.forget()
         try? await SupabaseService.client?.auth.signOut()
         state = .signedOut
@@ -72,6 +88,10 @@ final class SessionStore {
             // player really has to sign in again.
             do {
                 _ = try await SupabaseService.client?.auth.refreshSession()
+            } catch let error where API.isOffline(error) {
+                // No connection to renew it: carry on with the profile
+                // from last time; it is renewed once back online.
+                if !useCachedProfile(for: session.user.id) { state = .signedOut }
             } catch {
                 state = .signedOut
             }
@@ -87,12 +107,24 @@ final class SessionStore {
                 await signOut()
                 return
             }
+            ProfileCache.store(profile)
+            loadedFromCache = false
             state = profile.onboardingCompleted ? .ready(profile) : .onboarding(profile)
         } catch {
-            // Offline at launch with a stored session: keep whatever was
-            // shown rather than throwing the player out.
+            // Offline at launch with a stored session: open the app with the
+            // profile from last time rather than the welcome screen.
+            if API.isOffline(error), useCachedProfile(for: session.user.id) { return }
             if state == .loading { state = .signedOut }
         }
+    }
+
+    /// Opens the app with the stored profile, if it is this player's.
+    private func useCachedProfile(for userId: UUID) -> Bool {
+        if case .ready = state { return true }
+        guard let cached = ProfileCache.load(), cached.id == userId else { return false }
+        loadedFromCache = true
+        state = cached.onboardingCompleted ? .ready(cached) : .onboarding(cached)
+        return true
     }
 
     /// Compares this build with `min_ios_build` from the server.
@@ -101,5 +133,25 @@ final class SessionStore {
               let minimum = config.setting("min_ios_build")
         else { return false }
         return AppConfig.buildNumber < minimum
+    }
+}
+
+/// The signed-in player's profile, kept on the phone so the app can open
+/// without a connection.
+enum ProfileCache {
+    private static let key = "snatzee.profile"
+
+    static func store(_ profile: Profile) {
+        if let data = try? JSONEncoder().encode(profile) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+
+    static func load() -> Profile? {
+        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(Profile.self, from: $0) }
+    }
+
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
     }
 }

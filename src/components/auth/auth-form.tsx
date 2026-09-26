@@ -202,6 +202,18 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
           minLength={8}
         />
         <FieldError>{error}</FieldError>
+        {mode === 'login' && (
+          <Link
+            href={
+              email.trim()
+                ? `/wachtwoord-vergeten?email=${encodeURIComponent(email.trim())}`
+                : '/wachtwoord-vergeten'
+            }
+            className="mt-2 inline-block text-sm font-semibold text-ink-soft underline-offset-4 hover:underline"
+          >
+            Wachtwoord vergeten?
+          </Link>
+        )}
       </div>
 
       <Button type="submit" full size="lg" loading={pending} className="mt-2">

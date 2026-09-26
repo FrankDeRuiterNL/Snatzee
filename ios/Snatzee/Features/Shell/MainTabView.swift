@@ -11,6 +11,8 @@ struct MainTabView: View {
     @State private var paths: [AppTab: [AppRoute]] = [:]
     @State private var links = DeepLinks.shared
     @State private var push = PushManager.shared
+    @State private var connectivity = Connectivity.shared
+    @Environment(SessionStore.self) private var session
 
     var body: some View {
         ZStack {
@@ -26,6 +28,14 @@ struct MainTabView: View {
                     .allowsHitTesting(selection == tab)
             }
         }
+        .overlay(alignment: .bottom) {
+            if !connectivity.isOnline {
+                OfflineBanner()
+                    .padding(.bottom, BottomNavigation.reservedHeight + 4)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: connectivity.isOnline)
         .overlay(alignment: .bottom) {
             BottomNavigation(
                 selection: $selection,
@@ -60,6 +70,14 @@ struct MainTabView: View {
         .task { await PushManager.shared.refresh() }
         .onChange(of: game.dataVersion) {
             Task { await home.load(userId: profile.id) }
+        }
+        // Back online: everything on screen may be stale or failed to
+        // load, so reload it all (and the profile, if it came from the
+        // offline copy).
+        .onChange(of: connectivity.isOnline) { _, online in
+            guard online else { return }
+            Task { await session.reloadIfOffline() }
+            game.dataChanged()
         }
         // Universal links and tapped notifications.
         .onChange(of: push.pendingPath, initial: true) { _, path in

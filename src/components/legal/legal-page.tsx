@@ -36,7 +36,7 @@ export function LegalPage({
   return (
     <main
       id="main"
-      className="safe-x mx-auto w-full max-w-[40rem] px-5"
+      className="safe-px-5 mx-auto w-full max-w-[40rem]"
       style={{
         paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)',
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 3rem)',

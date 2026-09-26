@@ -49,7 +49,7 @@ for (const file of walk(join(ROOT, 'src'))) {
   }
 }
 // Used by the iOS app without an equivalent web import.
-for (const extra of ['X', 'ChevronDown', 'Mail', 'KeyRound']) used.add(extra)
+for (const extra of ['X', 'ChevronDown', 'Mail', 'KeyRound', 'WifiOff']) used.add(extra)
 
 const escape = (value) => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 

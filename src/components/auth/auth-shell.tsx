@@ -15,7 +15,7 @@ export function AuthShell({
   return (
     <main
       id="main"
-      className="safe-x mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col px-5"
+      className="safe-px-5 mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col"
       style={{
         paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)',
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)',

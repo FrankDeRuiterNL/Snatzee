@@ -14,6 +14,9 @@ const PUBLIC_PATHS = [
   '/u',
   '/offline',
   '/api',
+  '/wachtwoord-vergeten',
+  // Reached from the reset mail; signed in by the time the form shows.
+  '/wachtwoord-herstellen',
   // Linked from the App Store listing: readable without an account.
   '/privacy',
   '/voorwaarden',

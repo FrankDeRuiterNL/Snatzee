@@ -12,7 +12,7 @@ export default async function LandingPage() {
   return (
     <main
       id="main"
-      className="safe-x mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col px-5"
+      className="safe-px-5 mx-auto flex min-h-dvh w-full max-w-[30rem] flex-col"
       style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}
     >
       <header>

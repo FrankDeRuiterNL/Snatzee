@@ -117,6 +117,12 @@ services:
       GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
       GOTRUE_SMTP_SENDER_NAME: Snatzee
+      # The reset mail links to the website's /wachtwoord-herstellen with a
+      # token hash, which works from any device — GoTrue's default link only
+      # works in the browser that asked. Fetched from the app when a mail is
+      # sent; GoTrue falls back to its own template if that fails.
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://app:3000/api/email-templates/recovery
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: Nieuw wachtwoord voor Snatzee
 
       # Sign in with Apple — next to email, the only way in.
       # APPLE_CLIENT_ID takes a comma-separated list: the Services ID the

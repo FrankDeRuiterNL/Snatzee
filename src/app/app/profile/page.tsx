@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { BarChart3, ChevronRight, History, Settings, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
 import { PageTransition } from '@/components/layout/page-transition'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { AchievementPreview } from '@/components/profile/achievement-preview'
@@ -32,17 +33,20 @@ export default async function ProfilePage() {
 
   return (
     <PageTransition>
-      <div
-        className="flex justify-end px-5 pb-4"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}
-      >
-        <Link
-          href="/app/settings"
-          aria-label="Instellingen"
-          className="press grid size-11 place-items-center rounded-full bg-surface text-ink-soft ring-1 ring-hairline shadow-soft"
-        >
-          <Settings className="size-5" aria-hidden />
-        </Link>
+      <div style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}>
+        <PageHeader
+          title="Profiel"
+          subtitle="Je cijfers, level en achievements."
+          action={
+            <Link
+              href="/app/settings"
+              aria-label="Instellingen"
+              className="press grid size-11 place-items-center rounded-full bg-surface text-ink-soft ring-1 ring-hairline shadow-soft"
+            >
+              <Settings className="size-5" aria-hidden />
+            </Link>
+          }
+        />
       </div>
 
       <div className="space-y-6">

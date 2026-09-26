@@ -3,6 +3,16 @@
 Versions follow [Semantic Versioning](https://semver.org). See `CLAUDE.md`
 for when each part goes up.
 
+## 1.3.0 (build 11)
+
+- Profiel has a page title like Ranking and Vrienden, with the settings
+  button next to it.
+- "Wachtwoord vergeten?" on the login screen: mails a link to choose a new
+  password on the website, then log in here with it.
+- Offline: a "Geen internetverbinding" banner above the tab bar, the app
+  opens with the last known profile instead of the welcome screen, and
+  everything reloads once the connection is back.
+
 ## 1.2.1
 
 - Fixed Xcode warnings: the history list's size limit is read on the main

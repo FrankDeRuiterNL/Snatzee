@@ -27,6 +27,7 @@ struct AuthFormView: View {
     @State private var awaitingConfirmation: String?
     @State private var resendIn = 0
     @State private var resending = false
+    @State private var forgotOpen = false
 
     var body: some View {
         ScrollView {
@@ -58,6 +59,9 @@ struct AuthFormView: View {
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $forgotOpen) {
+            ForgotPasswordSheet(email: email.trimmingCharacters(in: .whitespaces))
+        }
         .task(id: resendIn) {
             guard resendIn > 0 else { return }
             try? await Task.sleep(for: .seconds(1))
@@ -82,6 +86,13 @@ struct AuthFormView: View {
                 .onSubmit { Task { await submit() } }
 
             FieldError(message: error)
+
+            if mode == .login {
+                Button("Wachtwoord vergeten?") { forgotOpen = true }
+                    .font(.jakarta(TextSize.sm, .semibold))
+                    .foregroundStyle(Theme.inkSoft)
+                    .padding(.top, 10)
+            }
 
             Button(mode == .login ? "Inloggen" : "Account maken") {
                 Task { await submit() }
@@ -162,6 +173,86 @@ struct AuthFormView: View {
             ToastCenter.shared.success("Mail opnieuw verzonden 📬")
         } catch {
             ToastCenter.shared.error("Versturen is niet gelukt", description: API.translate(error).localizedDescription)
+        }
+    }
+}
+
+/// "Wachtwoord vergeten": mails a link to the website's reset page, which
+/// works from any device, so the new password is chosen in Safari and then
+/// used here.
+private struct ForgotPasswordSheet: View {
+    @State var email: String
+    @State private var sentTo: String?
+    @State private var error: String?
+    @State private var pending = false
+    @State private var resendIn = 0
+
+    var body: some View {
+        SheetScaffold(
+            title: sentTo == nil ? "Wachtwoord vergeten" : "Check je mail 📬",
+            description: sentTo.map {
+                "Als er een account bestaat voor \($0), staat er een mail klaar met een link om een nieuw wachtwoord te kiezen. Log daarna hier in met je nieuwe wachtwoord."
+            } ?? "Vul je e-mailadres in. We sturen je een link om een nieuw wachtwoord te kiezen."
+        ) {
+            if sentTo == nil {
+                VStack(alignment: .leading, spacing: 0) {
+                    FieldLabel("E-mailadres")
+                    SnatzeeTextField(placeholder: "jij@voorbeeld.nl", text: $email)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.send)
+                        .onSubmit { Task { await send() } }
+                    FieldError(message: error)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    IconTile(icon: "mail-check", accent: .mint)
+                    Text("Geen mail? Kijk ook in je spamfolder.")
+                        .font(.jakarta(TextSize.sm))
+                        .foregroundStyle(Theme.inkSoft)
+                }
+                FieldError(message: error)
+            }
+        } footer: {
+            if sentTo == nil {
+                Button("Stuur een link") { Task { await send() } }
+                    .buttonStyle(.snatzee(.primary, size: .lg, full: true, loading: pending))
+                    .disabled(pending)
+            } else {
+                Button(resendIn > 0 ? "Opnieuw versturen (\(resendIn))" : "Mail opnieuw versturen") {
+                    Task { await send() }
+                }
+                .buttonStyle(.snatzee(.soft, size: .lg, full: true, loading: pending))
+                .disabled(pending || resendIn > 0)
+            }
+        }
+        .presentationDetents([.medium])
+        .task(id: resendIn) {
+            guard resendIn > 0 else { return }
+            try? await Task.sleep(for: .seconds(1))
+            resendIn -= 1
+        }
+    }
+
+    private func send() async {
+        let address = (sentTo ?? email).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !address.isEmpty else {
+            error = "Vul je e-mailadres in"
+            return
+        }
+        guard let client = SupabaseService.client else { return }
+        pending = true
+        error = nil
+        defer { pending = false }
+        do {
+            try await client.auth.resetPasswordForEmail(address, redirectTo: AppConfig.webURL("/wachtwoord-herstellen"))
+            Haptics.play(.success)
+            sentTo = address
+            resendIn = 60
+        } catch {
+            self.error = API.translate(error).localizedDescription
         }
     }
 }

@@ -256,6 +256,13 @@
     padding-left: var(--safe-left);
     padding-right: var(--safe-right);
   }
+  /* The page gutter, widened where a notch or rounded corner needs more.
+     Instead of `safe-x px-5`: that pair lets safe-x set the padding to the
+     inset — 0 in portrait — and the page loses its side margins. */
+  .safe-px-5 {
+    padding-left: max(1.25rem, var(--safe-left));
+    padding-right: max(1.25rem, var(--safe-right));
+  }
   /* Room for the floating bottom nav plus the iPhone home indicator. */
   .pb-nav {
     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 1.5rem);
