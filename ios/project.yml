@@ -87,7 +87,7 @@ targets:
         UIRequiresFullScreen: true
         # The app opens links (universal links), not documents.
         LSSupportsOpeningDocumentsInPlace: false
-        NSCameraUsageDescription: Snatzee gebruikt de camera om de QR-code van een groep of je scoreblad te scannen.
+        NSCameraUsageDescription: Snatzee gebruikt de camera om de QR-code van een groep te scannen.
         # Read by AppConfig; set in Config/*.xcconfig.
         SnatzeeAPIScheme: $(SNATZEE_API_SCHEME)
         SnatzeeAPIHost: $(SNATZEE_API_HOST)

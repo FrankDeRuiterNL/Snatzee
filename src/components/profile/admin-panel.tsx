@@ -42,8 +42,6 @@ export function AdminPanel({
   // Stored as 0/1 so the existing integer RPC can write it.
   const [launchSplash, setLaunchSplash] = useState(() => settings.launch_splash === 1)
   const [splashBusy, setSplashBusy] = useState(false)
-  const [scanIos, setScanIos] = useState(() => settings.scoresheet_scan_ios === 1)
-  const [scanIosBusy, setScanIosBusy] = useState(false)
 
 
   const [targetUser, setTargetUser] = useState('')
@@ -176,21 +174,6 @@ export function AdminPanel({
               void toggleFlag('launch_splash', next, setLaunchSplash, setSplashBusy, {
                 on: 'Startscherm staat aan',
                 off: 'Startscherm staat uit',
-              })
-            }
-          />
-        </div>
-
-        <div className="border-t border-white/10 pt-5">
-          <ToggleRow
-            label="Scoreblad scannen in de iOS-app"
-            description="Laat spelers in de iPhone-app een potje toevoegen door hun papieren scoreblad te fotograferen. Het lezen gebeurt op de telefoon zelf; de speler controleert alles voor het opslaan."
-            checked={scanIos}
-            disabled={scanIosBusy}
-            onCheckedChange={(next) =>
-              void toggleFlag('scoresheet_scan_ios', next, setScanIos, setScanIosBusy, {
-                on: 'Scannen in de iOS-app staat aan',
-                off: 'Scannen in de iOS-app staat uit',
               })
             }
           />

@@ -7,17 +7,6 @@ struct SheetFormView: View {
     @Binding var entries: [Int]
     /// Yahtzees thrown this game, for the bonus on every one after the first.
     var yahtzees: Int = 0
-    /// Rows to look at again: the scanner's doubts. Touching a row clears
-    /// its mark — the player has looked.
-    var flagged: Binding<Set<Int>>? = nil
-
-    private func isFlagged(_ index: Int) -> Bool { flagged?.wrappedValue.contains(index) ?? false }
-
-    private func set(_ index: Int, _ value: Int) {
-        Haptics.play(.light)
-        entries[index] = value
-        if let flagged { flagged.wrappedValue.remove(index) }
-    }
 
     var body: some View {
         let totals = ScoreSheet.totals(entries, yahtzees: yahtzees)
@@ -67,31 +56,35 @@ struct SheetFormView: View {
         let definition = ScoreSheet.rows[index]
         let value = entries.indices.contains(index) ? entries[index] : 0
 
-        let doubt = isFlagged(index)
-
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(definition.label)
                     .font(.jakarta(TextSize.base15, .semibold))
                     .foregroundStyle(Theme.ink)
-                Text(doubt ? "Even controleren" : definition.hint)
-                    .font(.jakarta(TextSize.xs, doubt ? .semibold : .regular))
-                    .foregroundStyle(doubt ? Theme.tangerine300 : Theme.inkMuted)
+                Text(definition.hint)
+                    .font(.jakarta(TextSize.xs))
+                    .foregroundStyle(Theme.inkMuted)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
             if let points = definition.fixedPoints {
                 PointsCheckbox(label: definition.label, points: points, isOn: Binding(
                     get: { value == points },
-                    set: { on in set(index, on ? points : 0) }
-                ), doubt: doubt)
+                    set: { on in
+                        Haptics.play(.light)
+                        entries[index] = on ? points : 0
+                    }
+                ))
             } else {
                 // A menu of exactly the values this row allows: it cannot offer
                 // a number that is not possible, like the web's native select.
                 Menu {
                     Picker(definition.label, selection: Binding(
                         get: { value },
-                        set: { newValue in set(index, newValue) }
+                        set: { newValue in
+                            Haptics.play(.light)
+                            entries[index] = newValue
+                        }
                     )) {
                         ForEach(definition.values.reversed(), id: \.self) { option in
                             Text("\(option)").tag(option)
@@ -108,17 +101,15 @@ struct SheetFormView: View {
                         .background(Theme.canvas, in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-                                .strokeBorder(doubt ? Theme.tangerine500.opacity(0.6) : Theme.hairline, lineWidth: 1)
+                                .strokeBorder(Theme.hairline, lineWidth: 1)
                         )
                 }
-                .accessibilityLabel("\(definition.label): \(value)\(doubt ? ", even controleren" : "")")
+                .accessibilityLabel("\(definition.label): \(value)")
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(doubt ? Theme.tangerine500.opacity(0.10) : .clear)
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.hairline).frame(height: 1) }
-        .animation(.easeOut(duration: 0.2), value: doubt)
     }
 
     private func computed(_ label: String, _ value: Int, hint: String? = nil, strong: Bool = false) -> some View {
@@ -156,7 +147,6 @@ private struct PointsCheckbox: View {
     let label: String
     let points: Int
     @Binding var isOn: Bool
-    var doubt = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -197,7 +187,7 @@ private struct PointsCheckbox: View {
                         in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-                    .strokeBorder(isOn ? Theme.mint500 : doubt ? Theme.tangerine500.opacity(0.6) : Theme.hairline, lineWidth: 1)
+                    .strokeBorder(isOn ? Theme.mint500 : Theme.hairline, lineWidth: 1)
             )
             .contentShape(Rectangle())
         }

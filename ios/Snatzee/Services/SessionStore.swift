@@ -129,9 +129,9 @@ final class SessionStore {
 
     /// Compares this build with `min_ios_build` from the server.
     private func isBuildTooOld() async -> Bool {
-        guard let config = try? await API.rpc("get_client_config", as: ClientConfig.self) else { return false }
-        AppFeatures.shared.apply(config)
-        guard let minimum = config.setting("min_ios_build") else { return false }
+        guard let config = try? await API.rpc("get_client_config", as: ClientConfig.self),
+              let minimum = config.setting("min_ios_build")
+        else { return false }
         return AppConfig.buildNumber < minimum
     }
 }
