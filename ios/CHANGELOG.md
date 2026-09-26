@@ -3,6 +3,12 @@
 Versions follow [Semantic Versioning](https://semver.org). See `CLAUDE.md`
 for when each part goes up.
 
+## 1.2.1
+
+- Fixed Xcode warnings: the history list's size limit is read on the main
+  actor, the Info.plist says the app does not open documents in place, and
+  the Sign in with Apple button stays within Apple's maximum width.
+
 ## 1.2.0
 
 - Score sheet: Full house, Kleine straat, Grote straat and Topscore are a

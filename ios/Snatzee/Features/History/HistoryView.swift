@@ -280,13 +280,15 @@ struct HistoryView: View {
 
     private func load() async {
         let id = profile.id.uuidString
+        // Read here, on the main actor, not inside the query builder.
+        let limit = Self.limit
         do {
             async let rows = API.rows(ScoreEntry.self) {
                 $0.from("score_entries").select()
                     .eq("user_id", value: id)
                     .order("played_at", ascending: false)
                     .order("created_at", ascending: false)
-                    .limit(Self.limit)
+                    .limit(limit)
             }
             async let stats = API.rows(UserStatistics.self) {
                 $0.from("user_statistics").select().eq("user_id", value: id).limit(1)

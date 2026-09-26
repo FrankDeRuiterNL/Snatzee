@@ -24,7 +24,11 @@ struct AppleSignInButton: View {
         }
         .signInWithAppleButtonStyle(.white)
         .frame(height: 56)
+        // Apple's button is at most 375 points wide; wider made it break
+        // its own layout constraint.
+        .frame(maxWidth: 375)
         .clipShape(Capsule())
+        .frame(maxWidth: .infinity)
     }
 
     @MainActor
