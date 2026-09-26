@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseRequestClient } from '@/lib/supabase/request'
 import { drainNotifications, isPushConfigured } from '@/lib/push-server'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +32,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Titel en tekst zijn verplicht.' }, { status: 400 })
   }
 
-  const supabase = await createSupabaseServerClient()
+  const { supabase, user } = await createSupabaseRequestClient(request)
+  if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+
   const { data, error } = await supabase.rpc('admin_broadcast_notification', {
     p_title: parsed.data.title,
     p_body: parsed.data.body,

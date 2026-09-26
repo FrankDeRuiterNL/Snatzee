@@ -278,6 +278,19 @@ services:
       # Domains the app may build redirects for, comma-separated with the
       # port when it is not 80/443. Empty accepts any Host header.
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
+      # Seconds between outbox flushes by the server itself; 0 turns the
+      # background sender off.
+      PUSH_DRAIN_INTERVAL_SECONDS: ${PUSH_DRAIN_INTERVAL_SECONDS:-15}
+      # iOS app: APNs push, Sign in with Apple revocation, universal links.
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-}
+      APNS_PRIVATE_KEY: ${APNS_PRIVATE_KEY:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      APPLE_SIGNIN_KEY_ID: ${APPLE_SIGNIN_KEY_ID:-}
+      APPLE_SIGNIN_PRIVATE_KEY: ${APPLE_SIGNIN_PRIVATE_KEY:-}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_APP_IDS: ${APPLE_APP_IDS:-}
     healthcheck:
       test:
         - CMD

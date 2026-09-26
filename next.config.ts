@@ -32,6 +32,16 @@ const nextConfig: NextConfig = {
       { protocol: 'https' as const, hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
     ],
   },
+  async rewrites() {
+    return [
+      // iOS universal links. Apple fetches exactly this path, without an
+      // extension, and expects JSON.
+      {
+        source: '/.well-known/apple-app-site-association',
+        destination: '/api/apple-app-site-association',
+      },
+    ]
+  },
   async headers() {
     return [
       {

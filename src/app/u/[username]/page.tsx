@@ -9,17 +9,9 @@ import { FriendActionButton } from '@/components/profile/friend-action-button'
 import { ScoreEntryCard } from '@/components/score/score-entry-card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
-import {
-  getAchievementsForUser,
-  getCurrentUser,
-  getFriendCount,
-  getProfileByUsername,
-  getPublicScores,
-  getUserStatistics,
-} from '@/lib/supabase/queries'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { ProfileSafety } from '@/components/profile/profile-safety'
+import { getCurrentUser, getPublicProfile } from '@/lib/supabase/queries'
 import { formatPlayedAt } from '@/lib/utils'
-import type { Friendship } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +21,7 @@ export async function generateMetadata({
   params: Promise<{ username: string }>
 }): Promise<Metadata> {
   const { username } = await params
-  const profile = await getProfileByUsername(username)
+  const profile = (await getPublicProfile(username))?.profile
   if (!profile) return { title: 'Profiel niet gevonden' }
 
   return {
@@ -44,36 +36,17 @@ export default async function PublicProfilePage({
   params: Promise<{ username: string }>
 }) {
   const { username } = await params
-  const profile = await getProfileByUsername(username)
-  if (!profile || !profile.onboarding_completed) notFound()
+  // One RPC, shared with the iOS app: the profile, the viewer's relation
+  // to it, and only as much detail as that relation allows.
+  const page = await getPublicProfile(username)
+  if (!page) notFound()
 
   const viewer = await getCurrentUser()
-  const isSelf = viewer?.id === profile.id
-  const friendCount = await getFriendCount(profile.id)
-
-  // Friendship state drives both the action button and private-profile access.
-  type FriendshipRow = Pick<Friendship, 'id' | 'status' | 'requester_id' | 'addressee_id'>
-  let friendship: FriendshipRow | null = null
-  if (viewer && !isSelf) {
-    const supabase = await createSupabaseServerClient()
-    const { data } = await supabase
-      .from('friendships')
-      .select('id, status, requester_id, addressee_id')
-      .or(
-        `and(requester_id.eq.${viewer.id},addressee_id.eq.${profile.id}),and(requester_id.eq.${profile.id},addressee_id.eq.${viewer.id})`,
-      )
-      .maybeSingle()
-    friendship = (data as FriendshipRow | null) ?? null
-  }
-
-  const areFriends = friendship?.status === 'accepted'
-  const locked = profile.is_private && !isSelf && !areFriends
-
-  const [stats, achievements, scores] = await Promise.all([
-    getUserStatistics(profile.id),
-    locked ? Promise.resolve([]) : getAchievementsForUser(profile.id),
-    locked ? Promise.resolve([]) : getPublicScores(profile.id, 10),
-  ])
+  const { profile, is_self: isSelf, friendship, stats, achievements } = page
+  const friendCount = page.friend_count
+  const locked = !page.can_view_details
+  const blockedByMe = page.blocked_by_me
+  const scores = page.recent_scores
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-[34rem]">
@@ -102,7 +75,7 @@ export default async function PublicProfilePage({
               displayName={profile.display_name}
               username={profile.username}
               avatarUrl={profile.avatar_url}
-              bio={locked ? null : profile.bio}
+              bio={profile.bio}
               stats={stats}
               friendCount={friendCount}
               action={
@@ -110,13 +83,17 @@ export default async function PublicProfilePage({
                   <Button asChild variant="soft" full size="sm">
                     <Link href="/app/profile">Naar je eigen profiel</Link>
                   </Button>
+                ) : viewer && blockedByMe ? (
+                  <Button variant="soft" full size="sm" disabled>
+                    Geblokkeerd
+                  </Button>
                 ) : viewer ? (
                   <FriendActionButton
                     userId={profile.id}
                     displayName={profile.display_name}
                     status={friendship?.status ?? null}
                     friendshipId={friendship?.id ?? null}
-                    isIncoming={friendship?.addressee_id === viewer.id}
+                    isIncoming={friendship?.is_incoming ?? false}
                   />
                 ) : (
                   <Button asChild variant="soft" full size="sm">
@@ -130,8 +107,12 @@ export default async function PublicProfilePage({
               <div className="px-5">
                 <EmptyState
                   emoji="🔒"
-                  title="Dit profiel is privé"
-                  description={`${profile.display_name} deelt de details alleen met vrienden. De cijfers hierboven blijven zichtbaar in de ranglijsten.`}
+                  title={blockedByMe ? 'Je hebt deze speler geblokkeerd' : 'Dit profiel is privé'}
+                  description={
+                    blockedByMe
+                      ? `Deblokkeer ${profile.display_name} om het profiel weer te zien.`
+                      : `${profile.display_name} deelt de details alleen met vrienden. De cijfers hierboven blijven zichtbaar in de ranglijsten.`
+                  }
                 />
               </div>
             ) : (
@@ -184,6 +165,14 @@ export default async function PublicProfilePage({
                   )}
                 </section>
               </>
+            )}
+
+            {viewer && !isSelf && (
+              <ProfileSafety
+                userId={profile.id}
+                displayName={profile.display_name}
+                blockedByMe={blockedByMe}
+              />
             )}
 
             {!viewer && (

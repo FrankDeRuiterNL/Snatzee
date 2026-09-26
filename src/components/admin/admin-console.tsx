@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { AdminNotify } from '@/components/admin/admin-notify'
 import { AdminManagement } from '@/components/admin/admin-management'
 import { AdminGroups } from '@/components/admin/admin-groups'
+import { AdminReports } from '@/components/admin/admin-reports'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { formatNumber, formatPlayedAt, formatTime } from '@/lib/utils'
@@ -27,7 +28,7 @@ import type {
   AdminScoreSort,
 } from '@/types/database'
 
-type Tab = 'scores' | 'first-roll' | 'groups' | 'notify' | 'manage'
+type Tab = 'scores' | 'first-roll' | 'groups' | 'reports' | 'notify' | 'manage'
 
 const PAGE_SIZE = 25
 
@@ -236,6 +237,7 @@ export function AdminConsole({
             { key: 'scores', label: 'Scores' },
             { key: 'first-roll', label: "1-worp Yahtzee's" },
             { key: 'groups', label: 'Groepen' },
+            { key: 'reports', label: 'Rapportages' },
             { key: 'notify', label: 'Meldingen' },
             { key: 'manage', label: 'Beheer' },
           ]}
@@ -244,7 +246,9 @@ export function AdminConsole({
         />
       </div>
 
-      {tab === 'notify' ? (
+      {tab === 'reports' ? (
+        <AdminReports />
+      ) : tab === 'notify' ? (
         <AdminNotify />
       ) : tab === 'groups' ? (
         <AdminGroups onChanged={() => setCountsVersion((v) => v + 1)} />

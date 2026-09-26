@@ -6,6 +6,7 @@ import type {
   AchievementWithUnlock,
   Group,
   HomeSummary,
+  FriendshipStatus,
   Profile,
   PublicScoreEntry,
   ScoreEntry,
@@ -46,18 +47,6 @@ export async function getUserStatistics(userId: string): Promise<UserStatistics 
   return (data as UserStatistics | null) ?? null
 }
 
-export async function getProfileByUsername(username: string): Promise<Profile | null> {
-  const supabase = await createSupabaseServerClient()
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    // Usernames are stored lowercase. Not ilike: `_` is a wildcard there,
-    // and underscores are allowed in usernames.
-    .eq('username', username.toLowerCase())
-    .maybeSingle()
-  return (data as Profile | null) ?? null
-}
-
 export async function getRecentScores(userId: string, limit = 5): Promise<ScoreEntry[]> {
   const supabase = await createSupabaseServerClient()
   const { data } = await supabase
@@ -68,18 +57,6 @@ export async function getRecentScores(userId: string, limit = 5): Promise<ScoreE
     .order('created_at', { ascending: false })
     .limit(limit)
   return (data as ScoreEntry[] | null) ?? []
-}
-
-/** Scores of any player, without the private note field. */
-export async function getPublicScores(userId: string, limit = 30): Promise<PublicScoreEntry[]> {
-  const supabase = await createSupabaseServerClient()
-  const { data } = await supabase
-    .from('public_score_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .order('played_at', { ascending: false })
-    .limit(limit)
-  return (data as PublicScoreEntry[] | null) ?? []
 }
 
 export async function getAchievementsForUser(userId: string): Promise<AchievementWithUnlock[]> {
@@ -148,15 +125,30 @@ export async function getPendingFriendRequestCount(): Promise<number> {
   return Number(data ?? 0)
 }
 
-/**
- * How many accepted friends a player has.
- *
- * Goes through an RPC because friendships are only visible to the two
- * people in them — a plain count would read 0 on anyone else's profile.
- */
-export async function getFriendCount(userId: string): Promise<number> {
-  const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase.rpc('friend_count', { p_user: userId })
-  if (error) return 0
-  return Number(data ?? 0)
+export interface PublicProfilePage {
+  profile: Pick<
+    Profile,
+    'id' | 'username' | 'display_name' | 'avatar_url' | 'bio' | 'is_private' | 'created_at'
+  >
+  is_self: boolean
+  can_view_details: boolean
+  blocked_by_me: boolean
+  friendship: { id: string; status: FriendshipStatus; is_incoming: boolean } | null
+  friend_count: number
+  stats: UserStatistics | null
+  achievements: AchievementWithUnlock[]
+  recent_scores: PublicScoreEntry[]
 }
+
+/**
+ * Everything a public profile page shows, in one call (get_public_profile,
+ * shared with the iOS app). Null for a player that does not exist, has
+ * not finished onboarding, or blocked the viewer. Memoised per request, so
+ * the metadata and the page share one round-trip.
+ */
+export const getPublicProfile = cache(async (username: string): Promise<PublicProfilePage | null> => {
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase.rpc('get_public_profile', { p_username: username })
+  if (error || !data) return null
+  return data as PublicProfilePage
+})

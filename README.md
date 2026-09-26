@@ -197,6 +197,15 @@ ${PUBLIC_URL}/auth/v1/callback
 Staat de provider op `false`, dan verdwijnt de knop ook uit de app — een knop
 die naar een doodlopend eind leidt is erger dan geen knop.
 
+### iOS-app
+
+De backend is klaar voor een native iOS-app: APNs-push, Sign in with Apple
+(incl. intrekken bij het verwijderen van een account), universal links,
+melden en blokkeren, en één RPC per scherm. Wat de app aanroept en welke
+regels er gelden voor achterwaartse compatibiliteit staat in
+[`docs/ios-api.md`](docs/ios-api.md). De instellingen staan onder
+"iOS-app" in `.env.example` en blijven leeg tot de app bestaat.
+
 ### Pushmeldingen
 
 ```bash

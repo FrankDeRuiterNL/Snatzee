@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseRequestClient } from '@/lib/supabase/request'
 import { drainNotifications, isPushConfigured } from '@/lib/push-server'
 
 export const dynamic = 'force-dynamic'
@@ -12,13 +12,10 @@ export const dynamic = 'force-dynamic'
  * app pings it after the actions that queue something, which is what makes
  * delivery feel immediate without a background worker.
  */
-export async function POST() {
+export async function POST(request: Request) {
   if (!isPushConfigured()) return NextResponse.json({ claimed: 0, sent: 0, failed: 0 })
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await createSupabaseRequestClient(request)
 
   if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseRequestClient } from '@/lib/supabase/request'
 import { isPushConfigured, sendPushToUser } from '@/lib/push-server'
 
 export const dynamic = 'force-dynamic'
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  * Only ever to yourself — the endpoint takes no target, so it cannot be used
  * to push to anyone else even by an admin.
  */
-export async function POST() {
+export async function POST(request: Request) {
   if (!isPushConfigured()) {
     return NextResponse.json(
       { error: 'Push is niet geconfigureerd op deze server.' },
@@ -18,10 +18,7 @@ export async function POST() {
     )
   }
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await createSupabaseRequestClient(request)
 
   if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 

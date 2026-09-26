@@ -2,7 +2,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { SUPABASE_ANON_KEY, SUPABASE_SERVER_URL, SUPABASE_STORAGE_KEY } from './env'
 
-const PUBLIC_PATHS = ['/', '/login', '/register', '/auth', '/u', '/offline', '/api/health']
+// /api is listed as a whole: every route there checks the caller itself
+// and answers 401, and the iOS app signs in with a bearer token that this
+// cookie-based check cannot see — a redirect to /login would be wrong for
+// both.
+const PUBLIC_PATHS = ['/', '/login', '/register', '/auth', '/u', '/offline', '/api']
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))

@@ -20,6 +20,8 @@ export const config = {
      * load fails playback with NotSupportedError, so the launch sound never
      * arrived no matter when it was attempted.
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/|audio/|brand/|splash/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest|mp3|ogg|woff2?)$).*)',
+    // .well-known carries the apple-app-site-association file, which
+    // Apple's CDN fetches without any session.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/|audio/|brand/|splash/|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest|mp3|ogg|woff2?)$).*)',
   ],
 }

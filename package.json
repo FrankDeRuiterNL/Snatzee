@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/unit/*.test.ts",
+    "test": "node --conditions=react-server --import tsx --test tests/unit/*.test.ts",
     "test:db": "bash scripts/test-db.sh",
     "seed": "tsx scripts/seed.ts",
     "brand": "node scripts/generate-brand-assets.mjs",

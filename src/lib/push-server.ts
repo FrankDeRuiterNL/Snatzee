@@ -3,6 +3,7 @@ import 'server-only'
 import webpush from 'web-push'
 import { createClient } from '@supabase/supabase-js'
 import { SUPABASE_SERVER_URL } from '@/lib/supabase/env'
+import { isApnsConfigured, sendApns, type ApnsEnvironment } from '@/lib/apns'
 
 /**
  * Sending side of Web Push.
@@ -20,9 +21,13 @@ const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? ''
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@snatzee.nl'
 
-/** True when the server has everything it needs to push. */
-export function isPushConfigured() {
+function isWebPushConfigured() {
   return VAPID_PUBLIC_KEY.length > 0 && VAPID_PRIVATE_KEY.length > 0
+}
+
+/** True when the server can push to at least one kind of device. */
+export function isPushConfigured() {
+  return isWebPushConfigured() || isApnsConfigured()
 }
 
 let configured = false
@@ -67,8 +72,19 @@ interface SubscriptionRow {
 export async function sendPushToUser(userId: string, payload: PushPayload) {
   if (!isPushConfigured()) return { sent: 0, removed: 0, skipped: 'not-configured' as const }
 
-  configure()
   const supabase = serviceClient()
+
+  const [web, ios] = await Promise.all([
+    isWebPushConfigured() ? sendWebPush(supabase, userId, payload) : { sent: 0, removed: 0 },
+    isApnsConfigured() ? sendIosPush(supabase, userId, payload) : { sent: 0, removed: 0 },
+  ])
+  return { sent: web.sent + ios.sent, removed: web.removed + ios.removed }
+}
+
+type ServiceClient = ReturnType<typeof serviceClient>
+
+async function sendWebPush(supabase: ServiceClient, userId: string, payload: PushPayload) {
+  configure()
 
   const { data, error } = await supabase
     .from('push_subscriptions')
@@ -109,6 +125,44 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
   }
 
   return { sent, removed: expired.length }
+}
+
+interface ApnsRow {
+  token: string
+  environment: ApnsEnvironment
+}
+
+/** The same notification on every iPhone the person signed in on. */
+async function sendIosPush(supabase: ServiceClient, userId: string, payload: PushPayload) {
+  const { data, error } = await supabase
+    .from('apns_devices')
+    .select('token, environment')
+    .eq('user_id', userId)
+
+  if (error || !data?.length) return { sent: 0, removed: 0 }
+
+  const gone: string[] = []
+  let sent = 0
+
+  await Promise.all(
+    (data as ApnsRow[]).map(async (row) => {
+      const result = await sendApns(row.token, row.environment, {
+        title: payload.title,
+        body: payload.body,
+        url: payload.url,
+        collapseId: payload.tag,
+        data: payload.data,
+      })
+      if (result.ok) sent += 1
+      else if (result.gone) gone.push(row.token)
+    }),
+  )
+
+  if (gone.length) {
+    await supabase.from('apns_devices').delete().in('token', gone)
+  }
+
+  return { sent, removed: gone.length }
 }
 
 /** Same, for several people at once. */

@@ -19,6 +19,7 @@ import { BottomSheet } from '@/components/ui/sheet'
 import { FieldError, Input, Label, Textarea } from '@/components/ui/input'
 import { ToggleRow } from '@/components/ui/toggle-row'
 import { AvatarUploader } from '@/components/profile/avatar-uploader'
+import { BlockedUsers } from '@/components/profile/blocked-users'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { DISPLAY_NAME_MAX } from '@/lib/constants'
 import { haptic } from '@/lib/haptics'
@@ -225,27 +226,20 @@ export function SettingsView({
     if (deleting) return
     setDeleting(true)
 
-    const supabase = getSupabaseBrowserClient()
+    // The server removes the avatar files too, which the database
+    // cascade cannot reach.
+    const response = await fetch('/api/account/delete', { method: 'POST' }).catch(() => null)
 
-    // Avatars live in storage, outside what deleting the account cascades
-    // to. Removed first, while there is still a session allowed to do it;
-    // best effort, because a leftover file must not block the deletion.
-    try {
-      const bucket = supabase.storage.from('avatars')
-      const { data: files } = await bucket.list(profile.id, { limit: 1000 })
-      if (files?.length) await bucket.remove(files.map((file: { name: string }) => `${profile.id}/${file.name}`))
-    } catch {
-      // Carry on with the account itself.
-    }
-
-    const { error: rpcError } = await supabase.rpc('delete_own_account')
-
-    if (rpcError) {
+    if (!response?.ok) {
+      const body = (await response?.json().catch(() => null)) as { error?: string } | null
       setDeleting(false)
-      toast.error('Verwijderen is niet gelukt', { description: rpcError.message })
+      toast.error('Verwijderen is niet gelukt', {
+        description: body?.error ?? 'Controleer je verbinding en probeer het opnieuw.',
+      })
       return
     }
 
+    const supabase = getSupabaseBrowserClient()
     await supabase.auth.signOut()
     toast.success('Je account is verwijderd')
     router.replace('/')
@@ -288,6 +282,7 @@ export function SettingsView({
           checked={isPrivate}
           onCheckedChange={togglePrivacy}
         />
+        <BlockedUsers />
       </Section>
 
       <Section title="Meldingen" icon={Bell}>
