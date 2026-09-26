@@ -42,7 +42,14 @@ export function Avatar({
           width={px}
           height={px}
           className="size-full object-cover"
-          unoptimized={src.startsWith('data:')}
+          // Loaded by the browser straight from storage, never through the
+          // image optimiser. Avatars are already 384px and a few tens of
+          // KB when uploaded (lib/image.ts), so there is little to gain —
+          // and the optimiser fetches the public URL from inside the app
+          // container, which on a home server behind NAT often cannot
+          // reach its own public address: every avatar then broke as soon
+          // as the optimiser's cache was emptied by a rebuild.
+          unoptimized
         />
       ) : (
         <span aria-hidden>{initials(name)}</span>
