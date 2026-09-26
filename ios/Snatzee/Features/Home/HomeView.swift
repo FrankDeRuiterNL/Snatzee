@@ -135,15 +135,24 @@ struct HomeView: View {
     // MARK: Stats
 
     private func statGrid(_ summary: HomeSummary) -> some View {
-        let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+        // A fixed two-by-two grid of equal cards: every card keeps room
+        // for a hint line, so labels and numbers line up across the rows.
         return VStack(spacing: 12) {
-            LazyVGrid(columns: columns, spacing: 12) {
-                StatCard(label: "Potjes", value: Formatting.number(summary.gamesPlayed), icon: "dice-5", accent: .navy)
-                StatCard(label: "Gewonnen", value: Formatting.number(summary.wins),
-                         hint: "\(Formatting.number(summary.winRate, decimals: 0))% winst", icon: "trophy", accent: .mint)
-                StatCard(label: "Yahtzee's", value: Formatting.number(summary.yahtzeeCount),
-                         hint: "\(Formatting.number(summary.firstRollYahtzeeCount)) in één worp", icon: "target", accent: .grape)
-                StatCard(label: "Gemiddelde", value: average(summary.averageScore), icon: "trending-up", accent: .aqua)
+            Grid(horizontalSpacing: 12, verticalSpacing: 12) {
+                GridRow {
+                    StatCard(label: "Potjes", value: Formatting.number(summary.gamesPlayed), icon: "dice-5", accent: .navy,
+                             reservesHint: true)
+                    StatCard(label: "Gewonnen", value: Formatting.number(summary.wins),
+                             hint: "\(Formatting.number(summary.winRate, decimals: 0))% winst", icon: "trophy", accent: .mint,
+                             reservesHint: true)
+                }
+                GridRow {
+                    StatCard(label: "Yahtzee's", value: Formatting.number(summary.yahtzeeCount),
+                             hint: "\(Formatting.number(summary.firstRollYahtzeeCount)) in één worp", icon: "target", accent: .grape,
+                             reservesHint: true)
+                    StatCard(label: "Gemiddelde", value: average(summary.averageScore), icon: "trending-up", accent: .aqua,
+                             reservesHint: true)
+                }
             }
             StatCard(label: "Persoonlijk record",
                      value: summary.highestScore.map { Formatting.number($0) } ?? "—",

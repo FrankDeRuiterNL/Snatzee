@@ -94,6 +94,9 @@ struct StatCard: View {
     var hint: String?
     var icon: String?
     var accent: Accent = .navy
+    /// Keep the hint line's room when there is no hint, so cards side by
+    /// side are the same height with their numbers level.
+    var reservesHint = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -110,15 +113,17 @@ struct StatCard: View {
                 .monospacedDigit()
                 .foregroundStyle(Theme.ink)
                 .padding(.top, 2)
-            if let hint {
-                Text(hint)
+            if hint != nil || reservesHint {
+                Text(hint ?? " ")
                     .font(.jakarta(TextSize.xs, .medium))
                     .foregroundStyle(Theme.inkMuted)
+                    .lineLimit(1)
                     .padding(.top, 4)
+                    .accessibilityHidden(hint == nil)
             }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .card(.surface)
     }
 }
