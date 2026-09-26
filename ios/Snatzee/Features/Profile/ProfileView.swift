@@ -91,7 +91,7 @@ struct ProfileView: View {
         async let overview = try? API.rpc("get_friends_overview", as: FriendsOverview.self)
         async let groups = try? API.rows(GroupId.self) { $0.from("groups").select("id") }
 
-        self.stats = await stats??.first
+        self.stats = await stats?.first
         self.achievements = await achievements ?? []
         self.friendCount = await overview?.friends.count ?? 0
         self.groupCount = await groups?.count ?? 0
