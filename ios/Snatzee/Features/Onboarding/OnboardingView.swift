@@ -1,4 +1,5 @@
 import PhotosUI
+import Supabase
 import SwiftUI
 
 /// The five onboarding steps from the website: welcome, username, name,
@@ -238,7 +239,7 @@ struct OnboardingView: View {
                 "p_username": .string(normalized),
                 "p_display_name": .string(displayName.trimmingCharacters(in: .whitespaces)),
             ]
-            params["p_avatar_url"] = avatarUrl.map(AnyJSON.string) ?? .null
+            if let avatarUrl { params["p_avatar_url"] = .string(avatarUrl) }
             try await API.rpcVoid("complete_onboarding", params)
             Haptics.play(.success)
             await session.reloadProfile()
