@@ -47,6 +47,17 @@ export const SHEET_ROWS: SheetRow[] = [
   { label: 'Chance', hint: 'Vrije keus · totaal van 5 stenen', values: ANY_THROW },
 ]
 
+/**
+ * The points a yes-or-no row is worth, or null for a row with a range.
+ *
+ * Full house, both straights and the Topscore hold either nothing or
+ * their fixed score, so the form offers them as a checkbox rather than a
+ * list with two entries.
+ */
+export function fixedPoints(row: SheetRow): number | null {
+  return row.values.length === 2 && row.values[0] === 0 ? row.values[1]! : null
+}
+
 /** How many of the rows belong to the sheet's upper half. */
 export const UPPER_ROWS = 6
 /** The bonus, and the subtotal that earns it. */

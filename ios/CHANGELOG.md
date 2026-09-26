@@ -3,6 +3,11 @@
 Versions follow [Semantic Versioning](https://semver.org). See `CLAUDE.md`
 for when each part goes up.
 
+## 1.2.0
+
+- Score sheet: Full house, Kleine straat, Grote straat and Topscore are a
+  checkbox worth their points instead of a menu with 0 or the points.
+
 ## 1.1.0
 
 - Privacybeleid, voorwaarden and support linked in Instellingen.

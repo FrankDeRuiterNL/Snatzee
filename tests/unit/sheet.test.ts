@@ -2,7 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   emptySheet,
+  fixedPoints,
   isValidSheet,
+  SHEET_ROWS,
   sheetTotals,
   yahtzeeBonus,
   TOPSCORE_ROW,
@@ -49,4 +51,9 @@ test('values a row cannot hold are rejected', () => {
   assert.equal(isValidSheet(FULL.map((v, row) => (row === 1 ? 3 : v))), false, 'odd twos')
   assert.equal(isValidSheet(FULL.slice(0, 12)), false, 'twelve rows')
   assert.equal(isValidSheet('nope'), false)
+})
+
+test('yes-or-no rows are exactly full house, both straights and the Topscore', () => {
+  const fixed = SHEET_ROWS.map((row) => fixedPoints(row))
+  assert.deepEqual(fixed, [null, null, null, null, null, null, null, null, 25, 30, 40, 50, null])
 })

@@ -9,6 +9,13 @@ enum ScoreSheet {
         let hint: String
         /// Every value the row may hold, in order.
         let values: [Int]
+
+        /// The points a yes-or-no row is worth (full house, the straights,
+        /// the Topscore), or nil for a row with a range. The form offers
+        /// those as a checkbox instead of a list with two entries.
+        var fixedPoints: Int? {
+            values.count == 2 && values[0] == 0 ? values[1] : nil
+        }
     }
 
     private static func step(_ from: Int, _ to: Int, by: Int) -> [Int] {

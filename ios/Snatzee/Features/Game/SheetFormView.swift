@@ -67,35 +67,45 @@ struct SheetFormView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            // A menu of exactly the values this row allows: it cannot offer
-            // a number that is not possible, like the web's native select.
-            Menu {
-                Picker(definition.label, selection: Binding(
-                    get: { value },
-                    set: { newValue in
+            if let points = definition.fixedPoints {
+                PointsCheckbox(label: definition.label, points: points, isOn: Binding(
+                    get: { value == points },
+                    set: { on in
                         Haptics.play(.light)
-                        entries[index] = newValue
+                        entries[index] = on ? points : 0
                     }
-                )) {
-                    ForEach(definition.values.reversed(), id: \.self) { option in
-                        Text("\(option)").tag(option)
+                ))
+            } else {
+                // A menu of exactly the values this row allows: it cannot offer
+                // a number that is not possible, like the web's native select.
+                Menu {
+                    Picker(definition.label, selection: Binding(
+                        get: { value },
+                        set: { newValue in
+                            Haptics.play(.light)
+                            entries[index] = newValue
+                        }
+                    )) {
+                        ForEach(definition.values.reversed(), id: \.self) { option in
+                            Text("\(option)").tag(option)
+                        }
                     }
+                } label: {
+                    Text("\(value)")
+                        .font(.jakarta(TextSize.base, .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 56, alignment: .trailing)
+                        .padding(.horizontal, 12)
+                        .frame(minWidth: 80, minHeight: 44)
+                        .background(Theme.canvas, in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+                                .strokeBorder(Theme.hairline, lineWidth: 1)
+                        )
                 }
-            } label: {
-                Text("\(value)")
-                    .font(.jakarta(TextSize.base, .bold))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                    .frame(minWidth: 56, alignment: .trailing)
-                    .padding(.horizontal, 12)
-                    .frame(minWidth: 80, minHeight: 44)
-                    .background(Theme.canvas, in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-                            .strokeBorder(Theme.hairline, lineWidth: 1)
-                    )
+                .accessibilityLabel("\(definition.label): \(value)")
             }
-            .accessibilityLabel("\(definition.label): \(value)")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -127,6 +137,66 @@ struct SheetFormView: View {
         .padding(.vertical, 8)
         .background(Theme.canvas.opacity(0.4))
         .overlay(alignment: .bottom) { Rectangle().fill(Theme.hairline).frame(height: 1) }
+    }
+}
+
+/// A row that is either scored or not: one tap instead of a menu with two
+/// values. Same footprint as the menu button beside it, so the column of
+/// values stays lined up — `<PointsCheckbox>` on the web.
+private struct PointsCheckbox: View {
+    let label: String
+    let points: Int
+    @Binding var isOn: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button {
+            withAnimation(reduceMotion || Preferences.shared.reducedMotion ? nil : .spring(response: 0.28, dampingFraction: 0.62)) {
+                isOn.toggle()
+            }
+        } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(.white.opacity(0.25), lineWidth: 2)
+                        .opacity(isOn ? 0 : 1)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Theme.mint500)
+                        .opacity(isOn ? 1 : 0)
+                    if isOn {
+                        LucideIcon("check", size: 16)
+                            .foregroundStyle(Theme.navy950)
+                            .fontWeight(.black)
+                            .transition(.scale(scale: 0.4).combined(with: .opacity))
+                    }
+                }
+                .frame(width: 24, height: 24)
+                .shadow(color: Theme.mint500.opacity(isOn ? 0.45 : 0), radius: 6, y: 2)
+
+                Text("\(points)")
+                    .font(.jakarta(TextSize.base, .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(isOn ? Theme.mint300 : Theme.inkMuted)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 12)
+            .frame(width: 80, height: 44)
+            .background(isOn ? Theme.mint500.opacity(0.15) : Theme.canvas,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+                    .strokeBorder(isOn ? Theme.mint500 : Theme.hairline, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.pressable)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label), \(points) punten")
+        .accessibilityValue(isOn ? "Aangevinkt" : "Niet aangevinkt")
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityAction { isOn.toggle() }
     }
 }
 

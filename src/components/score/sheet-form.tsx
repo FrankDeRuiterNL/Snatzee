@@ -1,5 +1,7 @@
 'use client'
 
+import { motion } from 'framer-motion'
+import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
 import {
@@ -8,6 +10,7 @@ import {
   UPPER_BONUS,
   UPPER_ROWS,
   YAHTZEE_BONUS,
+  fixedPoints,
   sheetTotals,
 } from '@/lib/scoresheet/sheet'
 
@@ -130,6 +133,8 @@ function Row({
   flagged: boolean
   onChange: (value: number) => void
 }) {
+  const points = fixedPoints(row)
+
   return (
     <div
       className={cn(
@@ -143,27 +148,98 @@ function Row({
           {flagged ? 'Even controleren' : row.hint}
         </span>
       </span>
-      {/*
-        A native select, so a phone shows its own wheel: quicker to spin
-        to 24 than any list of chips this row would fit, and it cannot
-        offer a value the row does not allow.
-      */}
-      <select
-        aria-label={row.label}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
+      {points !== null ? (
+        <PointsCheckbox
+          label={row.label}
+          points={points}
+          checked={value === points}
+          flagged={flagged}
+          onChange={(checked) => onChange(checked ? points : 0)}
+        />
+      ) : (
+        // A native select, so a phone shows its own wheel: quicker to spin
+        // to 24 than any list of chips this row would fit, and it cannot
+        // offer a value the row does not allow.
+        <select
+          aria-label={row.label}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className={cn(
+            'tabular min-h-11 min-w-20 rounded-xl bg-canvas px-3 text-right text-base font-bold text-white ring-1',
+            flagged ? 'ring-tangerine-500/50' : 'ring-hairline',
+          )}
+        >
+          {row.values.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  )
+}
+
+/**
+ * A row that is either scored or not: one tap, instead of a wheel with two
+ * values on it. Same footprint as the select next to it, so the column of
+ * values stays lined up.
+ */
+function PointsCheckbox({
+  label,
+  points,
+  checked,
+  flagged,
+  onChange,
+}: {
+  label: string
+  points: number
+  checked: boolean
+  flagged: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={`${label}, ${points} punten`}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'press flex min-h-11 min-w-20 shrink-0 items-center justify-between gap-2.5 rounded-xl pl-2.5 pr-3 ring-1 transition-colors duration-150',
+        checked
+          ? 'bg-mint-500/15 ring-mint-500'
+          : flagged
+            ? 'bg-canvas ring-tangerine-500/50'
+            : 'bg-canvas ring-hairline',
+      )}
+    >
+      <span
+        aria-hidden
         className={cn(
-          'tabular min-h-11 min-w-20 rounded-xl bg-canvas px-3 text-right text-base font-bold text-white ring-1',
-          flagged ? 'ring-tangerine-500/50' : 'ring-hairline',
+          'grid size-6 place-items-center rounded-lg transition-colors duration-150',
+          checked ? 'bg-mint-500 text-navy-950 shadow-mint' : 'ring-2 ring-inset ring-white/25',
         )}
       >
-        {row.values.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
+        {checked && (
+          <motion.span
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+          >
+            <Check className="size-4" strokeWidth={3.5} />
+          </motion.span>
+        )}
+      </span>
+      <span
+        className={cn(
+          'tabular text-base font-bold transition-colors duration-150',
+          checked ? 'text-mint-300' : 'text-ink-muted',
+        )}
+      >
+        {points}
+      </span>
+    </button>
   )
 }
 

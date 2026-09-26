@@ -45,4 +45,10 @@ final class ScoreSheetTests: XCTestCase {
         XCTAssertFalse(ScoreSheet.isValid(Array(full.prefix(12))))
         XCTAssertFalse(ScoreSheet.isValid(nil))
     }
+
+    func testYesOrNoRows() {
+        // Full house, both straights and the Topscore become checkboxes.
+        XCTAssertEqual(ScoreSheet.rows.map(\.fixedPoints),
+                       [nil, nil, nil, nil, nil, nil, nil, nil, 25, 30, 40, 50, nil])
+    }
 }
