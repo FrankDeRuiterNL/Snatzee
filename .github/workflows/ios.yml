@@ -1,0 +1,70 @@
+name: iOS
+
+# Only for changes to the iOS app, so the web app's CI is untouched by it
+# and the other way round.
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test (simulator)
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the project
+        run: |
+          # CI has no server: a placeholder key lets the app build; tests
+          # do not talk to the network.
+          printf 'SNATZEE_ANON_KEY = ci-placeholder\n' > Config/Local.xcconfig
+          xcodegen generate
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          ID=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          devices = json.load(sys.stdin)['devices']
+          phones = [d for runtime, list_ in devices.items() if 'iOS' in runtime for d in list_ if d['name'].startswith('iPhone')]
+          print(phones[-1]['udid'])")
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Snatzee.xcodeproj \
+            -scheme Snatzee \
+            -destination "id=${{ steps.sim.outputs.id }}" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee xcodebuild.log | grep -E "error:|warning: .*Snatzee/|Test Case .* (passed|failed)|\*\* (BUILD|TEST) (SUCCEEDED|FAILED)" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" xcodebuild.log
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: ios/xcodebuild.log

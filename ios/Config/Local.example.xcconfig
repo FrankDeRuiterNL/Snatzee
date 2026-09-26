@@ -1,0 +1,8 @@
+// Copy to Local.xcconfig (ignored by git) and fill in.
+//
+// ANON_KEY from the server's .env.
+SNATZEE_ANON_KEY = eyJ...
+
+// Point a development build at another server, e.g. a local stack:
+// SNATZEE_API_SCHEME = http
+// SNATZEE_API_HOST = 192.168.1.10:6666

@@ -1,0 +1,14 @@
+// Settings shared by Debug and Release.
+//
+// The server the app talks to. A host, not a URL: "//" starts a comment
+// in xcconfig files, so the scheme is added in code (always https).
+SNATZEE_API_HOST = www.snatzee.nl
+// https everywhere except a development server on the local network.
+SNATZEE_API_SCHEME = https
+
+// The public anon key — the same one the website ships in its JavaScript.
+// Not a secret (row-level security does the protecting), but it is kept
+// out of git anyway: put it in Config/Local.xcconfig (see the example).
+SNATZEE_ANON_KEY =
+
+#include? "Local.xcconfig"

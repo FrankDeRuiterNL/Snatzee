@@ -13,7 +13,7 @@ import { Resvg } from '@resvg/resvg-js'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { contentBounds, decodePng } from './brand/png.mjs'
+import { contentBounds, decodePng, encodeOpaquePng } from './brand/png.mjs'
 import { ICON_TARGETS, MASKABLE_TARGETS, splashTargets } from './brand/devices.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -209,3 +209,43 @@ ${links}
 )
 console.log('✓ src/components/layout/apple-splash-links.tsx')
 console.log(`\nDone — ${count} files written from the original artwork.`)
+
+// ---------------------------------------------------------------------------
+// Native iOS app (ios/). Same artwork, written into its asset catalog.
+// ---------------------------------------------------------------------------
+const IOS_ASSETS = join(ROOT, 'ios', 'Snatzee', 'Resources', 'Assets.xcassets')
+
+function writeJson(path, value) {
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
+}
+
+// The App Store icon: one 1024px square, full-bleed (iOS applies its own
+// corner mask) and without an alpha channel.
+{
+  const dir = join(IOS_ASSETS, 'AppIcon.appiconset')
+  mkdirSync(dir, { recursive: true })
+  const rendered = new Resvg(iconSvg(1024), { fitTo: { mode: 'width', value: 1024 } }).render()
+  writeFileSync(join(dir, 'AppIcon.png'), encodeOpaquePng(rendered.width, rendered.height, rendered.pixels))
+  writeJson(join(dir, 'Contents.json'), {
+    images: [{ filename: 'AppIcon.png', idiom: 'universal', platform: 'ios', size: '1024x1024' }],
+    info: { author: 'xcode', version: 1 },
+  })
+}
+
+// The dice mark, for the launch screen and the in-app logo lockups. Drawn
+// at up to 146pt (the launch lockup), so @3x is 438px.
+{
+  const dir = join(IOS_ASSETS, 'Mark.imageset')
+  mkdirSync(dir, { recursive: true })
+  const images = []
+  for (const scale of [1, 2, 3]) {
+    const file = `Mark@${scale}x.png`
+    writeFileSync(join(dir, file), render(markSvg(146 * scale), 146 * scale))
+    images.push({ filename: file, idiom: 'universal', scale: `${scale}x` })
+  }
+  writeJson(join(dir, 'Contents.json'), { images, info: { author: 'xcode', version: 1 } })
+}
+
+writeJson(join(IOS_ASSETS, 'Contents.json'), { info: { author: 'xcode', version: 1 } })
+console.log('✓ iOS app icon and logo mark')

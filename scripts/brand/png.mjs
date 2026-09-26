@@ -6,7 +6,7 @@
  * from Figma/Illustrator/Photoshop produce. Anything else returns null and
  * the caller falls back to using the full canvas.
  */
-import { inflateSync } from 'node:zlib'
+import { deflateSync, inflateSync } from 'node:zlib'
 
 const CHANNELS = { 0: 1, 2: 3, 4: 2, 6: 4 }
 
@@ -124,4 +124,63 @@ export function contentBounds(buffer, alphaThreshold = 8) {
   if (maxX < 0) return { x: 0, y: 0, width, height }
 
   return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 }
+}
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256)
+  for (let n = 0; n < 256; n++) {
+    let c = n
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    table[n] = c >>> 0
+  }
+  return table
+})()
+
+function crc32(buffer) {
+  let crc = 0xffffffff
+  for (const byte of buffer) crc = CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function chunk(type, body) {
+  const length = Buffer.alloc(4)
+  length.writeUInt32BE(body.length)
+  const typed = Buffer.concat([Buffer.from(type, 'ascii'), body])
+  const crc = Buffer.alloc(4)
+  crc.writeUInt32BE(crc32(typed))
+  return Buffer.concat([length, typed, crc])
+}
+
+/**
+ * Encodes RGBA pixels as an RGB PNG, dropping the alpha channel.
+ *
+ * App Store icons must not have one at all — a fully opaque RGBA image is
+ * still rejected — so the icon is re-encoded without it rather than just
+ * painted on an opaque background.
+ */
+export function encodeOpaquePng(width, height, rgba) {
+  const stride = width * 3 + 1
+  const raw = Buffer.alloc(stride * height)
+  for (let y = 0; y < height; y++) {
+    raw[y * stride] = 0 // filter: none
+    for (let x = 0; x < width; x++) {
+      const from = (y * width + x) * 4
+      const to = y * stride + 1 + x * 3
+      raw[to] = rgba[from]
+      raw[to + 1] = rgba[from + 1]
+      raw[to + 2] = rgba[from + 2]
+    }
+  }
+
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(width, 0)
+  header.writeUInt32BE(height, 4)
+  header[8] = 8 // bit depth
+  header[9] = 2 // colour type: RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(raw, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ])
 }
