@@ -25,7 +25,12 @@ final class SoundPlayer {
     private var players: [Sound: AVAudioPlayer] = [:]
 
     private init() {
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        // Session calls block until the audio daemon answers, so they stay
+        // off the main thread. Setting the category once is all it takes:
+        // AVAudioPlayer activates the session itself when it plays.
+        DispatchQueue.global(qos: .userInitiated).async {
+            try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        }
         for sound in Sound.allCases {
             guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "mp3"),
                   let player = try? AVAudioPlayer(contentsOf: url)
@@ -43,7 +48,6 @@ final class SoundPlayer {
 
     func play(_ sound: Sound) {
         guard Self.isEnabled, let player = players[sound] else { return }
-        try? AVAudioSession.sharedInstance().setActive(true)
         player.currentTime = 0
         player.play()
     }
