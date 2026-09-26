@@ -84,7 +84,7 @@ support, geen dubbeltap-zoom en geen horizontaal scrollen.
 | Iconen | Lucide |
 | Grafieken | Recharts |
 | Database | PostgreSQL (zelf-gehoste Supabase-stack) |
-| Auth | Supabase Auth — e-mail/wachtwoord, Apple, Google |
+| Auth | Supabase Auth — e-mail/wachtwoord en Sign in with Apple |
 | Security | Row Level Security + `SECURITY DEFINER` RPC's |
 | Push | Web Push met VAPID (`web-push`, `jsqr`, `qrcode`) |
 | Hosting | Docker Compose op poort **6666**, of Vercel + gehost Supabase |
@@ -161,7 +161,7 @@ Alles staat in `.env`. De volledige lijst met toelichting staat in
 | `MAILER_EXTERNAL_HOSTS` | Elke hostnaam die in bevestigingslinks mag staan. |
 | `MAILER_AUTOCONFIRM` | `true` zolang er geen SMTP is: accounts zijn dan meteen actief. |
 | `SMTP_*` | Mailserver voor bevestigings- en herstelmails. |
-| `GOOGLE_ENABLED`, `APPLE_ENABLED` | Zetten de provider én de knop in de app aan. |
+| `APPLE_ENABLED` | Zet Sign in with Apple én de knop in de app aan. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Pushmeldingen. Leeg laten schakelt push uit. |
 
 ### Meerdere domeinen
@@ -185,9 +185,10 @@ De stack luistert op `HTTP_PORT` en verwacht TLS-terminatie ervoor. Geef
 `X-Forwarded-Proto` en `X-Forwarded-Host` door; zonder die headers stuurt de app
 callbacks naar een intern adres dat de browser niet kan bereiken.
 
-### Apple en Google
+### Sign in with Apple
 
-Autorisatie-URI in Google Cloud Console en return-URL in je Apple Service ID:
+Naast e-mail is Apple de enige manier om in te loggen. Return-URL in je Apple
+Service ID:
 
 ```
 ${PUBLIC_URL}/auth/v1/callback
@@ -311,7 +312,7 @@ superadmin rollen toe in **Instellingen → Snatzee Admin → Beheer**.
 | Auth logt `must be owner of function uid` | `db-prepare` heeft niet gedraaid. `docker compose up -d --force-recreate db-prepare`. |
 | `password authentication failed for user "supabase_storage_admin"` | Idem: `db-prepare` zet die wachtwoorden. |
 | API geeft 404 op een RPC | PostgREST heeft een oude schema cache. `docker compose restart rest`. |
-| OAuth-knop ontbreekt | `GOOGLE_ENABLED` / `APPLE_ENABLED` staan op `false`, of er is niet herbouwd. |
+| Apple-knop ontbreekt | `APPLE_ENABLED` staat op `false`, of er is niet herbouwd. |
 | Meldingen-toggle zegt "niet ondersteund" in de geïnstalleerde app | `VAPID_PUBLIC_KEY` ontbrak tijdens de build. |
 | QR scannen doet niets | De camera werkt alleen op een https-adres. |
 

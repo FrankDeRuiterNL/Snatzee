@@ -22,7 +22,14 @@
 set -euo pipefail
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
-PSQL=(psql --host=db --port=5432 --username=postgres --dbname=postgres --no-psqlrc --quiet -v ON_ERROR_STOP=1)
+# The defaults are the compose stack; the database tests point these at a
+# throwaway Postgres instead (see scripts/test-db.sh).
+DB_HOST="${DB_HOST:-db}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-postgres}"
+COMPAT_SQL="${COMPAT_SQL:-/sql/supabase-compat.sql}"
+MIGRATIONS_DIR="${MIGRATIONS_DIR:-/migrations}"
+PSQL=(psql --host="$DB_HOST" --port="$DB_PORT" --username=postgres --dbname="$DB_NAME" --no-psqlrc --quiet -v ON_ERROR_STOP=1)
 
 fail() {
   echo ""
@@ -61,7 +68,7 @@ done
 [ "${ready:-no}" = yes ] || fail "auth.users or storage.objects never appeared"
 
 echo "Applying Supabase compatibility helpers..."
-"${PSQL[@]}" -f /sql/supabase-compat.sql || fail "supabase-compat.sql failed"
+"${PSQL[@]}" -f "$COMPAT_SQL" || fail "supabase-compat.sql failed"
 
 "${PSQL[@]}" -tAc "select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                    where n.nspname = 'auth' and p.proname = 'uid'" | grep -q 1 \
@@ -80,7 +87,7 @@ echo "Preparing the migration ledger..."
 
 echo "Applying Snatzee migrations..."
 applied=0
-for file in /migrations/*.sql; do
+for file in "$MIGRATIONS_DIR"/*.sql; do
   name="$(basename "$file")"
   done_already="$("${PSQL[@]}" -tAc "select 1 from snatzee_meta.schema_migrations where filename = '$name'")"
   if [ "$done_already" = "1" ]; then

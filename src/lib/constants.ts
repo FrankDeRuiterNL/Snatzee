@@ -91,14 +91,12 @@ export const LEADERBOARD_SCOPES: { key: LeaderboardScope; label: string }[] = [
 
 
 /**
- * Which social sign-in buttons to show.
+ * Whether to offer Sign in with Apple next to email.
  *
- * These mirror GOOGLE_ENABLED / APPLE_ENABLED in the environment: the
- * provider is only configured in GoTrue when the flag is on, so offering the
- * button otherwise would send people to a dead end.
+ * Mirrors APPLE_ENABLED in the environment: the provider is only
+ * configured in GoTrue when the flag is on, so offering the button
+ * otherwise would send people to a dead end.
  */
-export const GOOGLE_SIGN_IN_ENABLED =
-  process.env.NEXT_PUBLIC_GOOGLE_ENABLED === 'true'
 export const APPLE_SIGN_IN_ENABLED =
   process.env.NEXT_PUBLIC_APPLE_ENABLED === 'true'
-export const ANY_OAUTH_ENABLED = GOOGLE_SIGN_IN_ENABLED || APPLE_SIGN_IN_ENABLED
+export const ANY_OAUTH_ENABLED = APPLE_SIGN_IN_ENABLED

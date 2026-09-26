@@ -118,13 +118,10 @@ services:
       GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
       GOTRUE_SMTP_SENDER_NAME: Snatzee
 
-      # Sign in with Google
-      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
-      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET:-}
-      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${PUBLIC_URL}/auth/v1/callback
-
-      # Sign in with Apple
+      # Sign in with Apple — next to email, the only way in.
+      # APPLE_CLIENT_ID takes a comma-separated list: the Services ID the
+      # website signs in with first, then the iOS app's bundle ID, whose
+      # native id_tokens GoTrue then accepts as well.
       GOTRUE_EXTERNAL_APPLE_ENABLED: ${APPLE_ENABLED:-false}
       GOTRUE_EXTERNAL_APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_APPLE_SECRET: ${APPLE_SECRET:-}
@@ -244,7 +241,6 @@ services:
         NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
         # Mirrors the GoTrue provider flags, so a button is only offered when
         # the provider is actually configured.
-        NEXT_PUBLIC_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
         NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
         # Identifies this server to the push services. Public by design —
         # the matching private key stays in the runtime environment below.
@@ -268,7 +264,6 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL}
       NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
-      NEXT_PUBLIC_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
       NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       # Sending push: the private key signs the requests and the service
@@ -280,6 +275,9 @@ services:
       # Server-side rendering reaches Supabase over the Docker network
       # rather than going back out through the public hostname.
       SUPABASE_INTERNAL_URL: http://gateway
+      # Domains the app may build redirects for, comma-separated with the
+      # port when it is not 80/443. Empty accepts any Host header.
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
     healthcheck:
       test:
         - CMD

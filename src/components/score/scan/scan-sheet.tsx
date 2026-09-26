@@ -5,11 +5,11 @@ import { AlertTriangle, Camera, Check, Images, Loader2, Maximize2, RotateCcw, Sc
 import { BottomSheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { CropFrame, type CropRect } from '@/components/score/scan/crop-frame'
-import { prepareSheet, toImageData, type PreparedSheet } from '@/lib/scoresheet/preprocess'
-import { detectGrid, inferredRows, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
-import { suggestSheetCrop } from '@/lib/scoresheet/locate'
-import { readCells, type SheetReading } from '@/lib/scoresheet/cells'
-import { readColumn, type ColumnReading } from '@/lib/scoresheet/read'
+import { toImageData, type PreparedSheet } from '@/lib/scoresheet/preprocess'
+import { inferredRows, matchesExpectedShape, type SheetGrid } from '@/lib/scoresheet/grid'
+import type { SheetReading } from '@/lib/scoresheet/cells'
+import type { ColumnReading } from '@/lib/scoresheet/read'
+import { runScan } from '@/lib/scoresheet/worker/client'
 import { SheetForm } from '@/components/score/sheet-form'
 import { sheetTotals, TOPSCORE_ROW } from '@/lib/scoresheet/sheet'
 
@@ -80,6 +80,12 @@ export function ScanSheet({
 }) {
   const [step, setStep] = useState<Step>('pick')
   const [photo, setPhoto] = useState<Photo | null>(null)
+  // The reading of one column, worked out in the worker. Tagged with the
+  // column it belongs to, and cleared whenever a new scan starts.
+  const [solvedFor, setSolvedFor] = useState<{
+    key: string
+    reading: ColumnReading | null
+  } | null>(null)
   // The photo that is currently held, for releasing it. Kept outside the
   // state updater: updaters must stay pure, and one scheduled while
   // unmounting is never run at all.
@@ -126,6 +132,7 @@ export function ScanSheet({
     setAutoCropped(false)
     setZoomed(false)
     setEdited(null)
+    setSolvedFor(null)
     replacePhoto(null)
   }, [replacePhoto])
 
@@ -169,7 +176,9 @@ export function ScanSheet({
 
     let proposal: CropRect | null = null
     try {
-      proposal = suggestSheetCrop(photoToImageData(photo, LOCATE_SOURCE_SIZE))
+      // Copied rather than transferred, so the main-thread fallback can
+      // still use it if the worker falls over.
+      proposal = await runScan('locate', photoToImageData(photo, LOCATE_SOURCE_SIZE))
     } catch {
       // A canvas that would not give its pixels back is not worth an
       // error message: the crop simply starts where it always did.
@@ -185,9 +194,8 @@ export function ScanSheet({
     setStep('working')
     setError(null)
 
-    // One frame for the spinner to paint: the pipeline is a few hundred
-    // milliseconds of straight-line arithmetic on the main thread, and
-    // without this the screen would sit on the crop until it finished.
+    // One frame for the spinner to paint. The pipeline itself runs in a
+    // worker, but cutting the photo out of its canvas does not.
     await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
 
     try {
@@ -206,7 +214,7 @@ export function ScanSheet({
        * that is already tight is left alone.
        */
       const framed = cropToImageData(photo, crop)
-      const table = suggestSheetCrop(framed)
+      const table = await runScan('locate', framed)
       const source =
         table && table.width * table.height < 0.85
           ? cropToImageData(photo, {
@@ -217,9 +225,8 @@ export function ScanSheet({
             })
           : framed
 
-      const result = prepareSheet(source)
-      const lattice = detectGrid(result.mask)
-      const cells = lattice ? readCells(result.mask, lattice) : null
+      const { prepared: result, grid: lattice, cells } = await runScan('read', source)
+      setSolvedFor(null)
       setPrepared(result)
       setGrid(lattice)
       setReading(cells)
@@ -238,13 +245,30 @@ export function ScanSheet({
   // so it is memoised rather than stored: picking another game recomputes
   // it, and picking the same one again costs nothing. A fifth of a second
   // of arithmetic, which is why it is not redone on every render.
-  const solved = useMemo<ColumnReading | null>(() => {
-    if (step !== 'result' || !prepared || !reading) return null
+  const solveKey = step === 'result' && prepared && reading ? `${column}` : null
+
+  useEffect(() => {
+    if (solveKey === null || !prepared || !reading) return
     const upper = reading.blocks[0]?.map((row) => row[column]!)
     const lower = reading.blocks[1]?.map((row) => row[column]!)
-    if (!upper || !lower) return null
-    return readColumn(prepared.mask, [upper, lower])
-  }, [step, prepared, reading, column])
+    // Nothing to read: `solved` stays null, which is the answer.
+    if (!upper || !lower) return
+    let cancelled = false
+    runScan('column', { mask: prepared.mask, cells: [upper, lower] })
+      .then((result) => {
+        if (!cancelled) setSolvedFor({ key: solveKey, reading: result })
+      })
+      .catch(() => {
+        if (!cancelled) setSolvedFor({ key: solveKey, reading: null })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [solveKey, prepared, reading, column])
+
+  // Only the answer for the column on screen counts; a stale one from the
+  // previously chosen column is not shown while the new one is computed.
+  const solved = solvedFor && solvedFor.key === solveKey ? solvedFor.reading : null
 
   /**
    * What the checking screen shows: the reading, with any corrections

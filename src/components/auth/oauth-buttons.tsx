@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
-import { APPLE_SIGN_IN_ENABLED, GOOGLE_SIGN_IN_ENABLED } from '@/lib/constants'
+import { APPLE_SIGN_IN_ENABLED } from '@/lib/constants'
 
-type Provider = 'google' | 'apple'
+/** Email and Sign in with Apple are the only ways in. */
+type Provider = 'apple'
 
 export function OAuthButtons({ next }: { next?: string }) {
   const [pending, setPending] = useState<Provider | null>(null)
@@ -29,39 +30,22 @@ export function OAuthButtons({ next }: { next?: string }) {
   }
 
   // Nothing configured: render nothing at all rather than an empty gap.
-  if (!APPLE_SIGN_IN_ENABLED && !GOOGLE_SIGN_IN_ENABLED) return null
+  if (!APPLE_SIGN_IN_ENABLED) return null
 
   return (
     <div className="space-y-3">
-      {APPLE_SIGN_IN_ENABLED && (
-        <Button
-          type="button"
-          variant="soft"
-          size="lg"
-          full
-          loading={pending === 'apple'}
-          disabled={pending !== null}
-          onClick={() => signIn('apple')}
-        >
-          <AppleMark />
-          Doorgaan met Apple
-        </Button>
-      )}
-
-      {GOOGLE_SIGN_IN_ENABLED && (
-        <Button
-          type="button"
-          variant="soft"
-          size="lg"
-          full
-          loading={pending === 'google'}
-          disabled={pending !== null}
-          onClick={() => signIn('google')}
-        >
-          <GoogleMark />
-          Doorgaan met Google
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="soft"
+        size="lg"
+        full
+        loading={pending === 'apple'}
+        disabled={pending !== null}
+        onClick={() => signIn('apple')}
+      >
+        <AppleMark />
+        Doorgaan met Apple
+      </Button>
     </div>
   )
 }
@@ -74,25 +58,3 @@ function AppleMark() {
   )
 }
 
-function GoogleMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" aria-hidden focusable="false">
-      <path
-        fill="#4285F4"
-        d="M23.5 12.27c0-.86-.08-1.68-.22-2.47H12v4.68h6.45a5.5 5.5 0 0 1-2.39 3.61v3h3.86c2.26-2.08 3.58-5.15 3.58-8.82"
-      />
-      <path
-        fill="#34A853"
-        d="M12 24c3.24 0 5.96-1.08 7.94-2.91l-3.86-3a7.2 7.2 0 0 1-4.08 1.16c-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A12 12 0 0 0 12 24"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58V6.62H1.29a12 12 0 0 0 0 10.76z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75"
-      />
-    </svg>
-  )
-}
