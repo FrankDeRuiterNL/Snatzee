@@ -63,14 +63,31 @@ enum SheetScanner {
 
     /// Reads the sheet: layout, then every game column.
     static func scan(_ image: CGImage) throws -> Scan {
-        let page = resized(image)
-        let lines = try recognize(page)
-
-        let layout: SheetLayout
-        switch SheetLayout.detect(in: lines) {
-        case .success(let found): layout = found
+        // First the whole page, to find the table on it.
+        let overview = resized(image)
+        let first: SheetLayout
+        switch SheetLayout.detect(in: try recognize(overview)) {
+        case .success(let found): first = found
         case .failure(.noRows): throw ScanError.noSheet
         case .failure(.noColumns): throw ScanError.noColumns
+        }
+
+        // Then the table alone, cut from the full-size photo: no logo or
+        // design around it to confuse the reading, and every pixel the
+        // camera took spent on the boxes.
+        var page = overview
+        var layout = first
+        let table = first.table
+        let pixels = CGRect(x: table.minX * CGFloat(image.width), y: table.minY * CGFloat(image.height),
+                            width: table.width * CGFloat(image.width), height: table.height * CGFloat(image.height)).integral
+        if table.width < 0.95 || table.height < 0.95,
+           let crop = image.cropping(to: pixels) {
+            let cropped = resized(crop)
+            if case .success(let found) = SheetLayout.detect(in: try recognize(cropped)),
+               found.rows.count >= first.rows.count - 1, found.columns.count >= first.columns.count {
+                page = cropped
+                layout = found
+            }
         }
 
         var columns: [Int: [SheetLine: [CellReading]]] = [:]

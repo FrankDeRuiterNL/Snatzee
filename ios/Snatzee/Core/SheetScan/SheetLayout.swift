@@ -45,6 +45,20 @@ struct SheetLayout: Sendable {
     let rowHeight: CGFloat
     /// Where the columns were found.
     var origin: ColumnOrigin = .headings
+    /// Left edge of the printed row names.
+    var labelLeft: CGFloat = 0
+
+    /// The table alone — row names, headings and every game column — in
+    /// page coordinates, without the sheet's design around it.
+    var table: CGRect {
+        let ys = rows.map(\.midY)
+        let top = (ys.min() ?? 0) - rowHeight * 2.5
+        let bottom = (ys.max() ?? 1) + rowHeight * 1.2
+        let right = columns.map { $0.centerX + $0.width * 0.6 }.max() ?? 1
+        let left = labelLeft - rowHeight
+        return CGRect(x: left, y: top, width: right - left, height: bottom - top)
+            .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+    }
 
     enum ColumnOrigin: String, Sendable {
         /// From printed headings ("1e spel", "Game #2").
@@ -171,7 +185,8 @@ struct SheetLayout: Sendable {
             return true
         }
 
-        return .success(SheetLayout(columns: columns, rows: rows, rowHeight: rowHeight, origin: origin))
+        let labelLeft = anchors.map(\.line.box).filter { $0.width < 0.45 }.map(\.minX).min() ?? 0
+        return .success(SheetLayout(columns: columns, rows: rows, rowHeight: rowHeight, origin: origin, labelLeft: labelLeft))
     }
 
     /// The longest run of box names whose order down the page matches the
