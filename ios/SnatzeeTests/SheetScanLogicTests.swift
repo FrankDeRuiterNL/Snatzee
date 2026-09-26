@@ -96,4 +96,10 @@ final class SheetScanLogicTests: XCTestCase {
         XCTAssertEqual(result.entries, values)
         XCTAssertEqual(result.extraYahtzees, 1)
     }
+
+    func testRepeatedUnitOfTiledBoxes() {
+        XCTAssertEqual(SheetScanner.repeatedUnit("444", copies: 3), "4")
+        XCTAssertEqual(SheetScanner.repeatedUnit("121212", copies: 3), "12")
+        XCTAssertNil(SheetScanner.repeatedUnit("443", copies: 3))
+    }
 }

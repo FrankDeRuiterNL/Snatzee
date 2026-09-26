@@ -44,7 +44,7 @@ final class SheetScanFixtureTests: XCTestCase {
 
             for (key, expected) in sheet.columns.sorted(by: { $0.key < $1.key }) {
                 let number = Int(key)!
-                let result = SheetScanner.solve(scan, column: number)
+                let (reading, result) = try SheetScanner.read(scan, column: number)
                 columns += 1
                 var wrong: [String] = []
                 for index in expected.indices {
@@ -54,7 +54,8 @@ final class SheetScanFixtureTests: XCTestCase {
                     } else {
                         let flag = result.flagged.contains(index) ? "flagged" : "NOT flagged"
                         if !result.flagged.contains(index) { silentErrors += 1 }
-                        let raw = (scan.columns[number]?[.entry(index)] ?? []).map { "\($0.mark)@\(String(format: "%.2f", $0.confidence))" }
+                        let raw = (reading.readings[.entry(index)] ?? []).map { "\($0.mark)@\(String(format: "%.2f", $0.confidence))" }
+                            + (reading.unreadable.contains(.entry(index)) ? ["unreadable ink"] : [])
                         wrong.append("\(ScoreSheet.rows[index].label): read \(result.entries[index]), is \(expected[index]) [\(flag); raw \(raw)]")
                     }
                 }

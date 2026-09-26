@@ -16,14 +16,21 @@ import Vision
 ///
 /// Everything runs on the device; the photo is never stored or sent.
 enum SheetScanner {
-    struct Scan: Sendable {
+    struct Scan {
         let layout: SheetLayout
-        /// Per game number, what was read in each row.
+        /// The straightened page, for the closer look at one column.
+        let page: CGImage
+        /// Per game number, what the whole-strip reading found in each row.
         let columns: [Int: [SheetLine: [CellReading]]]
-        /// Per game number, rows with writing in them that could not be read.
-        let inked: [Int: Set<SheetLine>]
         /// Game numbers with anything written in them, in order.
         let filledColumns: [Int]
+    }
+
+    /// One game column, fully read.
+    struct ColumnReading {
+        let readings: [SheetLine: [CellReading]]
+        /// Rows with writing in them that could not be read.
+        let unreadable: Set<SheetLine>
     }
 
     enum ScanError: LocalizedError {
@@ -61,32 +68,33 @@ enum SheetScanner {
         }
 
         var columns: [Int: [SheetLine: [CellReading]]] = [:]
-        var inked: [Int: Set<SheetLine>] = [:]
         for column in layout.columns {
-            let read = try readColumn(column, of: page, layout: layout)
-            columns[column.number] = read.readings
-            inked[column.number] = read.unreadable
+            columns[column.number] = try readStrip(column, of: page, layout: layout)
         }
 
+        // Filled in: at least a few boxes with something legible.
         let filled = layout.columns.map(\.number).filter { number in
-            let rows = columns[number] ?? [:]
-            let read = rows.filter { if case .entry = $0.key { return !$0.value.isEmpty }; return false }.count
-            let unread = (inked[number] ?? []).filter { if case .entry = $0 { return true }; return false }.count
-            return read + unread >= 3
+            (columns[number] ?? [:]).filter { if case .entry = $0.key { return !$0.value.isEmpty }; return false }.count >= 3
         }
         guard !filled.isEmpty else { throw ScanError.empty }
-        return Scan(layout: layout, columns: columns, inked: inked, filledColumns: filled)
+        return Scan(layout: layout, page: page, columns: columns, filledColumns: filled)
     }
 
-    static func solve(_ scan: Scan, column: Int) -> SheetSolver.Result {
-        SheetSolver.solve(scan.columns[column] ?? [:], inked: scan.inked[column] ?? [])
+    /// Reads one game column completely — the strip reading plus a closer
+    /// look at every box it missed — and picks its values.
+    static func read(_ scan: Scan, column number: Int) throws -> (reading: ColumnReading, result: SheetSolver.Result) {
+        guard let column = scan.layout.columns.first(where: { $0.number == number }) else {
+            return (ColumnReading(readings: [:], unreadable: []), SheetSolver.solve([:]))
+        }
+        let reading = try readColumn(column, of: scan.page, layout: scan.layout, strip: scan.columns[number] ?? [:])
+        return (reading, SheetSolver.solve(reading.readings, inked: reading.unreadable))
     }
 
     /// One column's strip, read on its own and sorted into rows; then a
     /// closer look at every box with writing in it that was not read.
-    private static func readColumn(_ column: SheetLayout.Column, of page: CGImage, layout: SheetLayout) throws
-        -> (readings: [SheetLine: [CellReading]], unreadable: Set<SheetLine>) {
-        var readings = try readStrip(column, of: page, layout: layout)
+    private static func readColumn(_ column: SheetLayout.Column, of page: CGImage, layout: SheetLayout,
+                                   strip: [SheetLine: [CellReading]]) throws -> ColumnReading {
+        var readings = strip
         var unreadable = Set<SheetLine>()
         for row in layout.rows where (readings[row.line] ?? []).isEmpty {
             let cell = cellRect(column: column, row: row, layout: layout)
@@ -98,7 +106,7 @@ enum SheetScanner {
                 readings[row.line] = second
             }
         }
-        return (readings, unreadable)
+        return ColumnReading(readings: readings, unreadable: unreadable)
     }
 
     /// One box, in page coordinates: a little inside its column and row so
@@ -118,7 +126,9 @@ enum SheetScanner {
     /// Whether anything is written in a box: dark marks on the paper at
     /// its centre, where the printed edges do not reach.
     static func hasInk(in cell: CGRect, of page: CGImage) -> Bool {
-        let centre = cell.insetBy(dx: cell.width * 0.2, dy: cell.height * 0.2)
+        // The middle of the box only: its printed edges, the gaps between
+        // boxes and shadows along them stay out.
+        let centre = cell.insetBy(dx: cell.width * 0.28, dy: cell.height * 0.3)
         guard let crop = page.cropping(to: pixelRect(centre, in: page)) else { return false }
         let width = 48, height = 24
         var pixels = [UInt8](repeating: 0, count: width * height)
@@ -130,10 +140,10 @@ enum SheetScanner {
         // The paper is the brighter half; ink is what is much darker.
         let sorted = pixels.sorted()
         let paper = Double(sorted[sorted.count * 3 / 4])
-        guard paper > 90 else { return false } // not a white box at all
-        let threshold = paper * 0.6
+        guard paper > 110 else { return false } // not a white box at all
+        let threshold = paper * 0.55
         let dark = pixels.filter { Double($0) < threshold }.count
-        return Double(dark) / Double(pixels.count) > 0.015
+        return Double(dark) / Double(pixels.count) > 0.03
     }
 
     /// A second look at one box: cut out, enlarged, on a white margin, read
@@ -143,26 +153,54 @@ enum SheetScanner {
         guard let crop = page.cropping(to: pixelRect(cell, in: page)) else { return [] }
         let scale: CGFloat = max(1, 96 / CGFloat(max(crop.height, 1)))
         let inner = CIImage(cgImage: crop).transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let margin = inner.extent.height * 0.6
-        let canvas = CGRect(x: 0, y: 0, width: inner.extent.width + margin * 2, height: inner.extent.height + margin * 2)
-        let composed = inner
-            .transformed(by: CGAffineTransform(translationX: margin - inner.extent.minX, y: margin - inner.extent.minY))
-            .composited(over: CIImage(color: .white).cropped(to: canvas))
+        let w = inner.extent.width, h = inner.extent.height
+        let margin = h * 0.6
+
+        // The box three times side by side: "4 4 4" is read far more
+        // reliably than a lone "4", and three copies agreeing is evidence
+        // in itself.
+        let copies = 3
+        let gap = h * 0.5
+        let canvas = CGRect(x: 0, y: 0, width: margin * 2 + w * CGFloat(copies) + gap * CGFloat(copies - 1),
+                            height: h + margin * 2)
+        var composed = CIImage(color: .white).cropped(to: canvas)
+        for copy in 0..<copies {
+            let x = margin + CGFloat(copy) * (w + gap)
+            composed = inner
+                .transformed(by: CGAffineTransform(translationX: x - inner.extent.minX, y: margin - inner.extent.minY))
+                .composited(over: composed)
+        }
         guard let image = CIContext().createCGImage(composed, from: canvas) else { return [] }
 
         var candidates: [OCRLine.Candidate] = []
         for level in [VNRequestTextRecognitionLevel.accurate, .fast] {
-            let lines = try recognize(image, level: level)
-            // Joined left to right, the way it was written.
-            let ordered = lines.sorted { $0.box.minX < $1.box.minX }
-            if ordered.count > 1 {
-                let joined = ordered.compactMap { $0.candidates.first?.text }.joined()
-                let confidence = ordered.compactMap { $0.candidates.first?.confidence }.min() ?? 0
-                candidates.append(.init(text: joined, confidence: confidence))
+            let lines = try recognize(image, level: level).sorted { $0.box.minX < $1.box.minX }
+            for line in lines {
+                for candidate in line.candidates {
+                    let tokens = candidate.text.split(whereSeparator: \.isWhitespace).map(String.init)
+                    // Copies that agree: one reading, with their confidence.
+                    if tokens.count >= 2, Set(tokens).count == 1 {
+                        candidates.append(.init(text: tokens[0], confidence: min(1, candidate.confidence + 0.2)))
+                    } else if tokens.count >= 2 {
+                        // They disagree: each is a guess, less sure.
+                        candidates += tokens.map { .init(text: $0, confidence: candidate.confidence * 0.5) }
+                    } else if let only = tokens.first {
+                        // Run together ("444"): a repeated pattern is one copy.
+                        candidates.append(.init(text: repeatedUnit(only, copies: copies) ?? only, confidence: candidate.confidence * 0.7))
+                    }
+                }
             }
-            candidates += ordered.flatMap(\.candidates)
         }
         return CellParser.readings(from: candidates)
+    }
+
+    /// "444" → "4", "121212" → "12": the one copy a run-together reading
+    /// of the tiled box repeats, or nil when it does not repeat.
+    static func repeatedUnit(_ text: String, copies: Int) -> String? {
+        guard text.count % copies == 0 else { return nil }
+        let length = text.count / copies
+        let unit = String(text.prefix(length))
+        return String(repeating: unit, count: copies) == text ? unit : nil
     }
 
     /// One column's strip, read on its own and sorted into rows.
