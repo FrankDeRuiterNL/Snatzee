@@ -23,6 +23,10 @@ struct ScoreSheetView: View {
     @State private var note: String
     @State private var error: String?
     @State private var saving = false
+    /// Boxes the scanner was unsure about, marked until touched.
+    @State private var flagged: Set<Int> = []
+    @State private var scanOpen = false
+    @State private var features = AppFeatures.shared
 
     private let scoreOnly: Bool
 
@@ -55,6 +59,9 @@ struct ScoreSheetView: View {
                         .font(.jakarta(TextSize.sm))
                         .foregroundStyle(Theme.inkMuted)
 
+                    if !isEdit && features.scoresheetScan {
+                        scanCard
+                    }
                     scoreSection
                     winSection
                     yahtzeeSection
@@ -96,6 +103,57 @@ struct ScoreSheetView: View {
         // A long form: losing a half-filled game to a swipe that started at
         // the wrong pixel is worse than one tap on the cross.
         .interactiveDismissDisabled()
+        .task { await features.refresh() }
+        .fullScreenCover(isPresented: $scanOpen) {
+            SheetScanFlow { result in apply(result) }
+        }
+    }
+
+    // MARK: Scanning
+
+    private var scanCard: some View {
+        Button {
+            Haptics.play(.light)
+            scanOpen = true
+        } label: {
+            HStack(spacing: 12) {
+                IconTile(icon: "scan-line", accent: .mint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Scoreblad scannen")
+                        .font(.jakarta(TextSize.base15, .semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text("Maak een foto van je papieren blad in plaats van zelf in te vullen.")
+                        .font(.jakarta(TextSize.xs))
+                        .foregroundStyle(Theme.inkMuted)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                LucideIcon("chevron-right", size: 20).foregroundStyle(Theme.inkMuted)
+            }
+            .padding(16)
+            .card(.surface)
+        }
+        .buttonStyle(.pressable)
+    }
+
+    /// What the scanner read, into the form — to be checked, never saved
+    /// from here.
+    private func apply(_ result: SheetSolver.Result) {
+        withAnimation(.easeOut(duration: 0.25)) {
+            sheet = result.entries
+            flagged = result.flagged
+        }
+        if result.entries[ScoreSheet.topscoreRow] > 0 || result.extraYahtzees > 0 {
+            threwYahtzee = true
+            yahtzeeCount = max(1, result.extraYahtzees + 1)
+        }
+        if result.flagged.isEmpty {
+            ToastCenter.shared.success("Scoreblad gelezen", description: "Controleer het even voordat je opslaat.")
+        } else {
+            let count = result.flagged.count
+            ToastCenter.shared.info("Scoreblad gelezen",
+                                    description: "Controleer de \(count) oranje \(count == 1 ? "vakje" : "vakjes") voordat je opslaat.")
+        }
     }
 
     // MARK: Sections
@@ -138,7 +196,7 @@ struct ScoreSheetView: View {
                             yahtzeeCount = max(yahtzeeCount, 1)
                         }
                     }
-                ), yahtzees: yahtzees)
+                ), yahtzees: yahtzees, flagged: $flagged)
             }
             FieldError(message: error)
         }

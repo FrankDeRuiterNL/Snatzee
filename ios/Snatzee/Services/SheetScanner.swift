@@ -16,7 +16,9 @@ import Vision
 ///
 /// Everything runs on the device; the photo is never stored or sent.
 enum SheetScanner {
-    struct Scan {
+    /// Immutable once made, and handed from the background reader to the
+    /// screen and back — hence `@unchecked`: CGImage is thread-safe to read.
+    struct Scan: @unchecked Sendable {
         let layout: SheetLayout
         /// The straightened page, for the closer look at one column.
         let page: CGImage
