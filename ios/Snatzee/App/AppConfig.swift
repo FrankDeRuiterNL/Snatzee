@@ -16,6 +16,14 @@ enum AppConfig {
         return key
     }
 
+    /// A page of the website, such as the privacy policy.
+    static func webURL(_ path: String) -> URL {
+        apiURL?.appending(path: path) ?? URL(string: "https://www.snatzee.nl\(path)")!
+    }
+
+    /// Snatzee! in the App Store (App Store Connect Apple ID 6816307907).
+    static let appStoreURL = URL(string: "https://apps.apple.com/app/id6816307907")!
+
     /// Both present: the app can talk to its server.
     static var isComplete: Bool { apiURL != nil && anonKey != nil }
 

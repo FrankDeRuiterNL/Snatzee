@@ -75,6 +75,14 @@ private struct UpdateRequiredView: View {
             title: "Tijd voor een update",
             text: "Deze versie van Snatzee! werkt niet meer met de server. Werk de app bij via de App Store of TestFlight."
         )
+        .overlay(alignment: .bottom) {
+            Link(destination: AppConfig.appStoreURL) {
+                Text("Open de App Store")
+            }
+            .buttonStyle(.snatzee(.primary, size: .lg, full: true))
+            .padding(.horizontal, Theme.gutter)
+            .padding(.bottom, 24)
+        }
     }
 }
 

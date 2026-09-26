@@ -57,6 +57,17 @@ export default async function LandingPage() {
         <Button asChild full size="lg" variant="soft">
           <Link href="/login">Ik heb al een account</Link>
         </Button>
+        <nav className="flex justify-center gap-5 pt-2 text-xs text-ink-muted">
+          <Link href="/privacy" className="underline underline-offset-4">
+            Privacy
+          </Link>
+          <Link href="/voorwaarden" className="underline underline-offset-4">
+            Voorwaarden
+          </Link>
+          <Link href="/support" className="underline underline-offset-4">
+            Support
+          </Link>
+        </nav>
       </div>
     </main>
   )

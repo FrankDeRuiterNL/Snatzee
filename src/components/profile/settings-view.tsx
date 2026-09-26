@@ -343,6 +343,18 @@ export function SettingsView({
         />
       </Section>
 
+      <nav className="flex justify-center gap-5 text-sm text-ink-muted">
+        <Link href="/privacy" className="underline underline-offset-4">
+          Privacybeleid
+        </Link>
+        <Link href="/voorwaarden" className="underline underline-offset-4">
+          Voorwaarden
+        </Link>
+        <Link href="/support" className="underline underline-offset-4">
+          Support
+        </Link>
+      </nav>
+
       <form action="/auth/signout" method="post">
         <Button type="submit" variant="soft" full size="lg">
           <LogOut className="size-5" aria-hidden />

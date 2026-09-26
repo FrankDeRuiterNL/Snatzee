@@ -62,9 +62,27 @@ jobs:
             | tee xcodebuild.log | grep -E "error:|warning: .*Snatzee/|Test Case .* (passed|failed)|\*\* (BUILD|TEST) (SUCCEEDED|FAILED)" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" xcodebuild.log
 
+      # What TestFlight gets: the Release configuration for a real device,
+      # so code behind #if DEBUG and the optimiser are covered too.
+      - name: Release build (device)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Snatzee.xcodeproj \
+            -scheme Snatzee \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee release.log | grep -E "error:|warning: .*Snatzee/|\*\* BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" release.log
+
       - name: Upload build log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: xcodebuild-log
-          path: ios/xcodebuild.log
+          path: |
+            ios/xcodebuild.log
+            ios/release.log

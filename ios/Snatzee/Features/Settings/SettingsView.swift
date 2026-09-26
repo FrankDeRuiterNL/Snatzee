@@ -83,6 +83,8 @@ struct SettingsView: View {
 
                     dangerZone
 
+                    LegalLinks()
+
                     Text("Snatzee! \(AppConfig.versionString)")
                         .font(.jakarta(TextSize.xs))
                         .foregroundStyle(Theme.inkMuted)

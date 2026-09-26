@@ -294,6 +294,8 @@ services:
       APPLE_SIGNIN_PRIVATE_KEY: ${APPLE_SIGNIN_PRIVATE_KEY:-}
       APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
       APPLE_APP_IDS: ${APPLE_APP_IDS:-}
+      # Shown on /privacy, /voorwaarden and /support.
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-${SMTP_ADMIN_EMAIL:-}}
     healthcheck:
       test:
         - CMD

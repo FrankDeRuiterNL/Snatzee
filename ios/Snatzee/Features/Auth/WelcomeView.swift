@@ -51,6 +51,7 @@ struct WelcomeView: View {
                         .buttonStyle(.snatzee(.primary, size: .lg, full: true))
                     Button("Ik heb al een account") { path.append(.login) }
                         .buttonStyle(.snatzee(.soft, size: .lg, full: true))
+                    ConsentNotice()
                 }
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, 12)

@@ -6,7 +6,19 @@ import { SUPABASE_ANON_KEY, SUPABASE_SERVER_URL, SUPABASE_STORAGE_KEY } from './
 // and answers 401, and the iOS app signs in with a bearer token that this
 // cookie-based check cannot see — a redirect to /login would be wrong for
 // both.
-const PUBLIC_PATHS = ['/', '/login', '/register', '/auth', '/u', '/offline', '/api']
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/register',
+  '/auth',
+  '/u',
+  '/offline',
+  '/api',
+  // Linked from the App Store listing: readable without an account.
+  '/privacy',
+  '/voorwaarden',
+  '/support',
+]
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))

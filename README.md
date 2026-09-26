@@ -205,7 +205,12 @@ De backend is klaar voor een native iOS-app: APNs-push, Sign in with Apple
 melden en blokkeren, en één RPC per scherm. Wat de app aanroept en welke
 regels er gelden voor achterwaartse compatibiliteit staat in
 [`docs/ios-api.md`](docs/ios-api.md). De instellingen staan onder
-"iOS-app" in `.env.example` en blijven leeg tot de app bestaat.
+"iOS-app" in `.env.example`. De app zelf staat in `ios/`; TestFlight en de
+App Store staan stap voor stap in [`docs/ios-release.md`](docs/ios-release.md).
+
+Privacybeleid, voorwaarden en support staan op `/privacy`, `/voorwaarden` en
+`/support` (nodig voor de App Store). Het contactadres daarop komt uit
+`CONTACT_EMAIL`, of anders `SMTP_ADMIN_EMAIL`.
 
 ### Pushmeldingen
 

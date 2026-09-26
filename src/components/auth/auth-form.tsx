@@ -208,6 +208,20 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
         {mode === 'register' ? 'Account maken' : 'Inloggen'}
       </Button>
 
+      {mode === 'register' && (
+        <p className="text-center text-xs leading-relaxed text-ink-muted">
+          Met je account ga je akkoord met de{' '}
+          <Link href="/voorwaarden" className="underline underline-offset-4">
+            voorwaarden
+          </Link>{' '}
+          en het{' '}
+          <Link href="/privacy" className="underline underline-offset-4">
+            privacybeleid
+          </Link>
+          .
+        </p>
+      )}
+
       <p className="pt-2 text-center text-sm text-ink-muted">
         {mode === 'register' ? (
           <>

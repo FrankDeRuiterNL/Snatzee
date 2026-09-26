@@ -89,6 +89,10 @@ struct AuthFormView: View {
             .buttonStyle(.snatzee(.primary, size: .lg, full: true, loading: pending))
             .disabled(pending)
             .padding(.top, 24)
+
+            if mode == .register {
+                ConsentNotice().padding(.top, 12)
+            }
         }
     }
 
