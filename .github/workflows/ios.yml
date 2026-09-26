@@ -60,7 +60,12 @@ jobs:
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
             | tee xcodebuild.log | grep -E "error:|warning: .*Snatzee/|Test Case .* (passed|failed)|\*\* (BUILD|TEST) (SUCCEEDED|FAILED)" || true
-          grep -q "\*\* TEST SUCCEEDED \*\*" xcodebuild.log
+          if ! grep -q "\*\* TEST SUCCEEDED \*\*" xcodebuild.log; then
+            # Crashes and timeouts of the test host do not print "error:";
+            # show what happened around them.
+            grep -n -B3 -A12 -E "Restarting after|unexpected exit|crashed|Test crashed|timed out|with an uncaught|Fatal error|failed \(" xcodebuild.log | tail -150 || true
+            exit 1
+          fi
 
       # What TestFlight gets: the Release configuration for a real device,
       # so code behind #if DEBUG and the optimiser are covered too.
