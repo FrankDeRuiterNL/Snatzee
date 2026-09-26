@@ -241,7 +241,10 @@ services:
         NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
         # Mirrors the GoTrue provider flags, so a button is only offered when
         # the provider is actually configured.
-        NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
+        # The website's own Apple button: needs a Services ID and
+        # APPLE_SECRET, which the iOS app does not. Separate from
+        # APPLE_ENABLED so the app can use Apple without a web button.
+        NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_WEB_ENABLED:-false}
         # Identifies this server to the push services. Public by design —
         # the matching private key stays in the runtime environment below.
         NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
@@ -264,7 +267,7 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
       NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL}
       NEXT_PUBLIC_SUPABASE_SAME_ORIGIN: 'true'
-      NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_ENABLED:-false}
+      NEXT_PUBLIC_APPLE_ENABLED: ${APPLE_WEB_ENABLED:-false}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       # Sending push: the private key signs the requests and the service
       # role reads the subscriptions, which RLS hides from everyone else.

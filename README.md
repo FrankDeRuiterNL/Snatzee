@@ -161,7 +161,8 @@ Alles staat in `.env`. De volledige lijst met toelichting staat in
 | `MAILER_EXTERNAL_HOSTS` | Elke hostnaam die in bevestigingslinks mag staan. |
 | `MAILER_AUTOCONFIRM` | `true` zolang er geen SMTP is: accounts zijn dan meteen actief. |
 | `SMTP_*` | Mailserver voor bevestigings- en herstelmails. |
-| `APPLE_ENABLED` | Zet Sign in with Apple én de knop in de app aan. |
+| `APPLE_ENABLED` | Zet Sign in with Apple aan in GoTrue (voor de iOS-app). |
+| `APPLE_WEB_ENABLED` | Toont ook de Apple-knop op de website; vraagt een Services ID en `APPLE_SECRET`. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Pushmeldingen. Leeg laten schakelt push uit. |
 
 ### Meerdere domeinen
@@ -321,7 +322,7 @@ superadmin rollen toe in **Instellingen → Snatzee Admin → Beheer**.
 | Auth logt `must be owner of function uid` | `db-prepare` heeft niet gedraaid. `docker compose up -d --force-recreate db-prepare`. |
 | `password authentication failed for user "supabase_storage_admin"` | Idem: `db-prepare` zet die wachtwoorden. |
 | API geeft 404 op een RPC | PostgREST heeft een oude schema cache. `docker compose restart rest`. |
-| Apple-knop ontbreekt | `APPLE_ENABLED` staat op `false`, of er is niet herbouwd. |
+| Apple-knop ontbreekt | Website: `APPLE_WEB_ENABLED`, app: `APPLE_ENABLED` staat op `false`, of er is niet herbouwd. |
 | Meldingen-toggle zegt "niet ondersteund" in de geïnstalleerde app | `VAPID_PUBLIC_KEY` ontbrak tijdens de build. |
 | QR scannen doet niets | De camera werkt alleen op een https-adres. |
 

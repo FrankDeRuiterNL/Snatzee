@@ -93,7 +93,7 @@ export const LEADERBOARD_SCOPES: { key: LeaderboardScope; label: string }[] = [
 /**
  * Whether to offer Sign in with Apple next to email.
  *
- * Mirrors APPLE_ENABLED in the environment: the provider is only
+ * Mirrors APPLE_WEB_ENABLED in the environment: the provider is only
  * configured in GoTrue when the flag is on, so offering the button
  * otherwise would send people to a dead end.
  */
