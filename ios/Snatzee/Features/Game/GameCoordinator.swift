@@ -45,7 +45,7 @@ final class GameCoordinator {
             isEdit ? "Potje bijgewerkt ✓" : "Score opgeslagen ✓",
             description: "\(result.entry.score) punten\(result.entry.isWin ? " · gewonnen" : "")"
         )
-        if !isEdit && result.isPersonalRecord == true {
+        if !isEdit && result.isPersonalRecord == true && Preferences.shared.celebrations {
             celebration = Celebration(
                 variant: .record,
                 emoji: "🏆",
@@ -69,13 +69,15 @@ final class GameCoordinator {
                 as: RecordYahtzeeResult.self
             )
             Haptics.play(.warning)
-            celebration = Celebration(
+            if !Preferences.shared.celebrations {
+                ToastCenter.shared.success("No way! ⚡ YAHTZEE IN 1 WORP!", description: "Dit was je \(result.firstRollYahtzeeCount)e ooit.")
+            } else { celebration = Celebration(
                 variant: .firstRoll,
                 emoji: "⚡",
                 title: "No way!",
                 headline: "YAHTZEE IN 1 WORP!",
                 detail: "Dit was je \(result.firstRollYahtzeeCount)e ooit."
-            )
+            ) }
             queueUnlocks(result.unlocked ?? [])
             dataChanged()
         } catch {

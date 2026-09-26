@@ -7,6 +7,11 @@ enum AppRoute: Hashable {
     case history(HistoryFilter)
     case statistics
     case achievements
+    case settings
+    case friends
+    case groups
+    case group(UUID)
+    case publicProfile(String)
 }
 
 private struct AppRoutes: ViewModifier {
@@ -18,6 +23,11 @@ private struct AppRoutes: ViewModifier {
             case .history(let filter): HistoryView(profile: profile, initialFilter: filter)
             case .statistics: StatisticsView(profile: profile)
             case .achievements: AchievementsView(profile: profile)
+            case .settings: SettingsView(profile: profile)
+            case .friends: FriendsView(profile: profile, showsBack: true)
+            case .groups: GroupsView(profile: profile)
+            case .group(let id): GroupDetailView(profile: profile, groupId: id)
+            case .publicProfile(let username): PublicProfileView(username: username)
             }
         }
     }

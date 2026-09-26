@@ -6,6 +6,7 @@ enum Haptics {
 
     @MainActor
     static func play(_ pattern: Pattern) {
+        guard Preferences.hapticsEnabled else { return }
         switch pattern {
         case .light: UIImpactFeedbackGenerator(style: .light).impactOccurred()
         case .medium: UIImpactFeedbackGenerator(style: .medium).impactOccurred()

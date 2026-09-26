@@ -6,9 +6,11 @@ struct MainTabView: View {
     let profile: Profile
 
     @State private var selection: AppTab = .home
-    @State private var showingSettings = false
     @State private var home = HomeModel()
     @State private var game = GameCoordinator()
+    @State private var paths: [AppTab: [AppRoute]] = [:]
+    @State private var links = DeepLinks.shared
+    @State private var push = PushManager.shared
 
     var body: some View {
         ZStack {
@@ -16,7 +18,7 @@ struct MainTabView: View {
             ForEach(AppTab.allCases) { tab in
                 // Every tab stays alive (and keeps its scroll position),
                 // like switching tabs in a native tab bar.
-                NavigationStack { screen(for: tab).appRoutes(profile: profile) }
+                NavigationStack(path: path(for: tab)) { screen(for: tab).appRoutes(profile: profile) }
                     // The floating bar covers the bottom of every screen:
                     // scrolled all the way down, content must end above it.
                     .contentMargins(.bottom, BottomNavigation.reservedHeight, for: .scrollContent)
@@ -54,15 +56,40 @@ struct MainTabView: View {
             }
         }
         .environment(game)
+        // Keeps this device's push token current on the server.
+        .task { await PushManager.shared.refresh() }
         .onChange(of: game.dataVersion) {
             Task { await home.load(userId: profile.id) }
         }
-        .sheet(isPresented: $showingSettings) {
-            InterimSettingsSheet(profile: profile)
-                .presentationDetents([.medium])
-                .presentationBackground(Theme.canvasSoft)
-                .presentationCornerRadius(Theme.Radius.xl2)
+        // Universal links and tapped notifications.
+        .onChange(of: push.pendingPath, initial: true) { _, path in
+            guard let path else { return }
+            push.pendingPath = nil
+            links.open(path: path)
         }
+        .onChange(of: links.pending, initial: true) { _, destination in
+            guard let destination else { return }
+            links.pending = nil
+            follow(destination)
+        }
+    }
+
+    private func path(for tab: AppTab) -> Binding<[AppRoute]> {
+        Binding(get: { paths[tab] ?? [] }, set: { paths[tab] = $0 })
+    }
+
+    private func follow(_ destination: DeepLinks.Destination) {
+        game.sheet = nil
+        if destination.onCurrentTab {
+            // A player's profile: on top of what is showing, unless it is
+            // already there.
+            if paths[selection]?.last != destination.routes.last {
+                paths[selection, default: []].append(contentsOf: destination.routes)
+            }
+            return
+        }
+        selection = destination.tab
+        paths[destination.tab] = destination.routes
     }
 
     @ViewBuilder
@@ -73,71 +100,14 @@ struct MainTabView: View {
                 profile: profile,
                 model: home,
                 onAddGame: { game.addGame() },
-                onOpenProfile: { selection = .profile },
-                onOpenSettings: { showingSettings = true }
+                onOpenProfile: { selection = .profile }
             )
         case .rankings:
             RankingsView()
-        default:
-            PlaceholderScreen(tab: tab)
+        case .friends:
+            FriendsView(profile: profile)
+        case .profile:
+            ProfileView(profile: profile)
         }
-    }
-}
-
-/// Stand-in screens until the features arrive in steps 3 and 4.
-private struct PlaceholderScreen: View {
-    let tab: AppTab
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                PageHeader(title: tab.label, subtitle: "Komt in een volgende stap")
-                EmptyStateView(emoji: "🛠️", title: "In aanbouw", description: "Dit scherm staat al op de website en komt binnenkort ook hier.")
-                    .padding(.horizontal, Theme.gutter)
-            }
-            .padding(.bottom, 24)
-        }
-        .scrollIndicators(.hidden)
-        .background(Theme.canvas)
-        .toolbar(.hidden, for: .navigationBar)
-    }
-}
-
-/// Account basics until the full settings screen arrives in step 4.
-private struct InterimSettingsSheet: View {
-    let profile: Profile
-    @Environment(SessionStore.self) private var session
-    @Environment(\.dismiss) private var dismiss
-    @State private var signingOut = false
-
-    var body: some View {
-        VStack(spacing: 16) {
-            AvatarView(url: profile.avatarURL, name: profile.displayName, size: .lg)
-            VStack(spacing: 2) {
-                Text(profile.displayName)
-                    .font(.jakarta(TextSize.lg, .extrabold))
-                    .foregroundStyle(Theme.ink)
-                Text("@\(profile.username)")
-                    .font(.jakarta(TextSize.sm))
-                    .foregroundStyle(Theme.inkMuted)
-            }
-            Button {
-                Task {
-                    signingOut = true
-                    await session.signOut()
-                    dismiss()
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    LucideIcon("log-out", size: 18)
-                    Text("Uitloggen")
-                }
-            }
-            .buttonStyle(.snatzee(.dangerSoft, size: .lg, full: true, loading: signingOut))
-            Text("Snatzee! \(AppConfig.versionString)")
-                .font(.jakarta(TextSize.xs))
-                .foregroundStyle(Theme.inkMuted)
-        }
-        .padding(24)
     }
 }

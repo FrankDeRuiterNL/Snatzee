@@ -132,7 +132,12 @@ struct RankingsView: View {
                         EmptyStateView(emoji: "🏆", title: "Nog niets te ranken", description: emptyText)
                     } else {
                         LazyVStack(spacing: 8) {
-                            ForEach(visible) { row in LeaderboardRowView(row: row, decimals: metric.decimals) }
+                            ForEach(visible) { row in
+                                NavigationLink(value: AppRoute.publicProfile(row.username)) {
+                                    LeaderboardRowView(row: row, decimals: metric.decimals)
+                                }
+                                .buttonStyle(.pressable)
+                            }
                         }
                     }
                 }

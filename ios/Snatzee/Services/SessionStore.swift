@@ -55,6 +55,7 @@ final class SessionStore {
     }
 
     func signOut() async {
+        await PushManager.shared.forget()
         try? await SupabaseService.client?.auth.signOut()
         state = .signedOut
     }

@@ -114,3 +114,22 @@ struct RecordYahtzeeResult: Decodable {
     let firstRollYahtzeeCount: Int
     let unlocked: [Achievement]?
 }
+
+/// A friend (or someone asking to be one) — get_friends_overview rows.
+struct FriendSummary: Decodable, Identifiable, Equatable {
+    let id: UUID
+    let username: String
+    let displayName: String
+    let avatarUrl: String?
+    let gamesPlayed: Int
+    /// Set on requests (incoming or sent).
+    let friendshipId: UUID?
+
+    var avatarURL: URL? { avatarUrl.flatMap(URL.init(string:)) }
+}
+
+struct FriendsOverview: Decodable {
+    let friends: [FriendSummary]
+    let requests: [FriendSummary]
+    let sent: [FriendSummary]
+}

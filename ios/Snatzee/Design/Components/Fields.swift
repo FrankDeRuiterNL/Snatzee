@@ -9,11 +9,19 @@ struct SnatzeeTextField: View {
     /// Text drawn inside the field before what is typed (the username's "@").
     var prefix: String?
     var trailing: AnyView?
+    /// A Lucide icon before the text (the search field's magnifier).
+    var leadingIcon: String?
 
     @FocusState private var focused: Bool
 
     var body: some View {
         HStack(spacing: 4) {
+            if let leadingIcon {
+                LucideIcon(leadingIcon, size: 20)
+                    .foregroundStyle(Theme.inkMuted)
+                    .padding(.trailing, 6)
+                    .accessibilityHidden(true)
+            }
             if let prefix {
                 Text(prefix).foregroundStyle(Theme.inkMuted)
             }

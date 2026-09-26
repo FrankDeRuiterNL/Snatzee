@@ -85,6 +85,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
+        NSCameraUsageDescription: Snatzee gebruikt de camera om de QR-code van een groep te scannen.
         # Read by AppConfig; set in Config/*.xcconfig.
         SnatzeeAPIScheme: $(SNATZEE_API_SCHEME)
         SnatzeeAPIHost: $(SNATZEE_API_HOST)

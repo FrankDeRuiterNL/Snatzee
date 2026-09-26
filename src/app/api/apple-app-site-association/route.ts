@@ -30,6 +30,9 @@ export function GET() {
               // GoTrue's own endpoints must keep reaching the server.
               { '/': '/auth/v1/*', exclude: true },
               { '/': '/u/*', comment: 'Public profiles' },
+              // The admin console stays on the website.
+              { '/': '/app/admin', exclude: true },
+              { '/': '/app/admin/*', exclude: true },
               { '/': '/app', comment: 'The app itself' },
               { '/': '/app/*' },
               { '/': '/auth/confirm', comment: 'Email confirmation and magic links' },

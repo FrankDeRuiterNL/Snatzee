@@ -6,7 +6,6 @@ struct HomeView: View {
     @Bindable var model: HomeModel
     let onAddGame: () -> Void
     let onOpenProfile: () -> Void
-    let onOpenSettings: () -> Void
 
     @Environment(GameCoordinator.self) private var game
     @State private var confirmingFirstRoll = false
@@ -77,7 +76,16 @@ struct HomeView: View {
                 }
             }
             Spacer(minLength: 0)
-            RoundIconButton(icon: "settings", label: "Instellingen", action: onOpenSettings)
+            NavigationLink(value: AppRoute.settings) {
+                LucideIcon("settings", size: 20)
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.surface, in: Circle())
+                    .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
+                    .snatzeeShadow(.soft)
+            }
+            .buttonStyle(.pressable)
+            .accessibilityLabel("Instellingen")
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.top, 20)

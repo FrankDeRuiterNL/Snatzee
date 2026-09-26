@@ -24,9 +24,15 @@ struct RootView: View {
         .toasts()
         .task { session.start() }
         .onOpenURL { url in
-            // Confirmation and magic links (universal links to /auth/…)
-            // carry the session; supabase-swift completes the sign-in.
-            Task { try? await SupabaseService.client?.auth.session(from: url) }
+            if url.path.hasPrefix("/auth/") || url.scheme != "https" {
+                // Confirmation and magic links (universal links to /auth/…)
+                // carry the session; supabase-swift completes the sign-in.
+                Task { try? await SupabaseService.client?.auth.session(from: url) }
+            } else {
+                // Everything else is a page of the site: a profile, a
+                // group invite, a tab. Picked up once signed in.
+                DeepLinks.shared.open(url)
+            }
         }
     }
 
