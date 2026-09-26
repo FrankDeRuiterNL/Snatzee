@@ -2,7 +2,8 @@ import SwiftUI
 
 /// The web app's `<Button>`: a pill in one of seven variants and three sizes.
 struct SnatzeeButtonStyle: ButtonStyle {
-    enum Variant { case primary, navy, soft, ghost, outline, danger, dangerSoft }
+    /// `white`: white with black text — Sign in with Apple's own colours.
+    enum Variant { case primary, navy, soft, ghost, outline, danger, dangerSoft, white }
     enum Size { case sm, md, lg }
 
     var variant: Variant = .primary
@@ -69,6 +70,7 @@ struct SnatzeeButtonStyle: ButtonStyle {
         case .soft, .outline: Theme.ink
         case .ghost: Theme.inkSoft
         case .dangerSoft: Theme.roseEmber300
+        case .white: .black
         }
     }
 
@@ -80,6 +82,7 @@ struct SnatzeeButtonStyle: ButtonStyle {
         case .ghost, .outline: .clear
         case .danger: Theme.roseEmber500
         case .dangerSoft: Theme.roseEmber500.opacity(0.15)
+        case .white: .white
         }
     }
 
@@ -98,7 +101,7 @@ private struct VariantShadow: ViewModifier {
     func body(content: Content) -> some View {
         switch variant {
         case .primary: content.snatzeeShadow(.mint)
-        case .navy, .soft, .danger: content.snatzeeShadow(.soft)
+        case .navy, .soft, .danger, .white: content.snatzeeShadow(.soft)
         default: content
         }
     }

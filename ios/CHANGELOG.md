@@ -3,6 +3,15 @@
 Versions follow [Semantic Versioning](https://semver.org). See `CLAUDE.md`
 for when each part goes up.
 
+## 1.4.0 (build 27)
+
+- New welcome screen for signed-out players: the Snatzee logo with a soft
+  mint glow, then "Ga door met Apple", "Gratis account maken" and "Ik heb
+  al een account" — all three the same size and font — and the consent
+  line with its links.
+- Sign in with Apple is drawn as our own white button (Apple logo, "Ga door
+  met Apple"), so it matches the other buttons.
+
 ## 1.3.0 (build 11)
 
 - Profiel has a page title like Ranking and Vrienden, with the settings

@@ -1,47 +1,40 @@
 import SwiftUI
 
-/// The signed-out start screen: the website's landing page.
+/// The signed-out start screen: the logo, and the three ways in.
+///
+/// Deliberately not the website's landing page — someone who just
+/// installed the app has already been sold on it by the App Store, so this
+/// is a clean front door rather than a pitch.
 struct WelcomeView: View {
     @State private var path: [AuthMode] = []
     @State private var appleEnabled = false
     @State private var appleError: String?
+    @State private var appeared = false
+
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
 
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    LogoLockup(size: 44)
-                        .padding(.top, 24)
+            VStack(spacing: 0) {
+                Spacer(minLength: 24)
 
-                    (Text("Jouw Yahtzee‑scores,\n") + Text("eindelijk bijgehouden.").foregroundColor(Theme.mint400))
-                        .font(.jakarta(41.6, .black))
-                        .trackingTight(41.6)
-                        .foregroundStyle(Theme.ink)
-                        .padding(.top, 40)
-
-                    Text("Speel gewoon met je vertrouwde scoreblaadje. Voeg na afloop je eindscore toe en Snatzee regelt de records, statistieken, achievements en ranglijsten.")
-                        .font(.jakarta(16.8))
-                        .lineSpacing(4)
-                        .foregroundStyle(Theme.inkSoft)
-                        .padding(.top, 16)
-
-                    VStack(spacing: 12) {
-                        Feature(icon: "dice-5", accent: .mint, title: "Eén tik per potje",
-                                text: "Score invullen, gewonnen aanvinken, opslaan. Klaar binnen vijf seconden.")
-                        Feature(icon: "zap", accent: .tangerine, title: "Yahtzees los registreren",
-                                text: "Inclusief een aparte knop voor die ene Yahtzee in de eerste worp.")
-                        Feature(icon: "trophy", accent: .grape, title: "Ranglijsten & achievements",
-                                text: "Zes ranglijsten, 36 achievements en records die automatisch worden bijgehouden.")
-                        Feature(icon: "users", accent: .aqua, title: "Vrienden en groepen",
-                                text: "Vergelijk je cijfers met je familie, je collega's of je vrijdagavondclub.")
+                LogoStack(size: 112)
+                    .background {
+                        // A soft mint glow behind the mark.
+                        Circle()
+                            .fill(Theme.mint500.opacity(0.22))
+                            .frame(width: 260, height: 260)
+                            .blur(radius: 70)
+                            .accessibilityHidden(true)
                     }
-                    .padding(.top, 32)
-                }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.bottom, 24)
-            }
-            .scrollIndicators(.hidden)
-            .safeAreaInset(edge: .bottom) {
+                    .scaleEffect(appeared ? 1 : 0.92)
+                    .opacity(appeared ? 1 : 0)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Snatzee")
+
+                Spacer(minLength: 24)
+                Spacer(minLength: 24)
+
                 VStack(spacing: 12) {
                     if appleEnabled {
                         AppleSignInButton { appleError = $0 }
@@ -52,12 +45,15 @@ struct WelcomeView: View {
                     Button("Ik heb al een account") { path.append(.login) }
                         .buttonStyle(.snatzee(.soft, size: .lg, full: true))
                     ConsentNotice()
+                        .padding(.top, 8)
                 }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-                .background(Theme.canvas)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 16)
+                .animation(.easeOut(duration: 0.2), value: appleEnabled)
             }
+            .padding(.horizontal, Theme.gutter)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.canvas.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: AuthMode.self) { mode in
@@ -65,36 +61,11 @@ struct WelcomeView: View {
             }
         }
         .task { appleEnabled = await AuthSettings.isAppleEnabled() }
-    }
-}
-
-private struct Feature: View {
-    let icon: String
-    let accent: Accent
-    let title: String
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            IconTile(icon: icon, accent: accent)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.jakarta(TextSize.base, .bold))
-                    .trackingTight(TextSize.base)
-                    .foregroundStyle(Theme.ink)
-                Text(text)
-                    .font(.jakarta(TextSize.sm))
-                    .lineSpacing(3)
-                    .foregroundStyle(Theme.inkMuted)
-                    .fixedSize(horizontal: false, vertical: true)
+        .onAppear {
+            let calm = systemReduceMotion || Preferences.shared.reducedMotion
+            withAnimation(calm ? nil : .spring(response: 0.6, dampingFraction: 0.85).delay(0.1)) {
+                appeared = true
             }
-            Spacer(minLength: 0)
         }
-        .padding(16)
-        .card(.surface)
     }
-}
-
-#Preview {
-    WelcomeView()
 }

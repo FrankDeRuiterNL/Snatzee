@@ -9,26 +9,41 @@ import Supabase
 /// checks the hash against the raw nonce we send alongside it, so a
 /// token cannot be replayed. The server must list the app's bundle ID in
 /// APPLE_CLIENT_ID for GoTrue to accept tokens minted for it.
+///
+/// Drawn as our own button — the Apple logo and "Ga door met Apple" in the
+/// app's font, white as Apple's guidelines ask — so it matches the buttons
+/// next to it. The system button sets its own, larger type.
 struct AppleSignInButton: View {
     var onError: (String) -> Void
 
     @State private var nonce = AppleSignInButton.randomNonce()
+    @State private var pending = false
 
     var body: some View {
-        SignInWithAppleButton(.continue) { request in
-            nonce = Self.randomNonce()
-            request.requestedScopes = [.fullName, .email]
-            request.nonce = Self.sha256(nonce)
-        } onCompletion: { result in
-            Task { await complete(result) }
+        Button {
+            Task { await start() }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 17, weight: .semibold))
+                    .offset(y: -1)
+                Text("Ga door met Apple")
+            }
         }
-        .signInWithAppleButtonStyle(.white)
-        .frame(height: 56)
-        // Apple's button is at most 375 points wide; wider made it break
-        // its own layout constraint.
-        .frame(maxWidth: 375)
-        .clipShape(Capsule())
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.snatzee(.white, size: .lg, full: true, loading: pending))
+        .disabled(pending)
+        .accessibilityLabel("Ga door met Apple")
+    }
+
+    @MainActor
+    private func start() async {
+        pending = true
+        defer { pending = false }
+        nonce = Self.randomNonce()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = Self.sha256(nonce)
+        await complete(await AppleAuthorization.perform(request))
     }
 
     @MainActor
@@ -66,5 +81,40 @@ struct AppleSignInButton: View {
 
     private static func sha256(_ input: String) -> String {
         SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Runs one Sign in with Apple request and waits for its answer.
+@MainActor
+enum AppleAuthorization {
+    private final class Delegate: NSObject, ASAuthorizationControllerDelegate {
+        var continuation: CheckedContinuation<Result<ASAuthorization, Error>, Never>?
+
+        func authorizationController(controller: ASAuthorizationController,
+                                     didCompleteWithAuthorization authorization: ASAuthorization) {
+            continuation?.resume(returning: .success(authorization))
+            continuation = nil
+        }
+
+        func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+            continuation?.resume(returning: .failure(error))
+            continuation = nil
+        }
+    }
+
+    /// Kept alive while the sheet is up; the controller holds it weakly.
+    private static var delegate: Delegate?
+
+    static func perform(_ request: ASAuthorizationAppleIDRequest) async -> Result<ASAuthorization, Error> {
+        let result = await withCheckedContinuation { continuation in
+            let delegate = Delegate()
+            delegate.continuation = continuation
+            Self.delegate = delegate
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = delegate
+            controller.performRequests()
+        }
+        delegate = nil
+        return result
     }
 }
