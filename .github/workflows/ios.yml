@@ -59,7 +59,7 @@ jobs:
             -skipPackagePluginValidation \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
-            | tee xcodebuild.log | grep -E "error:|warning: .*Snatzee/|Test Case .* (passed|failed)|\*\* (BUILD|TEST) (SUCCEEDED|FAILED)" || true
+            | tee xcodebuild.log | grep -E "error:|warning: .*Snatzee/|Test Case .* (passed|failed)|^SCAN|\*\* (BUILD|TEST) (SUCCEEDED|FAILED)" || true
           if ! grep -q "\*\* TEST SUCCEEDED \*\*" xcodebuild.log; then
             # Crashes and timeouts of the test host do not print "error:";
             # show what happened around them.
