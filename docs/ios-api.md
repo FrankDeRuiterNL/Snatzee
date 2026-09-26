@@ -5,7 +5,7 @@ The iOS app talks to the same backend as the website. There is no separate
 valid score is) is enforced in the database, so a native client gets exactly
 the same guarantees as the web app.
 
-Base URL: the site's public address (`PUBLIC_URL`), e.g. `https://www.snatzee.nl`.
+Base URL: the site's public address (`PUBLIC_URL`), e.g. `https://snatzee.example.nl`.
 
 | Path | What it is |
 | --- | --- |

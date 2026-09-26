@@ -1,7 +1,7 @@
 # Snatzee! for iOS
 
 Native SwiftUI app, same backend as the website (see `docs/ios-api.md`).
-Bundle ID `nl.snatzee.app`, team `B65F8DKJ2N`, iOS 17+, iPhone.
+Bundle ID `<bundle-id>`, team `<team-id>` (both set in `project.yml`), iOS 17+, iPhone.
 
 ## First time on your Mac
 
