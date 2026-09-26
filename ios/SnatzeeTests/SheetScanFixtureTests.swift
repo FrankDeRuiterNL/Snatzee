@@ -41,12 +41,16 @@ final class SheetScanFixtureTests: XCTestCase {
                 scan = try SheetScanner.scan(photo)
             } catch {
                 print("SCAN \(sheet.file): failed — \(error)")
+                // What Vision saw, to tell a missed row name from a missed heading.
+                let seen = (try? SheetScanner.recognize(photo)) ?? []
+                print("SCAN    saw: " + seen.sorted { $0.box.minY < $1.box.minY }.prefix(80).map(\.text).joined(separator: " | "))
                 if strict { XCTFail("\(sheet.file): \(error)") }
                 tally.add(missed: sheet.columns.values.map(\.count))
                 continue
             }
             let rows = scan.layout.rows.map { "\($0.line)" }.joined(separator: ", ")
-            print("SCAN \(sheet.file): \(scan.layout.columns.count) columns, filled \(scan.filledColumns) (is \(sheet.columns.keys.compactMap { Int($0) }.sorted())); rows: \(rows)")
+            let centres = scan.layout.columns.map { "\($0.number)@\(String(format: "%.2f", $0.centerX))" }.joined(separator: " ")
+            print("SCAN \(sheet.file): columns from \(scan.layout.origin.rawValue) [\(centres)], filled \(scan.filledColumns) (is \(sheet.columns.keys.compactMap { Int($0) }.sorted())); rows: \(rows)")
 
             for (key, expected) in sheet.columns.sorted(by: { $0.key < $1.key }) {
                 let number = Int(key)!

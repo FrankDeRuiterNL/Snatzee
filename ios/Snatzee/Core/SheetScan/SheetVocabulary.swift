@@ -64,8 +64,10 @@ enum SheetVocabulary {
         if contains("three of a kind", "3 of a kind", "drie dezelfde", "3 dezelfde", "three of a") { return .entry(6) }
         if contains("carre", "four of a kind", "4 of a kind", "vier dezelfde", "4 dezelfde", "four of a") { return .entry(7) }
         if contains("full house", "fullhouse", "full h") { return .entry(8) }
-        if contains("kleine straat", "small straight", "sm straight", "sm str", "kl straat") { return .entry(9) }
-        if contains("grote straat", "groote straat", "large straight", "lg straight", "lg str", "gr straat") { return .entry(10) }
+        if contains("kleine straat", "small straight", "sm straight", "sm str", "kl straat", "low straight", "lo straight") { return .entry(9) }
+        if contains("grote straat", "groote straat", "large straight", "lg straight", "lg str", "gr straat", "high straight", "hi straight") {
+            return .entry(10)
+        }
         if contains("topscore", "top score", "yahtzee", "yahtziend", "yardzee", "super score", "5 dezelfde", "5 of a kind") {
             return .entry(11)
         }

@@ -43,6 +43,15 @@ struct SheetLayout: Sendable {
     let rows: [Row]
     /// Typical distance between two rows.
     let rowHeight: CGFloat
+    /// Where the columns were found.
+    var origin: ColumnOrigin = .headings
+
+    enum ColumnOrigin: String, Sendable {
+        /// From printed headings ("1e spel", "Game #2").
+        case headings
+        /// From where the numbers were written.
+        case writing
+    }
 
     /// The part of the page that holds the boxes of one column.
     func strip(for column: Column) -> CGRect {
@@ -70,10 +79,13 @@ struct SheetLayout: Sendable {
     /// Works the layout out from a whole-page reading.
     static func detect(in lines: [OCRLine]) -> Result<SheetLayout, Failure> {
         // 1. Anchors: lines that clearly name one of the thirteen boxes.
-        let anchors = lines.compactMap { line -> (index: Int, line: OCRLine)? in
+        let named = lines.compactMap { line -> (index: Int, line: OCRLine)? in
             if case .entry(let index)? = SheetVocabulary.line(for: line.text) { return (index, line) }
             return nil
         }
+        // The boxes run down the page in order; a name out of order is
+        // something else — the "Yahtzee" logo above the sheet, a hint.
+        let anchors = inOrder(named)
         let distinct = Set(anchors.map(\.index))
         guard distinct.count >= 6 else { return .failure(.noRows) }
 
@@ -86,11 +98,24 @@ struct SheetLayout: Sendable {
         let lastRowY = anchors.map(\.line.box.midY).max() ?? 1
         // (A line wider than half the page ran on into the boxes.)
         let labelEdge = anchors.map(\.line.box).filter { $0.width < 0.45 }.map(\.maxX).max() ?? 0
-        guard let columns = detectColumns(in: lines, above: firstRowY - rowHeight * 0.3, rowHeight: rowHeight)
-            ?? columnsFromWriting(in: lines, rightOf: labelEdge,
-                                  between: firstRowY - rowHeight * 0.5, and: lastRowY + rowHeight * 0.5,
-                                  rowHeight: rowHeight) else {
-            return .failure(.noColumns)
+        let headed = detectColumns(in: lines, above: firstRowY - rowHeight * 0.3, rowHeight: rowHeight)
+        let written = columnsFromWriting(in: lines, rightOf: labelEdge,
+                                         between: firstRowY - rowHeight * 0.5, and: lastRowY + rowHeight * 0.5,
+                                         rowHeight: rowHeight)
+        let columns: [Column]
+        let origin: ColumnOrigin
+        switch (headed, written) {
+        case (let headed?, let written?):
+            // Headings can be half covered by names written over them;
+            // when the writing does not stand under them, trust the writing.
+            if misfit(of: written, against: headed) > 0.25 {
+                columns = written; origin = .writing
+            } else {
+                columns = headed; origin = .headings
+            }
+        case (let headed?, nil): columns = headed; origin = .headings
+        case (nil, let written?): columns = written; origin = .writing
+        case (nil, nil): return .failure(.noColumns)
         }
 
         // 3. Rows: everything printed left of the first column, grouped by
@@ -146,7 +171,46 @@ struct SheetLayout: Sendable {
             return true
         }
 
-        return .success(SheetLayout(columns: columns, rows: rows, rowHeight: rowHeight))
+        return .success(SheetLayout(columns: columns, rows: rows, rowHeight: rowHeight, origin: origin))
+    }
+
+    /// The longest run of box names whose order down the page matches the
+    /// sheet's own order (longest increasing subsequence on the index).
+    static func inOrder(_ named: [(index: Int, line: OCRLine)]) -> [(index: Int, line: OCRLine)] {
+        let sorted = named.sorted { $0.line.box.midY < $1.line.box.midY }
+        guard !sorted.isEmpty else { return [] }
+        var length = [Int](repeating: 1, count: sorted.count)
+        var previous = [Int](repeating: -1, count: sorted.count)
+        for i in sorted.indices {
+            for j in 0..<i where sorted[j].index < sorted[i].index && length[j] + 1 > length[i] {
+                length[i] = length[j] + 1
+                previous[i] = j
+            }
+        }
+        var at = length.indices.max { length[$0] < length[$1] } ?? 0
+        var kept: [(index: Int, line: OCRLine)] = []
+        while at >= 0 {
+            kept.append(sorted[at])
+            at = previous[at]
+        }
+        // A name printed twice in one row (name and hint) is kept once by
+        // the subsequence; the other copy is just as good an anchor.
+        let keptIndices = Set(kept.map(\.index))
+        let rowOf = Dictionary(kept.map { ($0.index, $0.line.box.midY) }, uniquingKeysWith: { a, _ in a })
+        return sorted.filter { item in
+            guard keptIndices.contains(item.index), let y = rowOf[item.index] else { return false }
+            return abs(item.line.box.midY - y) < max(item.line.box.height, 0.01)
+        }
+    }
+
+    /// How far, on average, the columns found from the writing stand from
+    /// the nearest heading column, in column widths.
+    static func misfit(of written: [Column], against headed: [Column]) -> CGFloat {
+        guard !written.isEmpty, !headed.isEmpty else { return 0 }
+        let distances = written.map { column in
+            headed.map { abs($0.centerX - column.centerX) / $0.width }.min() ?? 0
+        }
+        return distances.reduce(0, +) / CGFloat(distances.count)
     }
 
     /// The usual step between two consecutive box names.
@@ -251,7 +315,9 @@ struct SheetLayout: Sendable {
         let last = max(6, Int(points.map(\.n).max() ?? 6))
         return (1...last).compactMap { number in
             let x = origin + step * CGFloat(number)
-            guard x - step * 0.5 > -0.02, x + step * 0.5 < 1.02 else { return nil }
+            // A column cut off by the photo's edge still counts while its
+            // middle is on the page.
+            guard x > step * 0.3, x < 1 - step * 0.3 else { return nil }
             return Column(number: number, centerX: x, width: step)
         }
     }
