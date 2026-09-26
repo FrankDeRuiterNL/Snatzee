@@ -1,7 +1,6 @@
 # Snatzee! for iOS
 
 Native SwiftUI app, same backend as the website (see `docs/ios-api.md`).
-Releasing to TestFlight and the App Store: `docs/ios-release.md`.
 Bundle ID `nl.snatzee.app`, team `B65F8DKJ2N`, iOS 17+, iPhone.
 
 ## First time on your Mac

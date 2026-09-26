@@ -639,7 +639,7 @@ supabase/migrations/        SQL migraties (0001 t/m 0023)
 tests/unit/ tests/sql/      tests
 docker/                     compat-SQL, nginx-gateway, db-prepare, migrate
 ios/                        de iOS-app (zie hieronder)
-docs/                       API voor de iOS-app en de release-handleiding
+docs/                       API-afspraken voor de iOS-app
 scripts/                    seed, brand assets, sleutels, iOS-iconen, db-tests
 ```
 
@@ -684,6 +684,6 @@ bij wijzigingen staat in [`docs/ios-api.md`](docs/ios-api.md). Breekt een
 serverwijziging oudere app-versies toch, verhoog dan `min_ios_build` in
 `app_settings`: oudere builds tonen dan een scherm om bij te werken.
 
-**Uitbrengen:** TestFlight, de App Store-listing, privacy-antwoorden en de
-review-notities staan stap voor stap in
-[`docs/ios-release.md`](docs/ios-release.md).
+**Uitbrengen:** in Xcode **Product → Archive**, dan **Distribute App → App
+Store Connect**. Zet daarbij "Manage Version and Build Number" uit: versie en
+buildnummer komen uit `ios/project.yml`.
