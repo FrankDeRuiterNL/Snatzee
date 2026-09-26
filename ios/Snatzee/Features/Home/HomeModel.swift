@@ -55,20 +55,6 @@ final class HomeModel {
         }
         hasLoaded = true
     }
-
-    private struct RecordYahtzeeResult: Decodable {
-        let firstRollYahtzeeCount: Int
-    }
-
-    /// Registers a Yahtzee thrown on the very first roll; returns how many
-    /// the player has now.
-    func recordFirstRollYahtzee() async throws -> Int {
-        try await API.rpc(
-            "record_yahtzee",
-            ["p_event_type": .string("FIRST_ROLL")],
-            as: RecordYahtzeeResult.self
-        ).firstRollYahtzeeCount
-    }
 }
 
 /// The one-line nudge on Home — `buildInsight()` from insight-card.tsx.

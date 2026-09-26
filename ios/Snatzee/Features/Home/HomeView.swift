@@ -8,8 +8,8 @@ struct HomeView: View {
     let onOpenProfile: () -> Void
     let onOpenSettings: () -> Void
 
+    @Environment(GameCoordinator.self) private var game
     @State private var confirmingFirstRoll = false
-    @State private var recordingFirstRoll = false
 
     var body: some View {
         ScrollView {
@@ -24,7 +24,7 @@ struct HomeView: View {
                     }
                     statGrid(summary)
                     achievementsRow
-                    RecentScoresSection(entries: model.recent, onAddGame: onAddGame)
+                    RecentScoresSection(entries: model.recent, onAddGame: onAddGame, onOpen: { game.edit($0) })
                 } else if let error = model.loadError {
                     EmptyStateView(emoji: "📡", title: "Laden is niet gelukt", description: error) {
                         Button("Opnieuw proberen") { Task { await model.load(userId: profile.id) } }
@@ -44,7 +44,7 @@ struct HomeView: View {
         .task { if !model.hasLoaded { await model.load(userId: profile.id) } }
         .alert("Yahtzee in 1 worp?", isPresented: $confirmingFirstRoll) {
             Button("Nee", role: .cancel) {}
-            Button("Ja!") { Task { await recordFirstRoll() } }
+            Button("Ja!") { Task { await game.recordFirstRollYahtzee() } }
         } message: {
             Text("Heb je in 1 worp Yahtzee gegooid?")
         }
@@ -118,25 +118,10 @@ struct HomeView: View {
                 .card(.elevated)
             }
             .buttonStyle(.pressable)
-            .disabled(recordingFirstRoll)
-            .opacity(recordingFirstRoll ? 0.6 : 1)
+            .disabled(game.recordingFirstRoll)
+            .opacity(game.recordingFirstRoll ? 0.6 : 1)
         }
         .padding(.horizontal, Theme.gutter)
-    }
-
-    private func recordFirstRoll() async {
-        recordingFirstRoll = true
-        defer { recordingFirstRoll = false }
-        do {
-            let count = try await model.recordFirstRollYahtzee()
-            Haptics.play(.warning)
-            SoundPlayer.shared.play(.achievement)
-            // The full-screen celebration arrives with the score sheet (step 3).
-            ToastCenter.shared.success("No way! ⚡ YAHTZEE IN 1 WORP!", description: "Dit was je \(count)e ooit.")
-            await model.load(userId: profile.id)
-        } catch {
-            ToastCenter.shared.error("Registreren is niet gelukt", description: API.translate(error).localizedDescription)
-        }
     }
 
     // MARK: Stats
@@ -303,6 +288,7 @@ struct InsightCard: View {
 struct RecentScoresSection: View {
     let entries: [ScoreEntry]
     let onAddGame: () -> Void
+    var onOpen: ((ScoreEntry) -> Void)?
 
     var body: some View {
         Group {
@@ -328,7 +314,11 @@ struct RecentScoresSection: View {
                                     .tracking(0.6)
                                     .foregroundStyle(Theme.inkMuted)
                                     .padding(.horizontal, 4)
-                                ForEach(group.entries) { ScoreEntryCard(entry: $0) }
+                                ForEach(group.entries) { entry in
+                                    Button { onOpen?(entry) } label: { ScoreEntryCard(entry: entry) }
+                                        .buttonStyle(.pressable)
+                                        .disabled(onOpen == nil)
+                                }
                             }
                         }
                     }

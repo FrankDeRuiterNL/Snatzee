@@ -6,9 +6,9 @@ struct MainTabView: View {
     let profile: Profile
 
     @State private var selection: AppTab = .home
-    @State private var addingGame = false
     @State private var showingSettings = false
     @State private var home = HomeModel()
+    @State private var game = GameCoordinator()
 
     var body: some View {
         ZStack {
@@ -25,13 +25,34 @@ struct MainTabView: View {
             BottomNavigation(
                 selection: $selection,
                 friendRequests: home.summary?.pendingFriendRequests ?? 0
-            ) { addingGame = true }
+            ) { game.addGame() }
         }
-        .sheet(isPresented: $addingGame) {
-            ComingSoonSheet(title: "Potje toevoegen", text: "Het scoreblad komt in stap 3.")
-                .presentationDetents([.medium])
-                .presentationBackground(Theme.canvasSoft)
-                .presentationCornerRadius(Theme.Radius.xl2)
+        .sheet(item: $game.sheet) { request in
+            ScoreSheetView(entry: request.entry) { result in
+                game.saved(result, isEdit: request.entry != nil)
+            }
+            .presentationBackground(Theme.canvasSoft)
+            .presentationCornerRadius(Theme.Radius.xl2)
+        }
+        .overlay {
+            // Above the tab bar and everything else, like the website's.
+            if let celebration = game.celebration {
+                CelebrationOverlay(celebration: celebration) {
+                    withAnimation(.easeOut(duration: 0.22)) { game.dismissCelebration() }
+                }
+                .transition(.opacity)
+                .id(celebration.id)
+            } else if let achievement = game.unlockQueue.first {
+                AchievementUnlockView(achievement: achievement, remaining: game.unlockQueue.count - 1) {
+                    withAnimation(.easeOut(duration: 0.2)) { game.advanceUnlocks() }
+                }
+                .transition(.opacity)
+                .id(achievement.id)
+            }
+        }
+        .environment(game)
+        .onChange(of: game.dataVersion) {
+            Task { await home.load(userId: profile.id) }
         }
         .sheet(isPresented: $showingSettings) {
             InterimSettingsSheet(profile: profile)
@@ -48,7 +69,7 @@ struct MainTabView: View {
             HomeView(
                 profile: profile,
                 model: home,
-                onAddGame: { addingGame = true },
+                onAddGame: { game.addGame() },
                 onOpenProfile: { selection = .profile },
                 onOpenSettings: { showingSettings = true }
             )
@@ -74,26 +95,6 @@ private struct PlaceholderScreen: View {
         .scrollIndicators(.hidden)
         .background(Theme.canvas)
         .toolbar(.hidden, for: .navigationBar)
-    }
-}
-
-private struct ComingSoonSheet: View {
-    let title: String
-    let text: String
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Text(title)
-                .font(.jakarta(TextSize.xl, .extrabold))
-                .foregroundStyle(Theme.ink)
-            Text(text)
-                .font(.jakarta(TextSize.sm))
-                .foregroundStyle(Theme.inkSoft)
-            Button("Sluiten") { dismiss() }
-                .buttonStyle(.snatzee(.soft, full: true))
-        }
-        .padding(24)
     }
 }
 

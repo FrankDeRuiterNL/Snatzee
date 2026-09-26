@@ -97,3 +97,18 @@ struct ClientConfig: Decodable {
 
     func setting(_ key: String) -> Int? { settings[key].map { Int($0) } }
 }
+
+/// What record_score_entry / update_score_entry return.
+struct RecordScoreResult: Decodable {
+    let entry: ScoreEntry
+    /// Achievements this save unlocked, newest first.
+    let unlocked: [Achievement]?
+    /// Only on a new game: beat the player's previous best.
+    let isPersonalRecord: Bool?
+}
+
+/// What record_yahtzee returns.
+struct RecordYahtzeeResult: Decodable {
+    let firstRollYahtzeeCount: Int
+    let unlocked: [Achievement]?
+}
