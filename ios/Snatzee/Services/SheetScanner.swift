@@ -33,6 +33,8 @@ enum SheetScanner {
         let readings: [SheetLine: [CellReading]]
         /// Rows with writing in them that could not be read.
         let unreadable: Set<SheetLine>
+        /// Rows only the digit net could read: always worth a look.
+        var guessed: Set<SheetLine> = []
     }
 
     enum ScanError: LocalizedError {
@@ -91,7 +93,7 @@ enum SheetScanner {
             return (ColumnReading(readings: [:], unreadable: []), SheetSolver.solve([:]))
         }
         let reading = try readColumn(column, of: scan.page, layout: scan.layout, strip: scan.columns[number] ?? [:])
-        return (reading, SheetSolver.solve(reading.readings, inked: reading.unreadable))
+        return (reading, SheetSolver.solve(reading.readings, inked: reading.unreadable, doubtful: reading.guessed))
     }
 
     /// One column's strip, read on its own and sorted into rows; then a
@@ -100,17 +102,24 @@ enum SheetScanner {
                                    strip: [SheetLine: [CellReading]]) throws -> ColumnReading {
         var readings = strip
         var unreadable = Set<SheetLine>()
+        var guessed = Set<SheetLine>()
         for row in layout.rows where (readings[row.line] ?? []).isEmpty {
             let cell = cellRect(column: column, row: row, layout: layout)
             guard hasInk(in: cell, of: page) else { continue }
             let second = try readCell(cell, of: page)
-            if second.isEmpty {
-                unreadable.insert(row.line)
-            } else {
+            if !second.isEmpty {
                 readings[row.line] = second
+            } else if let net = DigitNet.shared, let mask = inkMask(of: cell, in: page),
+                      case let guesses = DigitCutter.readings(for: mask, net: net), !guesses.isEmpty {
+                // Vision saw nothing it could read; the digit net, made for
+                // lone handwritten digits, gives its guess.
+                readings[row.line] = guesses
+                guessed.insert(row.line)
+            } else {
+                unreadable.insert(row.line)
             }
         }
-        return ColumnReading(readings: readings, unreadable: unreadable)
+        return ColumnReading(readings: readings, unreadable: unreadable, guessed: guessed)
     }
 
     /// One box, in page coordinates: a little inside its column and row so
@@ -148,6 +157,39 @@ enum SheetScanner {
         let threshold = paper * 0.55
         let dark = pixels.filter { Double($0) < threshold }.count
         return Double(dark) / Double(pixels.count) > 0.03
+    }
+
+    /// One box as black and white, ink as true, for the digit net: the
+    /// same paper-relative threshold as `hasInk`.
+    static func inkMask(of cell: CGRect, in page: CGImage) -> DigitCutter.Mask? {
+        let inner = cell.insetBy(dx: cell.width * 0.04, dy: cell.height * 0.06)
+        guard let crop = page.cropping(to: pixelRect(inner, in: page)), crop.height > 4 else { return nil }
+        let height = 48
+        let width = max(8, Int((CGFloat(crop.width) / CGFloat(crop.height) * CGFloat(height)).rounded()))
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        guard let context = CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: width, space: CGColorSpaceCreateDeviceGray(),
+                                      bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return nil }
+        context.interpolationQuality = .high
+        context.draw(crop, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let sorted = pixels.sorted()
+        let paper = Double(sorted[sorted.count * 3 / 4])
+        guard paper > 110 else { return nil }
+        let threshold = paper * 0.55
+        var ink = pixels.map { Double($0) < threshold }
+
+        // Printed lines the box was cut a little too wide to miss: near
+        // its edges, a row or column that is ink almost end to end is
+        // border, not writing. (A "—" through the middle stays.)
+        let edgeRows = Array(0..<height / 5) + Array(height - height / 5..<height)
+        for y in edgeRows where (0..<width).filter({ ink[y * width + $0] }).count > width * 8 / 10 {
+            for x in 0..<width { ink[y * width + x] = false }
+        }
+        let edgeColumns = Array(0..<width / 5) + Array(width - width / 5..<width)
+        for x in edgeColumns where (0..<height).filter({ ink[$0 * width + x] }).count > height * 8 / 10 {
+            for y in 0..<height { ink[y * width + x] = false }
+        }
+        return DigitCutter.Mask(width: width, height: height, ink: ink)
     }
 
     /// A second look at one box: cut out, enlarged, on a white margin, read

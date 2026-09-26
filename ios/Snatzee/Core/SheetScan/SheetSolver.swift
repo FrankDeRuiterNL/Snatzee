@@ -101,7 +101,10 @@ enum SheetSolver {
     /// - Parameter inked: rows where something is written that could not
     ///   be read. Those are open: any value the box may hold, decided by
     ///   the totals, and always flagged.
-    static func solve(_ readings: [SheetLine: [CellReading]], inked: Set<SheetLine> = []) -> Result {
+    /// - Parameter doubtful: rows read only by a weaker reader; always
+    ///   flagged, whatever the totals say.
+    static func solve(_ readings: [SheetLine: [CellReading]], inked: Set<SheetLine> = [],
+                      doubtful: Set<SheetLine> = []) -> Result {
         // Per box, a score for every value it may hold.
         let entryScores: [[Int: Double]] = (0..<ScoreSheet.rows.count).map { index in
             scores(for: ScoreSheet.rows[index].values, readings: readings[.entry(index)] ?? [],
@@ -170,7 +173,7 @@ enum SheetSolver {
             let unreadable = rowReadings.isEmpty && inked.contains(.entry(index))
             let halfOpen = index < ScoreSheet.upperRows ? upperOpen : lowerOpen
             let doubt: Float = halfOpen ? 0.6 : 0.35
-            if unreadable || !agreesWithOwn || (own?.confidence ?? 1) < doubt { flagged.insert(index) }
+            if unreadable || doubtful.contains(.entry(index)) || !agreesWithOwn || (own?.confidence ?? 1) < doubt { flagged.insert(index) }
         }
 
         let totals = ScoreSheet.totals(entries, yahtzees: extra > 0 ? extra + 1 : 0)

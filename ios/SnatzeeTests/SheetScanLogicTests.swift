@@ -119,4 +119,19 @@ final class SheetScanLogicTests: XCTestCase {
         XCTAssertEqual(columns?.first?.centerX ?? 0, 0.40, accuracy: 0.001)
         XCTAssertEqual(columns?.first?.width ?? 0, 0.08, accuracy: 0.001)
     }
+
+    func testDigitNetReadsADrawnOne() throws {
+        let net = try XCTUnwrap(DigitNet.shared, "digit weights missing or the wrong shape")
+        // A plain upright stroke, drawn the way the cutter hands it over.
+        var ink = [Bool](repeating: false, count: 20 * 40)
+        for y in 4..<36 { for x in 9..<12 { ink[y * 20 + x] = true } }
+        let mask = DigitCutter.Mask(width: 20, height: 40, ink: ink)
+        let readings = DigitCutter.readings(for: mask, net: net)
+        XCTAssertEqual(readings.first?.mark, .number(1))
+
+        // A long flat mark is a struck-out box.
+        var dash = [Bool](repeating: false, count: 60 * 30)
+        for y in 14..<17 { for x in 5..<55 { dash[y * 60 + x] = true } }
+        XCTAssertEqual(DigitCutter.readings(for: DigitCutter.Mask(width: 60, height: 30, ink: dash), net: net).first?.mark, .stroke)
+    }
 }
