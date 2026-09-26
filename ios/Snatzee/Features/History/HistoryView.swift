@@ -264,6 +264,7 @@ struct HistoryView: View {
             .padding(.vertical, 12)
             .background(Theme.canvasSoft)
         }
+        .contentMargins(.bottom, 0, for: .scrollContent)
         .presentationDetents([.medium, .large])
         .presentationBackground(Theme.canvasSoft)
         .presentationCornerRadius(Theme.Radius.xl2)

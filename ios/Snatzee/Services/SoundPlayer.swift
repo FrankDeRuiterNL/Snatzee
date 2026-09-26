@@ -5,8 +5,12 @@ import AVFoundation
 /// Ambient audio: it mixes with whatever else is playing and respects the
 /// silent switch, the way a game's sound effects should. The on/off
 /// preference is the same one the web app keeps (default on).
-@MainActor
-final class SoundPlayer {
+///
+/// Everything audio happens on one background queue. Setting the session
+/// category and `AVAudioPlayer.play()` — which activates the session
+/// itself — both block until the audio daemon answers, and Xcode warns
+/// (rightly) when that happens on the main thread.
+final class SoundPlayer: @unchecked Sendable {
     enum Sound: String, CaseIterable {
         case logo, score, achievement
 
@@ -22,22 +26,21 @@ final class SoundPlayer {
     static let shared = SoundPlayer()
     static let preferenceKey = "snatzee.sound"
 
+    private let queue = DispatchQueue(label: "nl.snatzee.audio", qos: .userInitiated)
+    /// Only touched on `queue`.
     private var players: [Sound: AVAudioPlayer] = [:]
 
     private init() {
-        // Session calls block until the audio daemon answers, so they stay
-        // off the main thread. Setting the category once is all it takes:
-        // AVAudioPlayer activates the session itself when it plays.
-        DispatchQueue.global(qos: .userInitiated).async {
+        queue.async {
             try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-        }
-        for sound in Sound.allCases {
-            guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "mp3"),
-                  let player = try? AVAudioPlayer(contentsOf: url)
-            else { continue }
-            player.volume = sound.volume
-            player.prepareToPlay()
-            players[sound] = player
+            for sound in Sound.allCases {
+                guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "mp3"),
+                      let player = try? AVAudioPlayer(contentsOf: url)
+                else { continue }
+                player.volume = sound.volume
+                player.prepareToPlay()
+                self.players[sound] = player
+            }
         }
     }
 
@@ -47,8 +50,13 @@ final class SoundPlayer {
     }
 
     func play(_ sound: Sound) {
-        guard Self.isEnabled, let player = players[sound] else { return }
-        player.currentTime = 0
-        player.play()
+        guard Self.isEnabled else { return }
+        // Queued after the loading above, so the audio logo at launch waits
+        // for its player rather than being dropped.
+        queue.async {
+            guard let player = self.players[sound] else { return }
+            player.currentTime = 0
+            player.play()
+        }
     }
 }

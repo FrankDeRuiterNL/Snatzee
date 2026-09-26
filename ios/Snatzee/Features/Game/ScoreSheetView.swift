@@ -65,6 +65,7 @@ struct ScoreSheetView: View {
                 .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.interactively)
+            .contentMargins(.bottom, 0, for: .scrollContent)
             .background(Theme.canvasSoft)
             .safeAreaInset(edge: .bottom) {
                 Button {

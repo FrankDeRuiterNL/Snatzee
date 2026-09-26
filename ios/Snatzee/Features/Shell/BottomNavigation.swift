@@ -9,6 +9,10 @@ struct BottomNavigation: View {
 
     @Namespace private var activeIndicator
 
+    /// Room a scrolling screen leaves at its end for the bar (64pt bar,
+    /// 12pt below it, and air above) — the web app's `pb-nav`.
+    static let reservedHeight: CGFloat = 104
+
     /// Past this the badge would outgrow the icon it sits on.
     private let badgeMax = 9
 

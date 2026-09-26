@@ -17,11 +17,14 @@ struct MainTabView: View {
                 // Every tab stays alive (and keeps its scroll position),
                 // like switching tabs in a native tab bar.
                 NavigationStack { screen(for: tab).appRoutes(profile: profile) }
+                    // The floating bar covers the bottom of every screen:
+                    // scrolled all the way down, content must end above it.
+                    .contentMargins(.bottom, BottomNavigation.reservedHeight, for: .scrollContent)
                     .opacity(selection == tab ? 1 : 0)
                     .allowsHitTesting(selection == tab)
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .overlay(alignment: .bottom) {
             BottomNavigation(
                 selection: $selection,
                 friendRequests: home.summary?.pendingFriendRequests ?? 0

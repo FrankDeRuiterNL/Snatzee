@@ -81,12 +81,21 @@ struct RankingsView: View {
                 Segmented(
                     options: [(value: Scope.global, label: "Wereldwijd"), (value: .friends, label: "Vrienden"), (value: .group, label: "Groep")],
                     selection: Binding(get: { scope }, set: { next in
-                        // No groups: the group scope has nothing to show.
-                        if next == .group && groups.isEmpty { return }
-                        scope = next
+                        guard next == .group, groups.isEmpty else {
+                            scope = next
+                            return
+                        }
+                        // No groups known (yet): look again before saying so.
+                        Task {
+                            await loadGroups(reportErrors: true)
+                            if groups.isEmpty {
+                                ToastCenter.shared.info("Je zit nog in geen groep", description: "Maak of join een groep via Vrienden → Groepen.")
+                            } else {
+                                scope = .group
+                            }
+                        }
                     })
                 )
-                .opacity(1)
                 .padding(.horizontal, Theme.gutter)
 
                 if scope == .group && !groups.isEmpty {
@@ -142,10 +151,11 @@ struct RankingsView: View {
                     .background(Theme.canvas.opacity(0.8), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                     .padding(.horizontal, Theme.gutter)
-                    .padding(.bottom, 12)
+                    // Just above the floating tab bar.
+                    .padding(.bottom, BottomNavigation.reservedHeight - 8)
             }
         }
-        .task { await loadGroups() }
+        .task { await loadGroups(reportErrors: true) }
         .task(id: queryKey) { await load() }
     }
 
@@ -157,11 +167,19 @@ struct RankingsView: View {
         }
     }
 
-    private func loadGroups() async {
-        groups = (try? await API.rows(GroupOption.self) {
-            $0.from("groups").select("id, name, emoji").order("created_at", ascending: false)
-        }) ?? []
-        if groupId == nil { groupId = groups.first?.id }
+    private func loadGroups(reportErrors: Bool = false) async {
+        do {
+            groups = try await API.rows(GroupOption.self) {
+                $0.from("groups").select("id, name, emoji").order("created_at", ascending: false)
+            }
+        } catch {
+            // Said out loud: a silent failure here looked like "Groep does
+            // nothing".
+            if reportErrors {
+                ToastCenter.shared.error("Groepen laden is niet gelukt", description: API.translate(error).localizedDescription)
+            }
+        }
+        if groupId == nil || !groups.contains(where: { $0.id == groupId }) { groupId = groups.first?.id }
         if let value = try? await API.rpc(
             "app_setting_int",
             ["p_key": .string("min_games_for_average_ranking"), "p_default": .integer(5)],

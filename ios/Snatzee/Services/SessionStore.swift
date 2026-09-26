@@ -42,8 +42,8 @@ final class SessionStore {
                 self?.state = .signedOut
                 return
             }
-            for await (_, session) in client.auth.authStateChanges {
-                await self?.apply(session)
+            for await (event, session) in client.auth.authStateChanges {
+                await self?.apply(session, event: event)
             }
         }
     }
@@ -59,9 +59,21 @@ final class SessionStore {
         state = .signedOut
     }
 
-    private func apply(_ session: Session?) async {
-        guard let session, !session.isExpired else {
+    private func apply(_ session: Session?, event: AuthChangeEvent? = nil) async {
+        guard let session else {
             state = .signedOut
+            return
+        }
+        if session.isExpired {
+            // The stored session from the last launch, past its hour: renew
+            // it rather than show the welcome screen. Success arrives as a
+            // tokenRefreshed event with the fresh session; failure means the
+            // player really has to sign in again.
+            do {
+                _ = try await SupabaseService.client?.auth.refreshSession()
+            } catch {
+                state = .signedOut
+            }
             return
         }
         do {
