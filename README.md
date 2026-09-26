@@ -92,9 +92,9 @@ iOS-app. Zie [Meldingen](#meldingen) voor wanneer er een uitgaat.
 **Beheer**
 Een adminconsole op de website voor superadmins: scores en 1-worp Yahtzee's
 doorzoeken en verwijderen, alle groepen beheren, meldingen van spelers
-afhandelen, een eigen pushbericht sturen, app-instellingen en rollen aanpassen
-en achievements van een speler resetten. Alles wat verwijdert of verstuurt komt
-in het auditlog.
+afhandelen, een eigen pushbericht sturen, app-instellingen en rollen aanpassen,
+achievements van een speler resetten en accounts van spelers verwijderen. Alles
+wat verwijdert of verstuurt komt in het auditlog.
 
 **Juridisch**
 Privacybeleid, voorwaarden en een supportpagina op `/privacy`, `/voorwaarden`
@@ -419,7 +419,7 @@ domein kan wijzen. De iOS-app praat met dezelfde gateway.
 | `app_settings` | Configureerbare grenzen en vlaggen |
 | `admin_audit_log` | Wat een superadmin verwijderde of verstuurde |
 
-Migraties staan in `supabase/migrations/` (0001 t/m 0023). Elk bestand draait één
+Migraties staan in `supabase/migrations/` (0001 t/m 0024). Elk bestand draait één
 keer; `snatzee_meta.schema_migrations` houdt bij welke al zijn toegepast. Een
 bestaande migratie aanpassen heeft dus geen effect meer op een draaiende
 installatie — schrijf een nieuwe. Een bestand toch opnieuw laten draaien:
@@ -618,6 +618,7 @@ src/
     privacy/ voorwaarden/ support/
     api/
       account/delete        account verwijderen (ook voor iOS)
+      admin/users/delete    account van een speler verwijderen (superadmin)
       push/                 drain, broadcast, test
       apple-app-site-association   universal links voor de iOS-app
       email-templates/      mailsjablonen voor GoTrue
@@ -635,7 +636,7 @@ src/
     scoresheet/             regels van het scoreblad
     push-server.ts push-worker.ts apns.ts apple.ts
   types/database.ts         types die het SQL-schema spiegelen
-supabase/migrations/        SQL migraties (0001 t/m 0023)
+supabase/migrations/        SQL migraties (0001 t/m 0024)
 tests/unit/ tests/sql/      tests
 docker/                     compat-SQL, nginx-gateway, db-prepare, migrate
 ios/                        de iOS-app (zie hieronder)

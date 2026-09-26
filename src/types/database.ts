@@ -261,6 +261,9 @@ export interface AdminUser {
   avatar_url: string | null
   has_push: boolean
   achievement_count: number
+  role: AppRole
+  games_played: number
+  onboarding_completed: boolean
 }
 
 export interface AdminGroupRow {
