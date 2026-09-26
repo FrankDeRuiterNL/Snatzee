@@ -80,8 +80,16 @@ struct SheetLayout: Sendable {
         let rowHeight = estimateRowHeight(anchors: anchors)
         let firstRowY = anchors.map(\.line.box.midY).min() ?? 0
 
-        // 2. Columns from their headings, above the first row.
-        guard let columns = detectColumns(in: lines, above: firstRowY - rowHeight * 0.3, rowHeight: rowHeight) else {
+        // 2. Columns from their headings, above the first row — or, on
+        //    sheets headed by players' names or nothing at all, from where
+        //    the numbers were written.
+        let lastRowY = anchors.map(\.line.box.midY).max() ?? 1
+        // (A line wider than half the page ran on into the boxes.)
+        let labelEdge = anchors.map(\.line.box).filter { $0.width < 0.45 }.map(\.maxX).max() ?? 0
+        guard let columns = detectColumns(in: lines, above: firstRowY - rowHeight * 0.3, rowHeight: rowHeight)
+            ?? columnsFromWriting(in: lines, rightOf: labelEdge,
+                                  between: firstRowY - rowHeight * 0.5, and: lastRowY + rowHeight * 0.5,
+                                  rowHeight: rowHeight) else {
             return .failure(.noColumns)
         }
 
@@ -157,6 +165,52 @@ struct SheetLayout: Sendable {
         }
         steps.sort()
         return steps[steps.count / 2]
+    }
+
+    /// Game columns from the handwriting itself: numbers written right of
+    /// the row names, grouped by where they stand across the page. Each
+    /// group that runs down several rows is a game, numbered from the left.
+    static func columnsFromWriting(in lines: [OCRLine], rightOf labelEdge: CGFloat,
+                                   between top: CGFloat, and bottom: CGFloat, rowHeight: CGFloat) -> [Column]? {
+        var xs: [CGFloat] = []
+        for line in lines where line.box.minX > labelEdge && line.box.midY > top && line.box.midY < bottom {
+            let words = line.words.isEmpty ? [(text: line.text, box: line.box)] : line.words
+            // Only lines that are nothing but scores: "SCORE 25" is print.
+            guard words.allSatisfy({ CellParser.parse($0.text) != nil }) else { continue }
+            xs += words.map { $0.box.midX }
+        }
+        xs.sort()
+
+        var groups: [[CGFloat]] = []
+        for x in xs {
+            if let last = groups.last?.last, x - last < rowHeight * 1.2 {
+                groups[groups.count - 1].append(x)
+            } else {
+                groups.append([x])
+            }
+        }
+        let centers = groups.filter { $0.count >= 3 }.map { $0[$0.count / 2] }
+        guard let first = centers.first else { return nil }
+
+        // The step between neighbouring games; an empty game in between
+        // shows up as a gap of two steps.
+        let gaps = zip(centers.dropFirst(), centers).map { $0 - $1 }
+        let step: CGFloat
+        if let smallest = gaps.min(), smallest > 0 {
+            let steps = gaps.map { $0 / max(1, ($0 / smallest).rounded()) }.sorted()
+            step = steps[steps.count / 2]
+        } else {
+            step = rowHeight * 2.5
+        }
+        guard step > rowHeight else { return nil }
+
+        var columns: [Column] = []
+        for x in centers {
+            let number = 1 + Int(((x - first) / step).rounded())
+            guard !columns.contains(where: { $0.number == number }) else { continue }
+            columns.append(Column(number: number, centerX: x, width: step))
+        }
+        return columns
     }
 
     /// Game columns from headings like "1e spel" or "Game 2", filled in

@@ -54,12 +54,14 @@ enum SheetScanner {
     /// Photos larger than this are scaled down first: more pixels only make
     /// recognition slower, not better.
     private static let maxDimension: CGFloat = 2400
+    /// Smaller photos are scaled up to this first.
+    private static let minDimension: CGFloat = 1600
 
     // MARK: Pipeline
 
     /// Reads the sheet: layout, then every game column.
     static func scan(_ image: CGImage) throws -> Scan {
-        let page = scaledDown(image)
+        let page = resized(image)
         let lines = try recognize(page)
 
         let layout: SheetLayout
@@ -299,7 +301,7 @@ enum SheetScanner {
     /// Finds the sheet in a photo and straightens it. Returns the photo
     /// as it was when no sheet-shaped outline is found.
     static func prepare(_ image: CGImage) -> CGImage {
-        let scaled = scaledDown(image)
+        let scaled = resized(image)
         let request = VNDetectDocumentSegmentationRequest()
         let handler = VNImageRequestHandler(cgImage: scaled, orientation: .up)
         guard (try? handler.perform([request])) != nil,
@@ -333,11 +335,18 @@ enum SheetScanner {
         return abs(sum) / 2
     }
 
-    private static func scaledDown(_ image: CGImage) -> CGImage {
+    /// Brought to a size Vision reads well: large photos scaled down,
+    /// small ones (a screenshot, a picture from a chat) scaled up so the
+    /// handwriting is tall enough to be recognised.
+    private static func resized(_ image: CGImage) -> CGImage {
         let longest = CGFloat(max(image.width, image.height))
-        guard longest > maxDimension else { return image }
-        let scale = maxDimension / longest
-        let input = CIImage(cgImage: image).transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        return CIContext().createCGImage(input, from: input.extent) ?? image
+        let target = min(max(longest, minDimension), maxDimension)
+        guard target != longest else { return image }
+        let filter = CIFilter.lanczosScaleTransform()
+        filter.inputImage = CIImage(cgImage: image)
+        filter.scale = Float(target / longest)
+        filter.aspectRatio = 1
+        guard let output = filter.outputImage else { return image }
+        return CIContext().createCGImage(output, from: output.extent.integral) ?? image
     }
 }

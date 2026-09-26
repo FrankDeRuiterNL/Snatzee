@@ -121,7 +121,7 @@ enum SheetVocabulary {
         // A bare number is only a heading when it says "spel"/"game" or
         // "1e" — the layout decides for plain digits in the header row.
         guard let number else { return nil }
-        let explicit = tokens.contains { words.contains($0) || $0.hasSuffix("e") && Int($0.dropLast()) != nil }
+        let explicit = text.contains("#") || tokens.contains { words.contains($0) || $0.hasSuffix("e") && Int($0.dropLast()) != nil }
         return explicit ? number : nil
     }
 }

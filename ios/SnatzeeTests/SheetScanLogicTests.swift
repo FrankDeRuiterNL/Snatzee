@@ -40,6 +40,7 @@ final class SheetScanLogicTests: XCTestCase {
         XCTAssertEqual(SheetVocabulary.gameNumber(for: "3e"), 3)
         XCTAssertEqual(SheetVocabulary.gameNumber(for: "GAME #4"), 4)
         XCTAssertEqual(SheetVocabulary.gameNumber(for: "spel 2"), 2)
+        XCTAssertEqual(SheetVocabulary.gameNumber(for: "#3"), 3)
         XCTAssertNil(SheetVocabulary.gameNumber(for: "20"), "a score is not a heading")
         XCTAssertNil(SheetVocabulary.gameNumber(for: "SPELER 1"))
     }
@@ -101,5 +102,21 @@ final class SheetScanLogicTests: XCTestCase {
         XCTAssertEqual(SheetScanner.repeatedUnit("444", copies: 3), "4")
         XCTAssertEqual(SheetScanner.repeatedUnit("121212", copies: 3), "12")
         XCTAssertNil(SheetScanner.repeatedUnit("443", copies: 3))
+    }
+
+    func testColumnsFromWritingWhenHeadedByNames() {
+        // Players' initials over the columns: the games are found from
+        // where the numbers stand. The third game was left empty.
+        func line(_ text: String, x: CGFloat, y: CGFloat) -> OCRLine {
+            OCRLine(candidates: [.init(text: text, confidence: 0.9)], box: CGRect(x: x - 0.02, y: y - 0.01, width: 0.04, height: 0.02))
+        }
+        var lines: [OCRLine] = [line("SCORE 25", x: 0.3, y: 0.4)]
+        for (i, y) in stride(from: 0.2, through: 0.5, by: 0.03).enumerated() {
+            lines += [line("\(i + 1)", x: 0.40, y: y), line("\(i * 2)", x: 0.48, y: y), line("1\(i)", x: 0.64, y: y)]
+        }
+        let columns = SheetLayout.columnsFromWriting(in: lines, rightOf: 0.35, between: 0.18, and: 0.52, rowHeight: 0.03)
+        XCTAssertEqual(columns?.map(\.number), [1, 2, 4])
+        XCTAssertEqual(columns?.first?.centerX ?? 0, 0.40, accuracy: 0.001)
+        XCTAssertEqual(columns?.first?.width ?? 0, 0.08, accuracy: 0.001)
     }
 }
