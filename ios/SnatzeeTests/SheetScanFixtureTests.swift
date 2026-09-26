@@ -106,4 +106,49 @@ final class SheetScanFixtureTests: XCTestCase {
         XCTAssertEqual(SheetLine.at(block: 1, row: 9, rowsInBlock: 12), .lowerTotal)
         XCTAssertEqual(SheetLine.at(block: 1, row: 11, rowsInBlock: 12), .grandTotal)
     }
+
+    /// Step 2 — reading: every played game read end to end and compared
+    /// box by box with what is really written.
+    func testReadsTheSheets() throws {
+        let bundle = Bundle(for: Self.self)
+        let url = try XCTUnwrap(bundle.url(forResource: "truth", withExtension: "json"))
+        let truth = try JSONDecoder().decode(Truth.self, from: Data(contentsOf: url))
+        XCTAssertNotNil(DigitNet.shared, "digit weights missing or the wrong shape")
+
+        var tallies: [String: (boxes: Int, right: Int, games: Int, perfect: Int, silent: Int, flagged: Int)] = [:]
+        for sheet in truth.sheets {
+            var tally = tallies[sheet.set] ?? (0, 0, 0, 0, 0, 0)
+            defer { tallies[sheet.set] = tally }
+            let photo = SheetScanner.straighten(try image(sheet.file))
+            let located = SheetScanner.locate(photo)
+            for (key, expected) in sheet.columns.sorted(by: { $0.key < $1.key }) {
+                tally.games += 1
+                tally.boxes += expected.count
+                let started = Date()
+                guard let located, let read = ColumnReader.read(located, column: Int(key)! - 1) else {
+                    print("SCAN \(sheet.file) game \(key): not read")
+                    tally.flagged += expected.count
+                    continue
+                }
+                let (result, boxes) = read
+                var wrong: [String] = []
+                for index in expected.indices {
+                    if result.entries[index] == expected[index] { tally.right += 1; continue }
+                    let flagged = result.flagged.contains(index)
+                    if !flagged { tally.silent += 1 }
+                    let e = boxes[index]
+                    let vision = e.vision.sorted { $0.value > $1.value }.prefix(3).map { "\($0.key)@\(String(format: "%.2f", $0.value))" }
+                    wrong.append("\(ScoreSheet.rows[index].label): read \(result.entries[index]), is \(expected[index]) [\(flagged ? "flagged" : "NOT flagged"); \(e.kind.kind), own best \(e.best) by \(String(format: "%.2f", e.margin)), vision \(vision)]")
+                }
+                tally.flagged += result.flagged.count
+                if wrong.isEmpty { tally.perfect += 1 }
+                print("SCAN \(sheet.file) game \(key): \(expected.count - wrong.count)/\(expected.count) right, totals agree \(result.totalsAgree), flagged \(result.flagged.sorted()), \(String(format: "%.1f", Date().timeIntervalSince(started)))s")
+                for line in wrong { print("SCAN    \(line)") }
+            }
+        }
+        for (set, t) in tallies.sorted(by: { $0.key > $1.key }) {
+            let percent = t.boxes == 0 ? 0 : Double(t.right) / Double(t.boxes) * 100
+            print("SCAN READ \(set): \(t.right)/\(t.boxes) boxes (\(String(format: "%.1f", percent))%), \(t.perfect)/\(t.games) games perfect, \(t.silent) wrong without a flag, \(t.flagged) flagged")
+        }
+    }
 }
